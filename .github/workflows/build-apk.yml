@@ -2,6 +2,8 @@ name: Build APK
 on:
   push:
   workflow_dispatch:
+permissions:
+  contents: write
 jobs:
   build:
     runs-on: ubuntu-24.04
@@ -31,3 +33,15 @@ jobs:
         with:
           name: DeskRacerLAN-debug-apk
           path: app/build/outputs/apk/debug/*.apk
+      - name: Publish APK to apk branch and release
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p /tmp/out && cp app/build/outputs/apk/debug/*.apk /tmp/out/DeskRacerLAN.apk
+          cd /tmp/out && git init -q -b apk && git add DeskRacerLAN.apk
+          git -c user.name=ci -c user.email=ci@users.noreply.github.com commit -q -m "APK from ${GITHUB_SHA::7}"
+          git push -f "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" apk
+          cd "$GITHUB_WORKSPACE"
+          gh release delete latest-apk -y --cleanup-tag || true
+          gh release create latest-apk /tmp/out/DeskRacerLAN.apk --title "Desk Racer LAN (latest debug APK)" --notes "Built from ${GITHUB_SHA::7}" --target "$GITHUB_SHA"
