@@ -1,0 +1,34 @@
+<resources>
+    <string name="app_name">Desk Racer LAN</string>
+    <string name="lobby_title">DESK RACER LAN</string>
+    <string name="lobby_subtitle">Hotspot Zero-Internet Arcade Kart Racing</string>
+    <string name="room_code_label">Room / Host IP</string>
+    <string name="room_code_placeholder">E.G. KART1 or 192.168.43.1</string>
+    <string name="btn_host_hotspot">HOST ON HOTSPOT</string>
+    <string name="btn_join_hotspot">JOIN RACE</string>
+    <string name="btn_stop_lan">DISCONNECT</string>
+    <string name="btn_blueprint_sheet">BLUEPRINT &amp; ENGINE</string>
+    <string name="btn_reset_kart">RESPAWN</string>
+    <string name="btn_camera_toggle">CAM</string>
+    <string name="btn_bots_toggle">AI RIVAL</string>
+    <string name="hud_item_none">ITEM: NONE</string>
+    <string name="hud_drift_ready">DRIFT BOOST READY</string>
+    <string name="hud_charging_drift">⚡ CHARGING DRIFT...</string>
+    <string name="hud_ultra_spark">🔥 ULTRA SPARK READY!</string>
+    <string name="ctrl_left">◀</string>
+    <string name="ctrl_right">▶</string>
+    <string name="ctrl_fire">FIRE</string>
+    <string name="ctrl_drift">DRIFT</string>
+    <string name="ctrl_gas">GAS</string>
+    <string name="ctrl_brake">BRAKE</string>
+    <string name="cd_steer_left">Steer Left</string>
+    <string name="cd_steer_right">Steer Right</string>
+    <string name="cd_fire_item">Fire Item</string>
+    <string name="cd_drift_hop">Hop and Drift</string>
+    <string name="cd_gas_pedal">Accelerate Gas</string>
+    <string name="cd_brake_reverse">Brake or Reverse</string>
+    <string name="cd_open_lobby">Toggle Hotspot Lobby Panel</string>
+    <string name="cd_open_blueprint">Open Complete Blueprint Archive and Engine Switcher</string>
+    <string name="cd_respawn_kart">Respawn Kart on Desk Track</string>
+    <string name="cd_switch_camera">Switch Camera Angle</string>
+</resources>

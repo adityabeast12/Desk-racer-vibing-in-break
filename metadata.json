@@ -1,0 +1,6 @@
+{
+  "name": "Desk Racer LAN",
+  "description": "3D Mario Kart-style desktop micro-kart racer with zero-internet Wi-Fi Hotspot LAN multiplayer, UDP auto-discovery, hop-drifting, and desk arena tracks.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
