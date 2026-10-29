@@ -1,6 +1,7 @@
 package com.example.ui
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -22,13 +23,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Cameraswitch
+import androidx.compose.material.icons.filled.Gamepad
 import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Wifi
@@ -42,6 +44,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -49,10 +52,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -66,6 +74,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.R
+import com.example.game.ControlScheme
 import com.example.game.DeskRacerUiState
 import com.example.game.DeskRacerViewModel
 import com.example.game.LanRole
@@ -81,6 +90,7 @@ import com.example.ui.theme.SkyCyan
 import com.example.ui.theme.SlateAbyss
 import com.example.ui.theme.SlateBorder
 import com.example.ui.theme.SlateSurface
+import kotlin.math.abs
 
 @Composable
 fun DeskRacerScreen(
@@ -89,7 +99,7 @@ fun DeskRacerScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
     Box(modifier = Modifier.fillMaxSize()) {
-        // 1. Hardware-Accelerated OpenGL ES 2.0 3D Desk Arena (or WebGL Sandbox)
+        // 1. Full-Bleed Portrait 3D OpenGL ES 2.0 Desk Arena (or Three.js WebGL Sandbox)
         if (state.useWebGlEngine) {
             WebGlDeskRacerView(modifier = Modifier.fillMaxSize())
         } else {
@@ -99,16 +109,18 @@ fun DeskRacerScreen(
             )
         }
 
-        // 2. Crisp Arcade Racing HUD & Touch Controls Overlay
-        Box(
+        // 2. Portrait Ergonomic Racing Cockpit Overlay
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .windowInsetsPadding(WindowInsets.safeDrawing)
-                .padding(horizontal = 12.dp, vertical = 10.dp)
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.SpaceBetween
         ) {
-            // Top-Left: Sleek Hotspot LAN Bar + Expandable Room Code Modal + Mini-Map
-            TopLeftHotspotPanel(
+            // TOP ZONE: Portrait Arcade Racing Header + Tappable Center Item Slot + Expandable LAN Drawer
+            PortraitTopRacingHud(
                 state = state,
+                onFireItem = viewModel::fireHeldItem,
                 onRoomInputChanged = viewModel::updateRoomInput,
                 onHostClicked = viewModel::hostHotspotSession,
                 onJoinClicked = { viewModel.joinHotspotSession() },
@@ -118,39 +130,24 @@ fun DeskRacerScreen(
                 onOpenBlueprint = { viewModel.toggleBlueprintSheet(true) },
                 onRespawnKart = viewModel::respawnKart,
                 onCycleCamera = viewModel::cycleCameraMode,
-                modifier = Modifier.align(Alignment.TopStart)
+                onToggleControlScheme = viewModel::toggleControlScheme
             )
 
-            // Top-Right: Compact Mario-Kart Telemetry HUD (Item Slot, Speedometer, Drift Gauge, Lap)
-            TopRightTelemetryHud(
+            // BOTTOM ZONE: Portrait Thumb Cockpit (Digital Tachometer + One-Thumb Drift Wheel or Classic Pedals)
+            PortraitBottomThumbCockpit(
                 state = state,
-                modifier = Modifier.align(Alignment.TopEnd)
-            )
-
-            // Bottom-Left: Multi-Touch Left & Right Steering + Brake
-            BottomLeftSteeringCluster(
-                isLeftActive = state.controls.left,
-                isRightActive = state.controls.right,
-                isBrakeActive = state.controls.brake,
+                onAnalogSteer = viewModel::setAnalogSteeringWheel,
+                onFireClicked = viewModel::fireHeldItem,
+                onBrakeChanged = viewModel::setBrakePressed,
+                onToggleAutoGas = viewModel::toggleAutoGas,
                 onLeftChanged = viewModel::setSteeringLeft,
                 onRightChanged = viewModel::setSteeringRight,
-                onBrakeChanged = viewModel::setBrakePressed,
-                modifier = Modifier.align(Alignment.BottomStart)
-            )
-
-            // Bottom-Right: Multi-Touch FIRE, DRIFT (Hop), and GAS Pedals
-            BottomRightPedalsCluster(
-                hasItem = state.localKart.item != null,
-                isDriftActive = state.controls.drift,
-                isGasActive = state.controls.gas,
-                onFireClicked = viewModel::fireHeldItem,
                 onDriftChanged = viewModel::setDriftPressed,
-                onGasChanged = viewModel::setGasPressed,
-                modifier = Modifier.align(Alignment.BottomEnd)
+                onGasChanged = viewModel::setGasPressed
             )
         }
 
-        // 3. Complete Blueprint Archive & Engine Modal Sheet
+        // 3. Complete Blueprint Archive & Engine Switcher Modal
         if (state.isBlueprintSheetOpen) {
             BlueprintSheetOverlay(
                 useWebGlEngine = state.useWebGlEngine,
@@ -165,8 +162,9 @@ fun DeskRacerScreen(
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun TopLeftHotspotPanel(
+private fun PortraitTopRacingHud(
     state: DeskRacerUiState,
+    onFireItem: () -> Unit,
     onRoomInputChanged: (String) -> Unit,
     onHostClicked: () -> Unit,
     onJoinClicked: () -> Unit,
@@ -176,127 +174,244 @@ private fun TopLeftHotspotPanel(
     onOpenBlueprint: () -> Unit,
     onRespawnKart: () -> Unit,
     onCycleCamera: () -> Unit,
-    modifier: Modifier = Modifier
+    onToggleControlScheme: () -> Unit
 ) {
     Column(
-        modifier = modifier.widthIn(max = 340.dp),
+        modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        // Compact Top Action Pill Row
+        // Row 1: Position & Lap Pill | Center Mario-Kart Item Roulette Box | Quick Action Icons
         Row(
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            verticalAlignment = Alignment.CenterVertically
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Top
         ) {
-            Surface(
-                modifier = Modifier
-                    .height(48.dp)
-                    .clickable(onClick = onToggleLobby)
-                    .testTag("toggle_lobby_button"),
-                shape = RoundedCornerShape(12.dp),
-                color = Color(0xCC0F172A),
-                border = androidx.compose.foundation.BorderStroke(
-                    1.5.dp,
-                    when (state.lanRole) {
-                        LanRole.HOSTING_HOTSPOT -> HostEmerald
-                        LanRole.JOINED_CLIENT -> SkyCyan
-                        LanRole.STANDALONE -> Color(0x55FFFFFF)
-                    }
-                )
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+            // Left: Position (1st / 2nd) & Lap Badge + Hotspot LAN Pill
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Surface(
+                    shape = RoundedCornerShape(14.dp),
+                    color = Color(0xD90F172A),
+                    border = androidx.compose.foundation.BorderStroke(1.5.dp, RulerYellow)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Wifi,
-                        contentDescription = stringResource(R.string.cd_open_lobby),
-                        tint = when (state.lanRole) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = if (state.currentPlace == 1) "1ST" else "${state.currentPlace}ND",
+                            fontFamily = OrbitronFontFamily,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 20.sp,
+                            color = if (state.currentPlace == 1) RulerYellow else SkyCyan
+                        )
+                        Column {
+                            Text(
+                                text = "LAP ${state.localKart.lap}",
+                                fontFamily = OrbitronFontFamily,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 11.sp,
+                                color = Color.White,
+                                modifier = Modifier.testTag("lap_display")
+                            )
+                            Text(
+                                text = state.cameraMode.label,
+                                fontSize = 9.sp,
+                                color = Color(0xFF94A3B8)
+                            )
+                        }
+                    }
+                }
+
+                // Hotspot LAN Pill
+                Surface(
+                    modifier = Modifier
+                        .height(40.dp)
+                        .clickable(onClick = onToggleLobby)
+                        .testTag("toggle_lobby_button"),
+                    shape = RoundedCornerShape(10.dp),
+                    color = Color(0xCC0F172A),
+                    border = androidx.compose.foundation.BorderStroke(
+                        1.dp,
+                        when (state.lanRole) {
                             LanRole.HOSTING_HOTSPOT -> HostEmerald
                             LanRole.JOINED_CLIENT -> SkyCyan
-                            LanRole.STANDALONE -> DriftAmber
-                        },
-                        modifier = Modifier.size(16.dp)
+                            LanRole.STANDALONE -> Color(0x55FFFFFF)
+                        }
                     )
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(5.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Wifi,
+                            contentDescription = stringResource(R.string.cd_open_lobby),
+                            tint = when (state.lanRole) {
+                                LanRole.HOSTING_HOTSPOT -> HostEmerald
+                                LanRole.JOINED_CLIENT -> SkyCyan
+                                LanRole.STANDALONE -> DriftAmber
+                            },
+                            modifier = Modifier.size(15.dp)
+                        )
+                        Text(
+                            text = when (state.lanRole) {
+                                LanRole.HOSTING_HOTSPOT -> "HOST: ${state.roomInput}"
+                                LanRole.JOINED_CLIENT -> "LAN (${state.remoteKarts.size})"
+                                LanRole.STANDALONE -> "HOTSPOT LAN"
+                            },
+                            fontFamily = OrbitronFontFamily,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 10.sp,
+                            color = Color.White
+                        )
+                    }
+                }
+            }
+
+            // Center: Mario Kart Tour Style Top-Center Item Roulette Slot (Tap directly to FIRE!)
+            val item = state.localKart.item
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .size(width = 112.dp, height = 74.dp)
+                    .clip(RoundedCornerShape(18.dp))
+                    .background(
+                        brush = Brush.verticalGradient(
+                            colors = if (item != null) {
+                                listOf(item.badgeColor, Color(0xFF0F172A))
+                            } else {
+                                listOf(Color(0xCC1E293B), Color(0xCC0F172A))
+                            }
+                        )
+                    )
+                    .border(
+                        width = 2.5.dp,
+                        color = item?.badgeColor ?: Color(0x55FFFFFF),
+                        shape = RoundedCornerShape(18.dp)
+                    )
+                    .clickable { onFireItem() }
+                    .testTag("item_display")
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                    modifier = Modifier.padding(6.dp)
+                ) {
                     Text(
-                        text = when (state.lanRole) {
-                            LanRole.HOSTING_HOTSPOT -> "HOST: ${state.roomInput}"
-                            LanRole.JOINED_CLIENT -> "LAN (${state.remoteKarts.size})"
-                            LanRole.STANDALONE -> "LAN LOBBY"
-                        },
+                        text = if (item != null) "TAP TO FIRE" else "ITEM BOX",
                         fontFamily = OrbitronFontFamily,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 11.sp,
-                        color = Color.White
+                        fontSize = 9.sp,
+                        color = if (item != null) RulerYellow else Color(0xFF94A3B8)
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = item?.displayName ?: "EMPTY",
+                        fontFamily = OrbitronFontFamily,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 12.sp,
+                        color = Color.White,
+                        textAlign = TextAlign.Center,
+                        lineHeight = 14.sp
                     )
                 }
             }
 
-            IconButton(
-                onClick = onCycleCamera,
-                modifier = Modifier
-                    .size(48.dp)
-                    .background(Color(0xCC0F172A), RoundedCornerShape(12.dp))
-                    .border(1.dp, Color(0x40FFFFFF), RoundedCornerShape(12.dp))
-                    .testTag("camera_mode_button")
+            // Right: Radar Mini-Map + Quick Action Buttons
+            Column(
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                Icon(
-                    imageVector = Icons.Default.Cameraswitch,
-                    contentDescription = stringResource(R.string.cd_switch_camera),
-                    tint = SkyCyan,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    IconButton(
+                        onClick = onToggleControlScheme,
+                        modifier = Modifier
+                            .size(42.dp)
+                            .background(Color(0xCC0F172A), RoundedCornerShape(10.dp))
+                            .border(1.dp, Color(0x40FFFFFF), RoundedCornerShape(10.dp))
+                            .testTag("control_scheme_button")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Gamepad,
+                            contentDescription = "Switch Steering Control Mode",
+                            tint = RulerYellow,
+                            modifier = Modifier.size(19.dp)
+                        )
+                    }
 
-            IconButton(
-                onClick = onRespawnKart,
-                modifier = Modifier
-                    .size(48.dp)
-                    .background(Color(0xCC0F172A), RoundedCornerShape(12.dp))
-                    .border(1.dp, Color(0x40FFFFFF), RoundedCornerShape(12.dp))
-                    .testTag("respawn_kart_button")
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Refresh,
-                    contentDescription = stringResource(R.string.cd_respawn_kart),
-                    tint = DriftAmber,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
+                    IconButton(
+                        onClick = onCycleCamera,
+                        modifier = Modifier
+                            .size(42.dp)
+                            .background(Color(0xCC0F172A), RoundedCornerShape(10.dp))
+                            .border(1.dp, Color(0x40FFFFFF), RoundedCornerShape(10.dp))
+                            .testTag("camera_mode_button")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Cameraswitch,
+                            contentDescription = stringResource(R.string.cd_switch_camera),
+                            tint = SkyCyan,
+                            modifier = Modifier.size(19.dp)
+                        )
+                    }
 
-            IconButton(
-                onClick = onOpenBlueprint,
-                modifier = Modifier
-                    .size(48.dp)
-                    .background(Color(0xCC0F172A), RoundedCornerShape(12.dp))
-                    .border(1.dp, Color(0x40FFFFFF), RoundedCornerShape(12.dp))
-                    .testTag("open_blueprint_button")
-            ) {
-                Icon(
-                    imageVector = Icons.Default.MenuBook,
-                    contentDescription = stringResource(R.string.cd_open_blueprint),
-                    tint = Color.White,
-                    modifier = Modifier.size(20.dp)
-                )
+                    IconButton(
+                        onClick = onRespawnKart,
+                        modifier = Modifier
+                            .size(42.dp)
+                            .background(Color(0xCC0F172A), RoundedCornerShape(10.dp))
+                            .border(1.dp, Color(0x40FFFFFF), RoundedCornerShape(10.dp))
+                            .testTag("respawn_kart_button")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = stringResource(R.string.cd_respawn_kart),
+                            tint = DriftAmber,
+                            modifier = Modifier.size(19.dp)
+                        )
+                    }
+
+                    IconButton(
+                        onClick = onOpenBlueprint,
+                        modifier = Modifier
+                            .size(42.dp)
+                            .background(Color(0xCC0F172A), RoundedCornerShape(10.dp))
+                            .border(1.dp, Color(0x40FFFFFF), RoundedCornerShape(10.dp))
+                            .testTag("open_blueprint_button")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.MenuBook,
+                            contentDescription = stringResource(R.string.cd_open_blueprint),
+                            tint = Color.White,
+                            modifier = Modifier.size(19.dp)
+                        )
+                    }
+                }
+
+                if (!state.isLobbyExpanded && !state.useWebGlEngine) {
+                    DeskTrackMiniMap(state = state)
+                }
             }
         }
 
-        // Expandable Hotspot Room Code / IP Input Panel
+        // Expandable Hotspot Room Code / IP Drawer
         AnimatedVisibility(visible = state.isLobbyExpanded) {
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
                     .testTag("lobby_panel"),
                 shape = RoundedCornerShape(14.dp),
-                color = Color(0xE80F172A),
-                border = androidx.compose.foundation.BorderStroke(1.dp, SkyCyan.copy(alpha = 0.45f))
+                color = Color(0xEE0F172A),
+                border = androidx.compose.foundation.BorderStroke(1.dp, SkyCyan.copy(alpha = 0.55f))
             ) {
                 Column(
                     modifier = Modifier.padding(12.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
-                        text = "WI-FI HOTSPOT ZERO-INTERNET LAN",
+                        text = "ZERO-INTERNET WI-FI HOTSPOT LAN LOBBY",
                         fontFamily = OrbitronFontFamily,
                         fontWeight = FontWeight.Bold,
                         fontSize = 11.sp,
@@ -385,7 +500,7 @@ private fun TopLeftHotspotPanel(
                             state.discoveredHosts.take(2).forEach { host ->
                                 Surface(
                                     modifier = Modifier
-                                        .height(48.dp)
+                                        .height(44.dp)
                                         .clickable { onDiscoveredHostClicked(host.ipAddress) }
                                         .testTag("discovered_host_${host.roomCode}"),
                                     shape = RoundedCornerShape(8.dp),
@@ -410,229 +525,471 @@ private fun TopLeftHotspotPanel(
                 }
             }
         }
-
-        // Live Radar Mini-Map when Lobby is collapsed
-        if (!state.isLobbyExpanded && !state.useWebGlEngine) {
-            DeskTrackMiniMap(state = state)
-        }
     }
 }
 
 @Composable
-private fun TopRightTelemetryHud(
+private fun PortraitBottomThumbCockpit(
     state: DeskRacerUiState,
-    modifier: Modifier = Modifier
+    onAnalogSteer: (Float, Boolean) -> Unit,
+    onFireClicked: () -> Unit,
+    onBrakeChanged: (Boolean) -> Unit,
+    onToggleAutoGas: () -> Unit,
+    onLeftChanged: (Boolean) -> Unit,
+    onRightChanged: (Boolean) -> Unit,
+    onDriftChanged: (Boolean) -> Unit,
+    onGasChanged: (Boolean) -> Unit
 ) {
-    val item = state.localKart.item
-    val itemLabel = item?.displayName ?: "NO ITEM"
-    val driftProgress = (state.localKart.driftCharge / 36f).coerceIn(0f, 1f)
     val isUltra = state.localKart.driftCharge > 35
+    val isMini = state.localKart.driftCharge in 16..35
+    val driftProgress = (state.localKart.driftCharge / 36f).coerceIn(0f, 1f)
 
-    Surface(
-        modifier = modifier
-            .widthIn(max = 185.dp)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
             .testTag("hud_panel"),
-        shape = RoundedCornerShape(14.dp),
-        color = Color(0xCC0F172A),
-        border = androidx.compose.foundation.BorderStroke(
-            width = 1.5.dp,
-            color = if (isUltra) RulerYellow else Color(0x38FFFFFF)
-        )
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-            horizontalAlignment = Alignment.End
+        // 1. Sleek Digital Tachometer & Drift Charge Bar
+        Surface(
+            shape = RoundedCornerShape(16.dp),
+            color = Color(0xD90F172A),
+            border = androidx.compose.foundation.BorderStroke(
+                width = 1.5.dp,
+                color = when {
+                    isUltra -> ArcadeCrimson
+                    isMini -> RulerYellow
+                    else -> Color(0x40FFFFFF)
+                }
+            ),
+            modifier = Modifier.fillMaxWidth()
         ) {
-            // Item Roulette Badge
-            Box(
-                modifier = Modifier
-                    .background(
-                        color = item?.badgeColor?.copy(alpha = 0.25f) ?: Color(0xFF1E293B),
-                        shape = RoundedCornerShape(6.dp)
-                    )
-                    .border(
-                        width = 1.dp,
-                        color = item?.badgeColor ?: Color(0xFF475569),
-                        shape = RoundedCornerShape(6.dp)
-                    )
-                    .padding(horizontal = 8.dp, vertical = 3.dp)
+            Column(
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text(
-                    text = if (item != null) "★ $itemLabel" else "ITEM: NONE",
-                    fontFamily = OrbitronFontFamily,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 11.sp,
-                    color = item?.badgeColor ?: Color(0xFF94A3B8),
-                    modifier = Modifier.testTag("item_display")
-                )
-            }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Speed Readout
+                    Row(verticalAlignment = Alignment.Bottom) {
+                        Text(
+                            text = "${state.speedKmh}",
+                            fontFamily = OrbitronFontFamily,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 26.sp,
+                            color = if (isUltra) RulerYellow else Color.White
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "KM/H",
+                            fontFamily = OrbitronFontFamily,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp,
+                            color = SkyCyan,
+                            modifier = Modifier.padding(bottom = 3.dp)
+                        )
+                    }
 
-            Spacer(modifier = Modifier.height(4.dp))
+                    // Live Drift / Turbo Status
+                    Text(
+                        text = state.speedDisplayStatus,
+                        fontFamily = OrbitronFontFamily,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 10.sp,
+                        color = when {
+                            isUltra -> RulerYellow
+                            isMini -> DriftAmber
+                            else -> SkyCyan
+                        },
+                        maxLines = 1,
+                        modifier = Modifier.testTag("speed_display")
+                    )
 
-            // Speedometer & Drift Status
-            Row(
-                verticalAlignment = Alignment.Bottom,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Text(
-                    text = "${state.speedKmh}",
-                    fontFamily = OrbitronFontFamily,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 24.sp,
-                    color = if (isUltra) RulerYellow else Color.White
-                )
-                Text(
-                    text = "KM/H",
-                    fontFamily = OrbitronFontFamily,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 10.sp,
-                    color = SkyCyan,
-                    modifier = Modifier.padding(bottom = 3.dp)
-                )
-            }
+                    // Auto-Gas Toggle Chip
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = if (state.autoGasEnabled) GasGreen.copy(alpha = 0.25f) else SlateSurface,
+                        border = androidx.compose.foundation.BorderStroke(
+                            1.dp,
+                            if (state.autoGasEnabled) GasGreen else SlateBorder
+                        ),
+                        modifier = Modifier
+                            .clickable(onClick = onToggleAutoGas)
+                            .testTag("auto_gas_toggle")
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Bolt,
+                                contentDescription = "Toggle Auto Gas",
+                                tint = if (state.autoGasEnabled) GasGreen else Color.Gray,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Text(
+                                text = if (state.autoGasEnabled) "AUTO-GAS ON" else "MANUAL GAS",
+                                fontFamily = OrbitronFontFamily,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 9.sp,
+                                color = if (state.autoGasEnabled) GasGreen else Color.LightGray
+                            )
+                        }
+                    }
+                }
 
-            Text(
-                text = state.speedDisplayStatus,
-                fontFamily = OrbitronFontFamily,
-                fontWeight = FontWeight.Bold,
-                fontSize = 9.sp,
-                color = if (isUltra) RulerYellow else SkyCyan,
-                textAlign = TextAlign.End,
-                maxLines = 1,
-                modifier = Modifier.testTag("speed_display")
-            )
-
-            if (state.localKart.driftCharge > 0) {
-                Spacer(modifier = Modifier.height(4.dp))
+                // Live RPM & Drift Spark Charge Progress Bar
+                Spacer(modifier = Modifier.height(5.dp))
+                val rpmFraction = (state.speedKmh / 145f).coerceIn(0.05f, 1f)
                 LinearProgressIndicator(
-                    progress = { driftProgress },
+                    progress = { if (state.localKart.driftCharge > 0) driftProgress else rpmFraction },
                     modifier = Modifier
-                        .width(120.dp)
-                        .height(5.dp)
+                        .fillMaxWidth()
+                        .height(6.dp)
                         .clip(RoundedCornerShape(3.dp)),
-                    color = if (isUltra) ArcadeCrimson else RulerYellow,
+                    color = when {
+                        isUltra -> ArcadeCrimson
+                        isMini -> RulerYellow
+                        state.localKart.driftCharge > 0 -> SkyCyan
+                        else -> GasGreen
+                    },
                     trackColor = Color(0xFF1E293B)
                 )
             }
+        }
 
-            Spacer(modifier = Modifier.height(3.dp))
-            Text(
-                text = "LAP ${state.localKart.lap} • ${state.cameraMode.label}",
-                style = MaterialTheme.typography.bodyMedium,
-                fontSize = 10.sp,
-                color = Color(0xFF94A3B8),
-                textAlign = TextAlign.End,
-                modifier = Modifier.testTag("lap_display")
+        // 2. Ergonomic Portrait Control Deck: One-Thumb Analog Drift Wheel OR Classic Twin Pedals
+        if (state.controlScheme == ControlScheme.ONE_THUMB_WHEEL) {
+            PortraitOneThumbSteeringDeck(
+                state = state,
+                onAnalogSteer = onAnalogSteer,
+                onFireClicked = onFireClicked,
+                onBrakeChanged = onBrakeChanged,
+                onDriftChanged = onDriftChanged
+            )
+        } else {
+            ClassicTwinPedalsRow(
+                state = state,
+                onLeftChanged = onLeftChanged,
+                onRightChanged = onRightChanged,
+                onBrakeChanged = onBrakeChanged,
+                onFireClicked = onFireClicked,
+                onDriftChanged = onDriftChanged,
+                onGasChanged = onGasChanged
             )
         }
     }
 }
 
 @Composable
-private fun BottomLeftSteeringCluster(
-    isLeftActive: Boolean,
-    isRightActive: Boolean,
-    isBrakeActive: Boolean,
-    onLeftChanged: (Boolean) -> Unit,
-    onRightChanged: (Boolean) -> Unit,
-    onBrakeChanged: (Boolean) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Row(
-        modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        verticalAlignment = Alignment.Bottom
-    ) {
-        ArcadeTouchButton(
-            label = stringResource(R.string.ctrl_left),
-            contentDesc = stringResource(R.string.cd_steer_left),
-            testTag = "btn_left",
-            size = 68.dp,
-            fontSizeSp = 22f,
-            baseColor = Color(0xB81E293B),
-            activeColor = SkyCyan,
-            isPressedExternal = isLeftActive,
-            onPressChanged = onLeftChanged
-        )
-
-        ArcadeTouchButton(
-            label = stringResource(R.string.ctrl_right),
-            contentDesc = stringResource(R.string.cd_steer_right),
-            testTag = "btn_right",
-            size = 68.dp,
-            fontSizeSp = 22f,
-            baseColor = Color(0xB81E293B),
-            activeColor = SkyCyan,
-            isPressedExternal = isRightActive,
-            onPressChanged = onRightChanged
-        )
-
-        ArcadeTouchButton(
-            label = "REV",
-            contentDesc = stringResource(R.string.cd_brake_reverse),
-            testTag = "btn_brake",
-            size = 54.dp,
-            fontSizeSp = 11f,
-            baseColor = Color(0xA6334155),
-            activeColor = ArcadeCrimson,
-            isPressedExternal = isBrakeActive,
-            onPressChanged = onBrakeChanged
-        )
-    }
-}
-
-@Composable
-private fun BottomRightPedalsCluster(
-    hasItem: Boolean,
-    isDriftActive: Boolean,
-    isGasActive: Boolean,
+private fun PortraitOneThumbSteeringDeck(
+    state: DeskRacerUiState,
+    onAnalogSteer: (Float, Boolean) -> Unit,
     onFireClicked: () -> Unit,
-    onDriftChanged: (Boolean) -> Unit,
-    onGasChanged: (Boolean) -> Unit,
-    modifier: Modifier = Modifier
+    onBrakeChanged: (Boolean) -> Unit,
+    onDriftChanged: (Boolean) -> Unit
 ) {
+    var thumbXFraction by remember { mutableFloatStateOf(0f) } // -1f (Left) to +1f (Right)
+    var isDraggingWheel by remember { mutableStateOf(false) }
+    var boxWidthPx by remember { mutableFloatStateOf(1f) }
+
     Row(
-        modifier = modifier,
+        modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
-        verticalAlignment = Alignment.Bottom
+        verticalAlignment = Alignment.CenterVertically
     ) {
+        // Left Side: Quick Hop/Drift Lock or Brake Button
+        Column(
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            ArcadeTouchButton(
+                label = stringResource(R.string.ctrl_drift),
+                contentDesc = stringResource(R.string.cd_drift_hop),
+                testTag = "btn_drift",
+                size = 64.dp,
+                fontSizeSp = 12f,
+                baseColor = DriftAmber.copy(alpha = 0.88f),
+                activeColor = RulerYellow,
+                isPressedExternal = state.controls.drift,
+                onPressChanged = onDriftChanged
+            )
+            ArcadeTouchButton(
+                label = "BRAKE",
+                contentDesc = stringResource(R.string.cd_brake_reverse),
+                testTag = "btn_brake",
+                size = 54.dp,
+                fontSizeSp = 10f,
+                baseColor = Color(0xCC334155),
+                activeColor = ArcadeCrimson,
+                isPressedExternal = state.controls.brake,
+                onPressChanged = onBrakeChanged
+            )
+        }
+
+        // Center: Mario Kart Tour Style One-Thumb Analog Steering & Hop-Drift Arc
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .weight(1f)
+                .height(124.dp)
+                .clip(RoundedCornerShape(28.dp))
+                .background(Color(0xD90F172A))
+                .border(
+                    width = 2.dp,
+                    color = if (state.controls.drift) RulerYellow else SkyCyan.copy(alpha = 0.65f),
+                    shape = RoundedCornerShape(28.dp)
+                )
+                .onSizeChanged { boxWidthPx = it.width.toFloat().coerceAtLeast(1f) }
+                .pointerInput(Unit) {
+                    awaitEachGesture {
+                        val down = awaitFirstDown(requireUnconsumed = false)
+                        isDraggingWheel = true
+                        fun updateFromOffset(pos: Offset) {
+                            val normX = ((pos.x / boxWidthPx) * 2f - 1f).coerceIn(-1f, 1f)
+                            thumbXFraction = normX
+                            // Pulling past 52% or dragging slightly upward engages automatic Hop-Drift!
+                            val autoDrift = abs(normX) > 0.52f || pos.y < 36f || state.controls.drift
+                            onAnalogSteer(normX, autoDrift)
+                        }
+                        updateFromOffset(down.position)
+                        do {
+                            val event = awaitPointerEvent()
+                            val change = event.changes.firstOrNull()
+                            if (change != null && change.pressed) {
+                                updateFromOffset(change.position)
+                            }
+                        } while (event.changes.any { it.pressed })
+
+                        isDraggingWheel = false
+                        thumbXFraction = 0f
+                        onAnalogSteer(0f, false)
+                    }
+                }
+                .testTag("one_thumb_steering_wheel")
+        ) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val w = size.width
+                val h = size.height
+                val cx = w * 0.5f
+                val cy = h * 0.55f
+
+                // Outer Steering Arc
+                drawArc(
+                    color = Color(0x3338BDF8),
+                    startAngle = 195f,
+                    sweepAngle = 150f,
+                    useCenter = false,
+                    topLeft = Offset(w * 0.12f, h * 0.18f),
+                    size = Size(w * 0.76f, h * 1.1f),
+                    style = Stroke(width = 14f, cap = StrokeCap.Round)
+                )
+
+                // Extreme Left & Right Orange Drift Zones
+                drawArc(
+                    color = DriftAmber.copy(alpha = 0.55f),
+                    startAngle = 195f,
+                    sweepAngle = 32f,
+                    useCenter = false,
+                    topLeft = Offset(w * 0.12f, h * 0.18f),
+                    size = Size(w * 0.76f, h * 1.1f),
+                    style = Stroke(width = 14f, cap = StrokeCap.Round)
+                )
+                drawArc(
+                    color = DriftAmber.copy(alpha = 0.55f),
+                    startAngle = 313f,
+                    sweepAngle = 32f,
+                    useCenter = false,
+                    topLeft = Offset(w * 0.12f, h * 0.18f),
+                    size = Size(w * 0.76f, h * 1.1f),
+                    style = Stroke(width = 14f, cap = StrokeCap.Round)
+                )
+
+                // Center Crosshair
+                drawCircle(
+                    color = Color(0x44FFFFFF),
+                    radius = 24f,
+                    center = Offset(cx, cy),
+                    style = Stroke(width = 2f)
+                )
+
+                // Active Thumb Puck
+                val puckX = cx + thumbXFraction * (w * 0.36f)
+                val puckColor = when {
+                    state.localKart.driftCharge > 35 -> ArcadeCrimson
+                    state.controls.drift -> RulerYellow
+                    isDraggingWheel -> SkyCyan
+                    else -> Color.White
+                }
+                drawCircle(
+                    color = puckColor.copy(alpha = 0.30f),
+                    radius = 42f,
+                    center = Offset(puckX, cy)
+                )
+                drawCircle(
+                    color = puckColor,
+                    radius = 26f,
+                    center = Offset(puckX, cy)
+                )
+            }
+
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.SpaceBetween,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "◀ DRIFT ZONE",
+                        fontFamily = OrbitronFontFamily,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 9.sp,
+                        color = DriftAmber
+                    )
+                    Text(
+                        text = "DRIFT ZONE ▶",
+                        fontFamily = OrbitronFontFamily,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 9.sp,
+                        color = DriftAmber
+                    )
+                }
+                Text(
+                    text = if (isDraggingWheel) {
+                        if (state.controls.drift) "🔥 HOLDING HOP-DRIFT!" else "STEERING..."
+                    } else {
+                        "SLIDE THUMB TO STEER & DRIFT"
+                    },
+                    fontFamily = OrbitronFontFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 10.sp,
+                    color = Color(0xFFCBD5E1)
+                )
+            }
+        }
+
+        // Right Side: Item Fire & Manual Turbo Gas Button
+        val hasItem = state.localKart.item != null
         ArcadeTouchButton(
-            label = stringResource(R.string.ctrl_fire),
+            label = if (hasItem) "FIRE" else "TURBO",
             contentDesc = stringResource(R.string.cd_fire_item),
             testTag = "btn_item",
-            size = 62.dp,
+            size = 72.dp,
             fontSizeSp = 13f,
-            baseColor = if (hasItem) ItemRed.copy(alpha = 0.92f) else ItemRed.copy(alpha = 0.42f),
-            activeColor = Color(0xFFFCA5A5),
+            baseColor = if (hasItem) ItemRed.copy(alpha = 0.95f) else GasGreen.copy(alpha = 0.85f),
+            activeColor = RulerYellow,
             isPressedExternal = false,
             onPressChanged = { pressed ->
                 if (pressed) onFireClicked()
             }
         )
+    }
+}
 
-        ArcadeTouchButton(
-            label = stringResource(R.string.ctrl_drift),
-            contentDesc = stringResource(R.string.cd_drift_hop),
-            testTag = "btn_drift",
-            size = 64.dp,
-            fontSizeSp = 13f,
-            baseColor = DriftAmber.copy(alpha = 0.85f),
-            activeColor = RulerYellow,
-            isPressedExternal = isDriftActive,
-            onPressChanged = onDriftChanged
-        )
+@Composable
+private fun ClassicTwinPedalsRow(
+    state: DeskRacerUiState,
+    onLeftChanged: (Boolean) -> Unit,
+    onRightChanged: (Boolean) -> Unit,
+    onBrakeChanged: (Boolean) -> Unit,
+    onFireClicked: () -> Unit,
+    onDriftChanged: (Boolean) -> Unit,
+    onGasChanged: (Boolean) -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.Bottom
+    ) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.Bottom
+        ) {
+            ArcadeTouchButton(
+                label = stringResource(R.string.ctrl_left),
+                contentDesc = stringResource(R.string.cd_steer_left),
+                testTag = "btn_left",
+                size = 64.dp,
+                fontSizeSp = 22f,
+                baseColor = Color(0xCC1E293B),
+                activeColor = SkyCyan,
+                isPressedExternal = state.controls.left,
+                onPressChanged = onLeftChanged
+            )
+            ArcadeTouchButton(
+                label = stringResource(R.string.ctrl_right),
+                contentDesc = stringResource(R.string.cd_steer_right),
+                testTag = "btn_right",
+                size = 64.dp,
+                fontSizeSp = 22f,
+                baseColor = Color(0xCC1E293B),
+                activeColor = SkyCyan,
+                isPressedExternal = state.controls.right,
+                onPressChanged = onRightChanged
+            )
+            ArcadeTouchButton(
+                label = "REV",
+                contentDesc = stringResource(R.string.cd_brake_reverse),
+                testTag = "btn_brake",
+                size = 50.dp,
+                fontSizeSp = 10f,
+                baseColor = Color(0xB3334155),
+                activeColor = ArcadeCrimson,
+                isPressedExternal = state.controls.brake,
+                onPressChanged = onBrakeChanged
+            )
+        }
 
-        ArcadeTouchButton(
-            label = stringResource(R.string.ctrl_gas),
-            contentDesc = stringResource(R.string.cd_gas_pedal),
-            testTag = "btn_gas",
-            size = 78.dp,
-            fontSizeSp = 16f,
-            baseColor = GasGreen.copy(alpha = 0.88f),
-            activeColor = Color(0xFF86EFAC),
-            isPressedExternal = isGasActive,
-            onPressChanged = onGasChanged
-        )
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.Bottom
+        ) {
+            val hasItem = state.localKart.item != null
+            ArcadeTouchButton(
+                label = stringResource(R.string.ctrl_fire),
+                contentDesc = stringResource(R.string.cd_fire_item),
+                testTag = "btn_item",
+                size = 58.dp,
+                fontSizeSp = 12f,
+                baseColor = if (hasItem) ItemRed.copy(alpha = 0.92f) else ItemRed.copy(alpha = 0.45f),
+                activeColor = Color(0xFFFCA5A5),
+                isPressedExternal = false,
+                onPressChanged = { pressed ->
+                    if (pressed) onFireClicked()
+                }
+            )
+            ArcadeTouchButton(
+                label = stringResource(R.string.ctrl_drift),
+                contentDesc = stringResource(R.string.cd_drift_hop),
+                testTag = "btn_drift",
+                size = 62.dp,
+                fontSizeSp = 12f,
+                baseColor = DriftAmber.copy(alpha = 0.88f),
+                activeColor = RulerYellow,
+                isPressedExternal = state.controls.drift,
+                onPressChanged = onDriftChanged
+            )
+            ArcadeTouchButton(
+                label = stringResource(R.string.ctrl_gas),
+                contentDesc = stringResource(R.string.cd_gas_pedal),
+                testTag = "btn_gas",
+                size = 72.dp,
+                fontSizeSp = 15f,
+                baseColor = GasGreen.copy(alpha = 0.90f),
+                activeColor = Color(0xFF86EFAC),
+                isPressedExternal = state.controls.gas,
+                onPressChanged = onGasChanged
+            )
+        }
     }
 }
 
@@ -673,7 +1030,7 @@ private fun ArcadeTouchButton(
                 shape = CircleShape
             )
             .semantics { contentDescription = contentDesc }
-            .pointerInput(Unit) {
+            .pointerInput(testTag) {
                 awaitEachGesture {
                     awaitFirstDown(requireUnconsumed = false)
                     isPressedLocal = true
@@ -682,9 +1039,6 @@ private fun ArcadeTouchButton(
                     isPressedLocal = false
                     onPressChanged(false)
                 }
-            }
-            .clickable {
-                onPressChanged(!isPressedExternal)
             }
             .testTag(testTag)
     ) {

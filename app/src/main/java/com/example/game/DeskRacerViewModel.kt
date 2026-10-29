@@ -21,6 +21,11 @@ import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.random.Random
 
+enum class ControlScheme(val label: String) {
+    ONE_THUMB_WHEEL("ONE-THUMB WHEEL (AUTO-GAS)"),
+    CLASSIC_PEDALS("CLASSIC TWIN PEDALS")
+}
+
 data class DeskRacerUiState(
     val localKart: KartState = KartState(
         id = "racer-${Random.nextInt(100, 999)}",
@@ -41,6 +46,9 @@ data class DeskRacerUiState(
     val aiRivalEnabled: Boolean = true,
     val remoteKarts: Map<String, KartState> = emptyMap(),
     val controls: KartControlInput = KartControlInput(),
+    val steerAxis: Float = 0f, // -1f (full right) to +1f (full left)
+    val autoGasEnabled: Boolean = true,
+    val controlScheme: ControlScheme = ControlScheme.ONE_THUMB_WHEEL,
     val books: List<BookObstacle> = BlueprintArchiveData.defaultBooks,
     val rulerRamp: RulerRamp = RulerRamp(),
     val itemBoxes: List<ItemBoxEntity> = (0 until 6).map { i ->
@@ -56,11 +64,11 @@ data class DeskRacerUiState(
     val sparks: List<SparkParticle> = emptyList(),
     val cameraMode: CameraMode = CameraMode.CHASE,
     val cameraX: Float = 0f,
-    val cameraY: Float = 3.8f,
-    val cameraZ: Float = 25.5f,
+    val cameraY: Float = 5.4f,
+    val cameraZ: Float = 27.5f,
     val cameraLookX: Float = 0f,
-    val cameraLookY: Float = 0.8f,
-    val cameraLookZ: Float = 18f,
+    val cameraLookY: Float = 0.6f,
+    val cameraLookZ: Float = 14f,
     val roomInput: String = "KART1",
     val hostIpInput: String = "192.168.43.1",
     val lanRole: LanRole = LanRole.STANDALONE,
@@ -73,17 +81,38 @@ data class DeskRacerUiState(
     val hudBannerMessage: String? = null
 ) {
     val speedKmh: Int
-        get() = (abs(localKart.speed) * 145f).roundToInt()
+        get() = (abs(localKart.speed) * 155f).roundToInt()
+
+    val currentPlace: Int
+        get() {
+            if (!aiRivalEnabled && remoteKarts.isEmpty()) return 1
+            var place = 1
+            if (aiRivalEnabled) {
+                if (aiRivalKart.lap > localKart.lap ||
+                    (aiRivalKart.lap == localKart.lap && aiRivalKart.z < localKart.z)
+                ) {
+                    place++
+                }
+            }
+            for ((_, peer) in remoteKarts) {
+                if (peer.lap > localKart.lap || (peer.lap == localKart.lap && peer.z < localKart.z)) {
+                    place++
+                }
+            }
+            return place
+        }
 
     val speedDisplayStatus: String
         get() = when {
             localKart.spinOutFrames > 0 -> "💥 MARBLE HIT! SPINNING..."
-            localKart.boostFrames > 0 -> "🚀 TURBO BOOSTING! ${speedKmh} KM/H"
-            controls.drift && controls.gas && (controls.left || controls.right) -> {
-                if (localKart.driftCharge > 35) "🔥 ULTRA SPARK READY!"
-                else "⚡ CHARGING DRIFT... (${(localKart.driftCharge * 100 / 36).coerceAtMost(99)}%)"
+            localKart.boostFrames > 0 -> "🚀 TURBO BOOST! $speedKmh KM/H"
+            controls.drift && (abs(steerAxis) > 0.12f || controls.left || controls.right) -> {
+                if (localKart.driftCharge > 35) "🔥 ULTRA SPARK READY! RELEASE!"
+                else if (localKart.driftCharge > 16) "⚡ MINI-TURBO READY! (${(localKart.driftCharge * 100 / 36).coerceAtMost(99)}%)"
+                else "⚡ CHARGING DRIFT..."
             }
-            localKart.speed == 0f -> "DRIFT BOOST READY"
+            localKart.y > 0.25f -> "✈️ RULER JUMP AIRTIME!"
+            autoGasEnabled -> "AUTO-GAS • SLIDE WHEEL TO DRIFT"
             else -> "SPEED: $speedKmh KM/H"
         }
 }
@@ -111,7 +140,6 @@ class DeskRacerViewModel : ViewModel() {
     private var frameCounter = 0L
 
     init {
-        // Observe LAN manager states
         viewModelScope.launch {
             lanManager.role.collect { role ->
                 _uiState.update { it.copy(lanRole = role) }
@@ -138,7 +166,7 @@ class DeskRacerViewModel : ViewModel() {
             }
         }
 
-        // Start 60 FPS Arcade Physics & Multiplayer Sync Loop
+        // 60 FPS Portrait Arcade Physics Loop
         viewModelScope.launch {
             while (isActive) {
                 stepPhysicsFrame()
@@ -147,15 +175,103 @@ class DeskRacerViewModel : ViewModel() {
         }
     }
 
+    /**
+     * Analog steering wheel input for Portrait One-Thumb mode:
+     * @param normalizedSteer -1.0f (full Left) to +1.0f (full Right)
+     * @param isDrifting true when user slides thumb hard or engages drift zone
+     */
+    fun setAnalogSteeringWheel(normalizedSteer: Float, isDrifting: Boolean) {
+        val clamped = normalizedSteer.coerceIn(-1f, 1f)
+        // Internal physics rot: positive rot turns Left, negative rot turns Right
+        val internalAxis = -clamped
+        _uiState.update { state ->
+            val wasDrifting = state.controls.drift
+            val kart = state.localKart
+
+            if (isDrifting && !wasDrifting) {
+                // Trigger hop when entering drift
+                val hopVy = if (kart.y <= 0.05f) 0.22f else kart.vy
+                state.copy(
+                    steerAxis = internalAxis,
+                    controls = state.controls.copy(
+                        left = clamped < -0.15f,
+                        right = clamped > 0.15f,
+                        drift = true
+                    ),
+                    localKart = kart.copy(vy = hopVy)
+                )
+            } else if (!isDrifting && wasDrifting) {
+                // Released drift -> trigger Ultra Spark or Mini-Turbo boost!
+                val ultraCharged = kart.driftCharge > 35
+                val miniCharged = kart.driftCharge in 16..35
+                val boostedSpeed = when {
+                    ultraCharged -> 0.96f
+                    miniCharged -> 0.80f
+                    else -> kart.speed
+                }
+                val boostFrames = when {
+                    ultraCharged -> 48
+                    miniCharged -> 25
+                    else -> kart.boostFrames
+                }
+                state.copy(
+                    steerAxis = internalAxis,
+                    controls = state.controls.copy(
+                        left = clamped < -0.15f,
+                        right = clamped > 0.15f,
+                        drift = false
+                    ),
+                    localKart = kart.copy(
+                        speed = boostedSpeed,
+                        driftCharge = 0,
+                        driftDir = 0,
+                        boostFrames = boostFrames
+                    ),
+                    hudBannerMessage = if (ultraCharged) "🔥 ULTRA SPARK BOOST!" else state.hudBannerMessage
+                )
+            } else {
+                state.copy(
+                    steerAxis = internalAxis,
+                    controls = state.controls.copy(
+                        left = clamped < -0.15f,
+                        right = clamped > 0.15f,
+                        drift = isDrifting
+                    )
+                )
+            }
+        }
+    }
+
+    fun toggleAutoGas() {
+        _uiState.update { it.copy(autoGasEnabled = !it.autoGasEnabled) }
+    }
+
+    fun toggleControlScheme() {
+        _uiState.update { state ->
+            val next = if (state.controlScheme == ControlScheme.ONE_THUMB_WHEEL) {
+                ControlScheme.CLASSIC_PEDALS
+            } else {
+                ControlScheme.ONE_THUMB_WHEEL
+            }
+            state.copy(controlScheme = next)
+        }
+    }
+
     fun setSteeringLeft(pressed: Boolean) {
         _uiState.update { state ->
-            state.copy(controls = state.controls.copy(left = pressed))
+            state.copy(
+                steerAxis = if (pressed) 1f else if (state.controls.right) -1f else 0f,
+                controls = state.controls.copy(left = pressed)
+            )
         }
     }
 
     fun setSteeringRight(pressed: Boolean) {
         _uiState.update { state ->
-            state.copy(controls = state.controls.copy(right = pressed))
+            state.copy(
+                steerAxis = if (pressed) -1f else if (state.controls.left) 1f else 0f,
+                controls = state.controls.copy(right = pressed)
+            )
         }
     }
 
@@ -175,24 +291,22 @@ class DeskRacerViewModel : ViewModel() {
         _uiState.update { state ->
             val kart = state.localKart
             if (pressed) {
-                // Hop-drift initiation when on the desk surface
                 val hopVy = if (kart.y <= 0.05f) 0.22f else kart.vy
                 state.copy(
                     controls = state.controls.copy(drift = true),
                     localKart = kart.copy(vy = hopVy)
                 )
             } else {
-                // Release drift: check if Ultra Spark (> 35 frames) or Mini Turbo (> 16 frames) is charged
                 val ultraCharged = kart.driftCharge > 35
                 val miniCharged = kart.driftCharge in 16..35
                 val boostedSpeed = when {
-                    ultraCharged -> 0.95f
-                    miniCharged -> 0.78f
+                    ultraCharged -> 0.96f
+                    miniCharged -> 0.80f
                     else -> kart.speed
                 }
                 val boostFrames = when {
-                    ultraCharged -> 45
-                    miniCharged -> 22
+                    ultraCharged -> 48
+                    miniCharged -> 25
                     else -> kart.boostFrames
                 }
                 state.copy(
@@ -216,7 +330,7 @@ class DeskRacerViewModel : ViewModel() {
 
         when (heldItem) {
             PowerUpItem.BATTERY_TURBO -> {
-                val burstSparks = (0 until 14).map {
+                val burstSparks = (0 until 16).map {
                     SparkParticle(
                         x = kart.x,
                         y = kart.y + 0.4f,
@@ -225,7 +339,7 @@ class DeskRacerViewModel : ViewModel() {
                         vy = Random.nextFloat() * 0.25f,
                         vz = (Random.nextFloat() - 0.5f) * 0.45f,
                         colorHex = 0xFF38BDF8,
-                        life = 24
+                        life = 26
                     )
                 }
                 _uiState.update {
@@ -370,40 +484,47 @@ class DeskRacerViewModel : ViewModel() {
             val ctrl = state.controls
             var kart = state.localKart
 
-            // 1. Steering & Drift Charge (exact blueprint parameters: 0.055 drift vs 0.038 normal)
-            val turnRate = if (ctrl.drift) 0.055f else 0.038f
+            // 1. Analog + Button Steering & Drift Charge
+            val maxTurnRate = if (ctrl.drift) 0.058f else 0.040f
+            val effectiveAxis = when {
+                abs(state.steerAxis) > 0.04f -> state.steerAxis
+                ctrl.left -> 1f
+                ctrl.right -> -1f
+                else -> 0f
+            }
+
             var newRot = kart.rot
             if (kart.spinOutFrames > 0) {
                 newRot += 0.24f
             } else {
-                if (ctrl.left) newRot += turnRate
-                if (ctrl.right) newRot -= turnRate
+                newRot += effectiveAxis * maxTurnRate
             }
 
             var newDriftCharge = kart.driftCharge
             val newDriftDir = when {
-                ctrl.drift && ctrl.left -> 1
-                ctrl.drift && ctrl.right -> -1
+                ctrl.drift && effectiveAxis > 0.15f -> 1
+                ctrl.drift && effectiveAxis < -0.15f -> -1
                 else -> 0
             }
-            if (ctrl.drift && ctrl.gas && (ctrl.left || ctrl.right) && kart.spinOutFrames == 0) {
+            val isAccelerating = ctrl.gas || (state.autoGasEnabled && !ctrl.brake)
+            if (ctrl.drift && isAccelerating && abs(effectiveAxis) > 0.15f && kart.spinOutFrames == 0) {
                 newDriftCharge++
             } else if (!ctrl.drift) {
                 newDriftCharge = 0
             }
 
-            // 2. Speed & Acceleration (exact blueprint parameters: +0.018 up to 0.62, 0.96 damping)
+            // 2. Speed & Acceleration
             var newSpeed = kart.speed
             val newBoostFrames = (kart.boostFrames - 1).coerceAtLeast(0)
             val newSpinFrames = (kart.spinOutFrames - 1).coerceAtLeast(0)
 
-            val maxSpeed = if (newBoostFrames > 0) 0.95f else 0.62f
+            val maxSpeed = if (newBoostFrames > 0) 0.96f else 0.58f
             if (newSpinFrames > 0) {
                 newSpeed *= 0.88f
-            } else if (ctrl.gas) {
-                newSpeed = (newSpeed + 0.018f).coerceAtMost(maxSpeed)
             } else if (ctrl.brake) {
-                newSpeed = (newSpeed - 0.022f).coerceAtLeast(-0.32f)
+                newSpeed = (newSpeed - 0.024f).coerceAtLeast(-0.30f)
+            } else if (isAccelerating) {
+                newSpeed = (newSpeed + 0.017f).coerceAtMost(maxSpeed)
             } else {
                 newSpeed *= 0.96f
                 if (abs(newSpeed) < 0.003f) newSpeed = 0f
@@ -416,8 +537,8 @@ class DeskRacerViewModel : ViewModel() {
             var newVy = kart.vy
 
             // 4. Yellow Ruler Jump Ramp at (-8, 0.9, -12) check
-            if (newX > -11f && newX < -5f && newZ > -18f && newZ < -6f && newSpeed > 0.3f && newY <= 0.95f) {
-                newVy = 0.28f
+            if (newX > -11f && newX < -5f && newZ > -18f && newZ < -6f && newSpeed > 0.28f && newY <= 0.95f) {
+                newVy = 0.29f
             }
 
             newY += newVy
@@ -428,22 +549,37 @@ class DeskRacerViewModel : ViewModel() {
                 newVy = 0f
             }
 
-            // 5. Desk boundary check (80x80 wooden desk -> |x| > 40 or |z| > 40)
-            if (abs(newX) > 40f || abs(newZ) > 40f) {
-                newX = 0f
-                newZ = 18f
-                newY = 0.5f
-                newVy = 0f
-                newSpeed = 0f
-                newRot = 0f
+            // 5. Soft Desk Bumper Guardrails (Bounce back instead of harsh reset!)
+            if (newX > 37.5f) {
+                newX = 37.2f
+                newRot = -newRot
+                newSpeed *= 0.65f
+            } else if (newX < -37.5f) {
+                newX = -37.2f
+                newRot = -newRot
+                newSpeed *= 0.65f
+            }
+            if (newZ > 37.5f) {
+                newZ = 37.2f
+                newRot = PI.toFloat() - newRot
+                newSpeed *= 0.65f
+            } else if (newZ < -37.5f) {
+                newZ = -37.2f
+                newRot = PI.toFloat() - newRot
+                newSpeed *= 0.65f
             }
 
-            // 6. Book Obstacles Collision
+            // 6. Book Obstacles Sliding Collision
             for (ob in state.books) {
                 if (abs(newX - ob.x) < ob.rx && abs(newZ - ob.z) < ob.rz && newY < ob.height) {
-                    newSpeed = -0.25f
-                    newX += sin(newRot) * 0.65f
-                    newZ += cos(newRot) * 0.65f
+                    val overlapX = ob.rx - abs(newX - ob.x)
+                    val overlapZ = ob.rz - abs(newZ - ob.z)
+                    if (overlapX < overlapZ) {
+                        newX += if (newX > ob.x) overlapX + 0.1f else -(overlapX + 0.1f)
+                    } else {
+                        newZ += if (newZ > ob.z) overlapZ + 0.1f else -(overlapZ + 0.1f)
+                    }
+                    newSpeed *= 0.55f
                 }
             }
 
@@ -452,10 +588,10 @@ class DeskRacerViewModel : ViewModel() {
             var lap = kart.lap
             var bestLap = kart.bestLapMs
             var lapStart = kart.currentLapStartMs
-            if (newZ < -12f) {
+            if (newZ < -10f) {
                 passedNorth = true
             }
-            if (passedNorth && newZ in 16f..21f && abs(newX) < 14f && kart.z < 16f) {
+            if (passedNorth && newZ in 15f..22f && abs(newX) < 16f && kart.z < 15f) {
                 val lapDuration = nowMs - lapStart
                 if (lapDuration > 3500L) {
                     bestLap = if (bestLap == null) lapDuration else minOf(bestLap, lapDuration)
@@ -469,9 +605,9 @@ class DeskRacerViewModel : ViewModel() {
             var pickedItem = kart.item
             val updatedBoxes = state.itemBoxes.map { box ->
                 val isNowVisible = box.visible || (box.respawnAtMs in 1..nowMs)
-                val rotY = box.rotY + 0.04f
-                val rotX = box.rotX + 0.02f
-                if (isNowVisible && hypot(newX - box.x, newZ - box.z) < 2.1f) {
+                val rotY = box.rotY + 0.045f
+                val rotX = box.rotX + 0.025f
+                if (isNowVisible && hypot(newX - box.x, newZ - box.z) < 2.3f) {
                     if (pickedItem == null) {
                         pickedItem = if (Random.nextFloat() > 0.4f) {
                             PowerUpItem.MARBLE_SHELL
@@ -495,7 +631,7 @@ class DeskRacerViewModel : ViewModel() {
                 }
             }
 
-            // 9. Update AI Rival Kart if enabled
+            // 9. Update AI Rival Kart
             var rival = state.aiRivalKart
             if (state.aiRivalEnabled) {
                 val targetWp = aiWaypoints[aiWaypointIndex]
@@ -508,8 +644,8 @@ class DeskRacerViewModel : ViewModel() {
                 var angleDiff = desiredRot - rival.rot
                 while (angleDiff > PI) angleDiff -= (PI * 2).toFloat()
                 while (angleDiff < -PI) angleDiff += (PI * 2).toFloat()
-                val rivalRot = rival.rot + angleDiff.coerceIn(-0.042f, 0.042f)
-                val rivalSpeed = if (rival.spinOutFrames > 0) 0f else (rival.speed + 0.014f).coerceAtMost(0.50f)
+                val rivalRot = rival.rot + angleDiff.coerceIn(-0.044f, 0.044f)
+                val rivalSpeed = if (rival.spinOutFrames > 0) 0f else (rival.speed + 0.015f).coerceAtMost(0.49f)
                 var rx = rival.x - sin(rivalRot) * rivalSpeed
                 var rz = rival.z - cos(rivalRot) * rivalSpeed
                 var ry = rival.y
@@ -546,11 +682,9 @@ class DeskRacerViewModel : ViewModel() {
                 var mvz = m.vz
                 var mLife = m.life - 1
 
-                // Bounce off desk edges
-                if (abs(mx) > 38f) mvx = -mvx
-                if (abs(mz) > 38f) mvz = -mvz
+                if (abs(mx) > 37f) mvx = -mvx
+                if (abs(mz) > 37f) mvz = -mvz
 
-                // Bounce off textbook obstacles
                 for (ob in state.books) {
                     if (abs(mx - ob.x) < ob.rx && abs(mz - ob.z) < ob.rz) {
                         if (abs(mx - ob.x) / ob.rx > abs(mz - ob.z) / ob.rz) {
@@ -561,13 +695,11 @@ class DeskRacerViewModel : ViewModel() {
                     }
                 }
 
-                // Check collision with local kart (after initial grace period m.life < 165)
                 if (mLife < 165 && hypot(newX - mx, newZ - mz) < 1.55f) {
                     hitLocalByMarble = true
                     mLife = 0
                 }
 
-                // Check collision with AI rival kart
                 if (state.aiRivalEnabled && mLife < 165 && hypot(rival.x - mx, rival.z - mz) < 1.55f) {
                     rival = rival.copy(speed = 0f, vy = 0.32f, spinOutFrames = 35)
                     mLife = 0
@@ -595,18 +727,22 @@ class DeskRacerViewModel : ViewModel() {
                 )
             }.toMutableList()
 
-            if (newDriftCharge > 4 && updatedSparks.size < 40) {
-                val sparkColor = if (newDriftCharge > 35) 0xFFF97316L else 0xFF38BDF8L
+            if (newDriftCharge > 4 && updatedSparks.size < 45) {
+                val sparkColor = when {
+                    newDriftCharge > 35 -> 0xFFF97316L // Ultra Orange/Gold
+                    newDriftCharge > 16 -> 0xFFFACC15L // Super Yellow
+                    else -> 0xFF38BDF8L                // Mini Cyan
+                }
                 updatedSparks.add(
                     SparkParticle(
-                        x = newX + sin(newRot) * 1.0f + (Random.nextFloat() - 0.5f) * 0.6f,
-                        y = newY + 0.15f,
-                        z = newZ + cos(newRot) * 1.0f + (Random.nextFloat() - 0.5f) * 0.6f,
+                        x = newX + sin(newRot) * 1.1f + (Random.nextFloat() - 0.5f) * 0.7f,
+                        y = newY + 0.16f,
+                        z = newZ + cos(newRot) * 1.1f + (Random.nextFloat() - 0.5f) * 0.7f,
                         vx = (Random.nextFloat() - 0.5f) * 0.18f,
-                        vy = Random.nextFloat() * 0.12f,
+                        vy = Random.nextFloat() * 0.14f,
                         vz = (Random.nextFloat() - 0.5f) * 0.18f,
                         colorHex = sparkColor,
-                        life = 14
+                        life = 15
                     )
                 )
             }
@@ -629,32 +765,41 @@ class DeskRacerViewModel : ViewModel() {
                 spinOutFrames = if (hitLocalByMarble) 32 else newSpinFrames
             )
 
-            // 12. Third-Person Camera Lerp (exact blueprint offset: sin(rot)*7.5, y+3.8, cos(rot)*7.5, lerp 0.15)
+            // 12. Portrait-Optimized Third-Person Camera:
+            // Places the kart slightly higher in the vertical frame so the bottom 28% thumb deck never covers the car!
+            val forwardX = -sin(newRot)
+            val forwardZ = -cos(newRot)
             val (targetCamX, targetCamY, targetCamZ) = when (state.cameraMode) {
                 CameraMode.CHASE -> Triple(
-                    newX + sin(newRot) * 7.5f,
-                    newY + 3.8f,
-                    newZ + cos(newRot) * 7.5f
+                    newX - forwardX * 9.2f,
+                    newY + 5.2f,
+                    newZ - forwardZ * 9.2f
                 )
                 CameraMode.CLOSE_DRIFT -> Triple(
-                    newX + sin(newRot) * 5.2f,
-                    newY + 2.3f,
-                    newZ + cos(newRot) * 5.2f
+                    newX - forwardX * 6.4f,
+                    newY + 3.4f,
+                    newZ - forwardZ * 6.4f
                 )
                 CameraMode.TOP_DESK -> Triple(
-                    newX * 0.35f,
-                    38f,
-                    newZ * 0.35f + 22f
+                    newX * 0.4f,
+                    42f,
+                    newZ * 0.4f + 24f
                 )
             }
-            val lerpFactor = 0.16f
+
+            // Look slightly ahead & below the kart so the kart sits in the upper-middle of the Portrait screen
+            val targetLookX = newX + forwardX * 4.5f
+            val targetLookY = newY + 0.1f
+            val targetLookZ = newZ + forwardZ * 4.5f
+
+            val lerpFactor = 0.18f
             val camX = state.cameraX + (targetCamX - state.cameraX) * lerpFactor
             val camY = state.cameraY + (targetCamY - state.cameraY) * lerpFactor
             val camZ = state.cameraZ + (targetCamZ - state.cameraZ) * lerpFactor
 
-            val lookX = state.cameraLookX + (newX - state.cameraLookX) * 0.25f
-            val lookY = state.cameraLookY + ((newY + 0.8f) - state.cameraLookY) * 0.25f
-            val lookZ = state.cameraLookZ + (newZ - state.cameraLookZ) * 0.25f
+            val lookX = state.cameraLookX + (targetLookX - state.cameraLookX) * 0.25f
+            val lookY = state.cameraLookY + (targetLookY - state.cameraLookY) * 0.25f
+            val lookZ = state.cameraLookZ + (targetLookZ - state.cameraLookZ) * 0.25f
 
             // 13. Broadcast position to Hotspot peers every 2nd frame (~30Hz)
             if (frameCounter % 2L == 0L) {

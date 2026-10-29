@@ -19,7 +19,7 @@ class DeskRacerGlRenderer : GLSurfaceView.Renderer {
     private var programId = 0
     private var aPositionLoc = 0
     private var aNormalLoc = 0
-    private var aColorLoc = 0
+    private var uColorLoc = 0
     private var uMvpMatrixLoc = 0
     private var uModelMatrixLoc = 0
     private var uLightDirLoc = 0
@@ -31,7 +31,6 @@ class DeskRacerGlRenderer : GLSurfaceView.Renderer {
     private val vpMatrix = FloatArray(16)
     private val modelMatrix = FloatArray(16)
     private val mvpMatrix = FloatArray(16)
-    private val tempMatrix = FloatArray(16)
 
     private lateinit var cubeBuffer: FloatBuffer
     private var cubeVertexCount = 0
@@ -55,7 +54,7 @@ class DeskRacerGlRenderer : GLSurfaceView.Renderer {
         programId = createShaderProgram(VERTEX_SHADER, FRAGMENT_SHADER)
         aPositionLoc = GLES20.glGetAttribLocation(programId, "aPosition")
         aNormalLoc = GLES20.glGetAttribLocation(programId, "aNormal")
-        aColorLoc = GLES20.glGetAttribLocation(programId, "aColor")
+        uColorLoc = GLES20.glGetUniformLocation(programId, "uColor")
         uMvpMatrixLoc = GLES20.glGetUniformLocation(programId, "uMvpMatrix")
         uModelMatrixLoc = GLES20.glGetUniformLocation(programId, "uModelMatrix")
         uLightDirLoc = GLES20.glGetUniformLocation(programId, "uLightDir")
@@ -70,11 +69,11 @@ class DeskRacerGlRenderer : GLSurfaceView.Renderer {
         octahedronVertexCount = octaData.size / 6
         octahedronBuffer = createFloatBuffer(octaData)
 
-        val sphereData = buildLowPolySphere(10, 12)
+        val sphereData = buildLowPolySphere(12, 16)
         sphereVertexCount = sphereData.size / 6
         sphereBuffer = createFloatBuffer(sphereData)
 
-        val cylData = buildHorizontalWheelCylinder(12)
+        val cylData = buildHorizontalWheelCylinder(14)
         cylinderVertexCount = cylData.size / 6
         cylinderBuffer = createFloatBuffer(cylData)
     }
@@ -82,12 +81,14 @@ class DeskRacerGlRenderer : GLSurfaceView.Renderer {
     override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {
         GLES20.glViewport(0, 0, width, height)
         val aspect = width.toFloat() / height.coerceAtLeast(1).toFloat()
-        Matrix.perspectiveM(projMatrix, 0, 62f, aspect, 0.5f, 160f)
+        // Wider 74-degree vertical FOV so Portrait screens see wide across the wooden desk
+        Matrix.perspectiveM(projMatrix, 0, 74f, aspect, 0.5f, 180f)
     }
 
     override fun onDrawFrame(gl: GL10?) {
         val state = currentState
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT or GLES20.GL_DEPTH_BUFFER_BIT)
+        if (programId == 0) return
         GLES20.glUseProgram(programId)
 
         Matrix.setLookAtM(
@@ -98,7 +99,7 @@ class DeskRacerGlRenderer : GLSurfaceView.Renderer {
         )
         Matrix.multiplyMM(vpMatrix, 0, projMatrix, 0, viewMatrix, 0)
 
-        GLES20.glUniform3f(uLightDirLoc, 0.42f, 0.82f, 0.38f)
+        GLES20.glUniform3f(uLightDirLoc, 0.42f, 0.84f, 0.36f)
         GLES20.glUniform3f(uFogColorLoc, 0.08f, 0.12f, 0.20f)
         GLES20.glUniform3f(uCameraPosLoc, state.cameraX, state.cameraY, state.cameraZ)
 
@@ -109,12 +110,12 @@ class DeskRacerGlRenderer : GLSurfaceView.Renderer {
             r = 0.545f, g = 0.353f, b = 0.169f, a = 1f
         )
         // Outer Desk Rim / Bezel
-        drawBox(0f, 0.25f, -40.5f, 82f, 0.6f, 1.0f, 0.36f, 0.22f, 0.10f, 1f)
-        drawBox(0f, 0.25f, 40.5f, 82f, 0.6f, 1.0f, 0.36f, 0.22f, 0.10f, 1f)
-        drawBox(-40.5f, 0.25f, 0f, 1.0f, 0.6f, 82f, 0.36f, 0.22f, 0.10f, 1f)
-        drawBox(40.5f, 0.25f, 0f, 1.0f, 0.6f, 82f, 0.36f, 0.22f, 0.10f, 1f)
+        drawBox(0f, 0.35f, -40.5f, 82f, 0.7f, 1.0f, 0.36f, 0.22f, 0.10f, 1f)
+        drawBox(0f, 0.35f, 40.5f, 82f, 0.7f, 1.0f, 0.36f, 0.22f, 0.10f, 1f)
+        drawBox(-40.5f, 0.35f, 0f, 1.0f, 0.7f, 82f, 0.36f, 0.22f, 0.10f, 1f)
+        drawBox(40.5f, 0.35f, 0f, 1.0f, 0.7f, 82f, 0.36f, 0.22f, 0.10f, 1f)
 
-        // Racing Circuit Guide Curbs & Start/Finish Checkered Strip on Desk
+        // Checkered Start/Finish Line & Desk Props
         drawStartFinishLine()
         drawDeskPropsAndStationery()
 
@@ -174,7 +175,7 @@ class DeskRacerGlRenderer : GLSurfaceView.Renderer {
                 x = marble.x,
                 y = marble.y,
                 z = marble.z,
-                radius = 0.55f,
+                radius = 0.58f,
                 r = c[0], g = c[1], b = c[2], a = 1f
             )
         }
@@ -185,26 +186,38 @@ class DeskRacerGlRenderer : GLSurfaceView.Renderer {
                 x = spark.x,
                 y = spark.y,
                 z = spark.z,
-                sx = 0.22f, sy = 0.22f, sz = 0.22f,
+                sx = 0.24f, sy = 0.24f, sz = 0.24f,
                 r = c[0], g = c[1], b = c[2], a = 0.95f
             )
         }
     }
 
     private fun drawStartFinishLine() {
-        // Checkered Start/Finish Strip at z = 18, x from -10 to +10
+        // Checkered Start/Finish Gate at z = 18, x from -10 to +10
         for (i in -5..4) {
             val x = i * 2.0f + 1.0f
             val isWhite = i % 2 == 0
-            val c1 = if (isWhite) 0.95f else 0.12f
-            val c2 = if (!isWhite) 0.95f else 0.12f
+            val c1 = if (isWhite) 0.96f else 0.10f
+            val c2 = if (!isWhite) 0.96f else 0.10f
             drawBox(x, 0.02f, 17.5f, 1.95f, 0.04f, 1.2f, c1, c1, c1, 1f)
             drawBox(x, 0.02f, 18.7f, 1.95f, 0.04f, 1.2f, c2, c2, c2, 1f)
         }
+        // Start/Finish Overhead Arch Pillars (Red & Cyan)
+        drawBox(-10.5f, 2.5f, 18.1f, 0.6f, 5.0f, 0.6f, 1.0f, 0.16f, 0.37f, 1f)
+        drawBox(10.5f, 2.5f, 18.1f, 0.6f, 5.0f, 0.6f, 1.0f, 0.16f, 0.37f, 1f)
+        drawBox(0f, 4.8f, 18.1f, 21.6f, 0.7f, 0.5f, 0.12f, 0.16f, 0.24f, 1f)
 
-        // Subtle Wood Plank Grooves across Desk
+        // Cyan & Amber Racing Circuit Tape Markers around the Desk Loop
+        for (i in 0 until 24) {
+            val ang = (i / 24.0) * Math.PI * 2.0
+            val tx = (cos(ang) * 21.0).toFloat()
+            val tz = (sin(ang) * 21.0).toFloat()
+            val deg = Math.toDegrees(-ang).toFloat()
+            drawBoxRotated(tx, 0.015f, tz, 0f, deg, 0f, 0.45f, 0.03f, 2.4f, 0.22f, 0.74f, 0.97f, 0.75f)
+        }
+
         for (zLine in -32..32 step 8) {
-            drawBox(0f, 0.01f, zLine.toFloat(), 78f, 0.02f, 0.12f, 0.42f, 0.26f, 0.11f, 1f)
+            drawBox(0f, 0.01f, zLine.toFloat(), 78f, 0.02f, 0.14f, 0.42f, 0.26f, 0.11f, 1f)
         }
     }
 
@@ -213,34 +226,30 @@ class DeskRacerGlRenderer : GLSurfaceView.Renderer {
         drawSphere(24f, 2.2f, -22f, 2.6f, 0.92f, 0.94f, 0.98f, 1f)
         drawBox(26.4f, 2.2f, -22f, 1.2f, 2.4f, 0.6f, 0.92f, 0.94f, 0.98f, 1f)
 
-        // Giant Pencil Barrier along South Edge (0, 0.45, 32)
+        // Giant Pencil Barrier along South Edge (0, 0.45, 33)
         drawBox(0f, 0.45f, 33f, 28f, 0.8f, 0.8f, 0.96f, 0.75f, 0.12f, 1f)
-        drawBox(-14.8f, 0.45f, 33f, 1.8f, 0.82f, 0.82f, 0.94f, 0.45f, 0.58f, 1f) // Pink Eraser
+        drawBox(-14.8f, 0.45f, 33f, 1.8f, 0.82f, 0.82f, 0.94f, 0.45f, 0.58f, 1f)
     }
 
     private fun drawTextbook3D(book: BookObstacle) {
         val rgb = hexToRgb(book.colorHex)
         val spineRgb = hexToRgb(book.spineColorHex)
 
-        // Bottom Cover
         drawBox(
             x = book.x, y = 0.12f, z = book.z,
             sx = book.width, sy = 0.24f, sz = book.depth,
             r = spineRgb[0], g = spineRgb[1], b = spineRgb[2], a = 1f
         )
-        // White Paper Pages Block (slightly inset)
         drawBox(
             x = book.x + 0.15f, y = book.height * 0.5f, z = book.z,
             sx = book.width - 0.4f, sy = book.height - 0.36f, sz = book.depth - 0.4f,
             r = 0.95f, g = 0.96f, b = 0.98f, a = 1f
         )
-        // Top Hardcover
         drawBox(
             x = book.x, y = book.height - 0.12f, z = book.z,
             sx = book.width, sy = 0.24f, sz = book.depth,
             r = rgb[0], g = rgb[1], b = rgb[2], a = 1f
         )
-        // Spine Binding on West edge
         drawBox(
             x = book.x - book.width * 0.5f + 0.18f, y = book.height * 0.5f, z = book.z,
             sx = 0.36f, sy = book.height, sz = book.depth,
@@ -250,14 +259,12 @@ class DeskRacerGlRenderer : GLSurfaceView.Renderer {
 
     private fun drawRulerRamp3D(ramp: RulerRamp) {
         val pitchDeg = Math.toDegrees(ramp.pitchRad.toDouble()).toFloat()
-        // Main Yellow Ruler Body
         drawBoxRotated(
             x = ramp.x, y = ramp.y, z = ramp.z,
             rxDeg = pitchDeg, ryDeg = 0f, rzDeg = 0f,
             sx = ramp.width, sy = ramp.height, sz = ramp.depth,
             r = 0.98f, g = 0.80f, b = 0.08f, a = 1f
         )
-        // Dark Measurement Tick Marks along ruler edge
         for (i in -4..4) {
             val localZ = i * 1.1f
             val worldZ = ramp.z + localZ * cos(ramp.pitchRad)
@@ -283,7 +290,7 @@ class DeskRacerGlRenderer : GLSurfaceView.Renderer {
         Matrix.rotateM(modelMatrix, 0, rxDeg, 1f, 0f, 0f)
         Matrix.scaleM(modelMatrix, 0, 1.05f, 1.05f, 1.05f)
 
-        drawMesh(octahedronBuffer, octahedronVertexCount, 0.22f, 0.74f, 0.97f, 0.86f)
+        drawMesh(octahedronBuffer, octahedronVertexCount, 0.22f, 0.74f, 0.97f, 0.88f)
     }
 
     private fun drawKart3D(
@@ -296,7 +303,7 @@ class DeskRacerGlRenderer : GLSurfaceView.Renderer {
         val yawDeg = Math.toDegrees(yawRad.toDouble()).toFloat()
         val bodyRgb = hexToRgb(kart.colorHex)
 
-        // 1. Drop Shadow on Desk (y = 0.02f)
+        // 1. Drop Shadow on Desk
         drawBoxRotated(
             x = kart.x, y = 0.02f, z = kart.z,
             rxDeg = 0f, ryDeg = yawDeg, rzDeg = 0f,
@@ -317,7 +324,7 @@ class DeskRacerGlRenderer : GLSurfaceView.Renderer {
         drawPart(0f, 0.40f, 0f, 1.42f, 0.46f, 2.20f, bodyRgb[0], bodyRgb[1], bodyRgb[2])
         // Front Nose Cone
         drawPart(0f, 0.32f, -1.15f, 1.10f, 0.28f, 0.50f, bodyRgb[0] * 0.9f, bodyRgb[1] * 0.9f, bodyRgb[2] * 0.9f)
-        // Side Bumpers
+        // Side Pods
         drawPart(-0.78f, 0.30f, 0f, 0.22f, 0.24f, 1.50f, 0.15f, 0.18f, 0.24f)
         drawPart(0.78f, 0.30f, 0f, 0.22f, 0.24f, 1.50f, 0.15f, 0.18f, 0.24f)
         // Rear Yellow Spoiler Wing
@@ -325,14 +332,14 @@ class DeskRacerGlRenderer : GLSurfaceView.Renderer {
         drawPart(0.45f, 0.72f, 0.92f, 0.12f, 0.35f, 0.18f, 0.15f, 0.18f, 0.24f)
         drawPart(0f, 0.92f, 0.98f, 1.55f, 0.12f, 0.42f, 0.98f, 0.80f, 0.08f)
 
-        // Dual Twin Exhaust Pipes (Glow orange/cyan when drifting!)
+        // Dual Twin Exhaust Pipes
         val exhaustR = if (isUltraSpark) 1.0f else if (isCharging) 0.22f else 0.35f
         val exhaustG = if (isUltraSpark) 0.45f else if (isCharging) 0.74f else 0.38f
         val exhaustB = if (isUltraSpark) 0.05f else if (isCharging) 0.98f else 0.42f
         drawPart(-0.35f, 0.52f, 1.18f, 0.22f, 0.22f, 0.35f, exhaustR, exhaustG, exhaustB)
         drawPart(0.35f, 0.52f, 1.18f, 0.22f, 0.22f, 0.35f, exhaustR, exhaustG, exhaustB)
 
-        // 3. Driver Helmet (Sphere at (0, 0.92, -0.1)) & Cyan Visor
+        // 3. Driver Helmet (Sphere at (0, 0.94, -0.08)) & Cyan Visor
         Matrix.setIdentityM(modelMatrix, 0)
         Matrix.translateM(modelMatrix, 0, kart.x, kart.y, kart.z)
         Matrix.rotateM(modelMatrix, 0, yawDeg, 0f, 1f, 0f)
@@ -340,10 +347,9 @@ class DeskRacerGlRenderer : GLSurfaceView.Renderer {
         Matrix.scaleM(modelMatrix, 0, 0.46f, 0.46f, 0.46f)
         drawMesh(sphereBuffer, sphereVertexCount, 0.99f, 0.88f, 0.28f, 1f)
 
-        // Helmet Visor
         drawPart(0f, 0.96f, -0.44f, 0.56f, 0.20f, 0.22f, 0.22f, 0.74f, 0.97f)
 
-        // 4. Four 3D Cylinder Wheels ([±0.82, 0.35, ±0.72])
+        // 4. Four 3D Cylinder Wheels ([±0.84, 0.35, ±0.72])
         val wheelPositions = arrayOf(
             floatArrayOf(-0.84f, 0.35f, 0.72f),
             floatArrayOf(0.84f, 0.35f, 0.72f),
@@ -356,7 +362,7 @@ class DeskRacerGlRenderer : GLSurfaceView.Renderer {
             Matrix.rotateM(modelMatrix, 0, yawDeg, 0f, 1f, 0f)
             Matrix.translateM(modelMatrix, 0, wp[0], wp[1], wp[2])
             Matrix.scaleM(modelMatrix, 0, 0.34f, 0.36f, 0.36f)
-            drawMesh(cylinderBuffer, cylinderVertexCount, 0.10f, 0.12f, 0.15f, 1f)
+            drawMesh(cylinderBuffer, cylinderVertexCount, 0.11f, 0.13f, 0.16f, 1f)
         }
     }
 
@@ -401,7 +407,7 @@ class DeskRacerGlRenderer : GLSurfaceView.Renderer {
         Matrix.multiplyMM(mvpMatrix, 0, vpMatrix, 0, modelMatrix, 0)
         GLES20.glUniformMatrix4fv(uMvpMatrixLoc, 1, false, mvpMatrix, 0)
         GLES20.glUniformMatrix4fv(uModelMatrixLoc, 1, false, modelMatrix, 0)
-        GLES20.glUniform4f(aColorLoc, r, g, b, a)
+        GLES20.glUniform4f(uColorLoc, r, g, b, a)
 
         val stride = 6 * 4
         buffer.position(0)
@@ -450,17 +456,11 @@ class DeskRacerGlRenderer : GLSurfaceView.Renderer {
                 out.add(nx); out.add(ny); out.add(nz)
             }
         }
-        // Top (+Y)
         addFace(-0.5f, 0.5f, -0.5f, -0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, -0.5f, 0f, 1f, 0f)
-        // Bottom (-Y)
         addFace(-0.5f, -0.5f, 0.5f, -0.5f, -0.5f, -0.5f, 0.5f, -0.5f, -0.5f, 0.5f, -0.5f, 0.5f, 0f, -1f, 0f)
-        // Front (+Z)
         addFace(-0.5f, -0.5f, 0.5f, 0.5f, -0.5f, 0.5f, 0.5f, 0.5f, 0.5f, -0.5f, 0.5f, 0.5f, 0f, 0f, 1f)
-        // Back (-Z)
         addFace(0.5f, -0.5f, -0.5f, -0.5f, -0.5f, -0.5f, -0.5f, 0.5f, -0.5f, 0.5f, 0.5f, -0.5f, 0f, 0f, -1f)
-        // Right (+X)
         addFace(0.5f, -0.5f, 0.5f, 0.5f, -0.5f, -0.5f, 0.5f, 0.5f, -0.5f, 0.5f, 0.5f, 0.5f, 1f, 0f, 0f)
-        // Left (-X)
         addFace(-0.5f, -0.5f, -0.5f, -0.5f, -0.5f, 0.5f, -0.5f, 0.5f, 0.5f, -0.5f, 0.5f, -0.5f, -1f, 0f, 0f)
         return out.toFloatArray()
     }
@@ -530,7 +530,6 @@ class DeskRacerGlRenderer : GLSurfaceView.Renderer {
             val y0 = cos(a0); val z0 = sin(a0)
             val y1 = cos(a1); val z1 = sin(a1)
 
-            // Outer tread along X from -0.5 to +0.5
             val quad = arrayOf(
                 floatArrayOf(-0.5f, y0, z0, 0f, y0, z0),
                 floatArrayOf(0.5f, y0, z0, 0f, y0, z0),
@@ -542,7 +541,6 @@ class DeskRacerGlRenderer : GLSurfaceView.Renderer {
             for (v in quad) {
                 for (c in v) out.add(c)
             }
-            // Side caps
             val capR = arrayOf(
                 floatArrayOf(0.5f, 0f, 0f, 1f, 0f, 0f),
                 floatArrayOf(0.5f, y0, z0, 1f, 0f, 0f),
@@ -576,6 +574,7 @@ class DeskRacerGlRenderer : GLSurfaceView.Renderer {
     }
 
     companion object {
+        // Strict GLSL ES 1.00 (no mat3(mat4) constructor, which fails to compile on mobile GPUs!)
         private const val VERTEX_SHADER = """
             uniform mat4 uMvpMatrix;
             uniform mat4 uModelMatrix;
@@ -587,14 +586,15 @@ class DeskRacerGlRenderer : GLSurfaceView.Renderer {
             void main() {
                 vec4 worldPos = uModelMatrix * vec4(aPosition, 1.0);
                 vWorldPos = worldPos.xyz;
-                vNormal = normalize(mat3(uModelMatrix) * aNormal);
+                vec3 worldNorm = (uModelMatrix * vec4(aNormal, 0.0)).xyz;
+                vNormal = normalize(worldNorm);
                 gl_Position = uMvpMatrix * vec4(aPosition, 1.0);
             }
         """
 
         private const val FRAGMENT_SHADER = """
             precision mediump float;
-            uniform vec4 aColor;
+            uniform vec4 uColor;
             uniform vec3 uLightDir;
             uniform vec3 uFogColor;
             uniform vec3 uCameraPos;
@@ -604,12 +604,12 @@ class DeskRacerGlRenderer : GLSurfaceView.Renderer {
             void main() {
                 vec3 norm = normalize(vNormal);
                 float diff = max(dot(norm, normalize(uLightDir)), 0.0);
-                float ambient = 0.56;
-                float rim = pow(1.0 - max(dot(norm, normalize(uCameraPos - vWorldPos)), 0.0), 3.0) * 0.18;
-                vec3 litColor = aColor.rgb * (ambient + diff * 0.58) + vec3(rim);
+                float ambient = 0.58;
+                vec3 viewDir = normalize(uCameraPos - vWorldPos);
+                float rim = pow(1.0 - max(dot(norm, viewDir), 0.0), 3.0) * 0.20;
+                vec3 litColor = uColor.rgb * (ambient + diff * 0.58) + vec3(rim);
 
-                // Subtle wood grain & checkerboard modulation on the desk tabletop
-                if (abs(vWorldPos.y) < 0.03 && aColor.r > 0.45 && aColor.g < 0.42) {
+                if (abs(vWorldPos.y) < 0.03 && uColor.r > 0.45 && uColor.g < 0.42) {
                     float plank = sin(vWorldPos.x * 2.2) * 0.025 + sin(vWorldPos.z * 0.4) * 0.02;
                     litColor += vec3(plank);
                 }
@@ -617,7 +617,7 @@ class DeskRacerGlRenderer : GLSurfaceView.Renderer {
                 float dist = length(uCameraPos - vWorldPos);
                 float fogFactor = clamp((dist - 42.0) / 68.0, 0.0, 1.0);
                 vec3 finalRgb = mix(litColor, uFogColor, fogFactor);
-                gl_FragColor = vec4(finalRgb, aColor.a);
+                gl_FragColor = vec4(finalRgb, uColor.a);
             }
         """
     }
