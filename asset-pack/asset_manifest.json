@@ -1,0 +1,131 @@
+{
+ "format": "DeskRacer asset pack v1",
+ "models": {
+  "block_coin": "models/block_coin.drm",
+  "cloud": "models/cloud.drm",
+  "coin": "models/coin.drm",
+  "flag": "models/flag.drm",
+  "kart_motorcycle": "models/kart_motorcycle.drm",
+  "kart_truck_green": "models/kart_truck_green.drm",
+  "kart_truck_purple": "models/kart_truck_purple.drm",
+  "kart_truck_red": "models/kart_truck_red.drm",
+  "kart_truck_yellow": "models/kart_truck_yellow.drm"
+ },
+ "sfx": {
+  "coin": {
+   "path": "audio/sfx/coin.ogg",
+   "seconds": 0.29,
+   "loop": false
+  },
+  "engine_loop": {
+   "path": "audio/sfx/engine_loop.ogg",
+   "seconds": 8.0,
+   "loop": true
+  },
+  "hit_spinout": {
+   "path": "audio/sfx/hit_spinout.ogg",
+   "seconds": 1.0,
+   "loop": false
+  },
+  "hop": {
+   "path": "audio/sfx/hop.ogg",
+   "seconds": 0.17,
+   "loop": false
+  },
+  "item_fire": {
+   "path": "audio/sfx/item_fire.ogg",
+   "seconds": 1.34,
+   "loop": false
+  },
+  "item_get": {
+   "path": "audio/sfx/item_get.ogg",
+   "seconds": 0.41,
+   "loop": false
+  },
+  "itembox_break": {
+   "path": "audio/sfx/itembox_break.ogg",
+   "seconds": 0.42,
+   "loop": false
+  },
+  "land": {
+   "path": "audio/sfx/land.ogg",
+   "seconds": 0.06,
+   "loop": false
+  },
+  "skid_loop": {
+   "path": "audio/sfx/skid_loop.ogg",
+   "seconds": 3.51,
+   "loop": true
+  },
+  "ui_back": {
+   "path": "audio/sfx/ui_back.ogg",
+   "seconds": 0.44,
+   "loop": false
+  },
+  "ui_click": {
+   "path": "audio/sfx/ui_click.ogg",
+   "seconds": 0.01,
+   "loop": false
+  },
+  "ui_confirm": {
+   "path": "audio/sfx/ui_confirm.ogg",
+   "seconds": 0.1,
+   "loop": false
+  },
+  "wall_bump": {
+   "path": "audio/sfx/wall_bump.ogg",
+   "seconds": 0.65,
+   "loop": false
+  }
+ },
+ "music": {
+  "jingle_countdown": {
+   "path": "audio/music/jingle_countdown.ogg",
+   "seconds": 3.25,
+   "loop": false
+  },
+  "jingle_final_lap": {
+   "path": "audio/music/jingle_final_lap.ogg",
+   "seconds": 2.54,
+   "loop": false
+  },
+  "jingle_finish": {
+   "path": "audio/music/jingle_finish.ogg",
+   "seconds": 2.82,
+   "loop": false
+  },
+  "jingle_win": {
+   "path": "audio/music/jingle_win.ogg",
+   "seconds": 3.46,
+   "loop": false
+  },
+  "menu_loop": {
+   "path": "audio/music/menu_loop.ogg",
+   "seconds": 40.0,
+   "loop": true
+  },
+  "race_bonus_loop": {
+   "path": "audio/music/race_bonus_loop.ogg",
+   "seconds": 29.09,
+   "loop": true
+  },
+  "race_gamer_desk_loop": {
+   "path": "audio/music/race_gamer_desk_loop.ogg",
+   "seconds": 30.0,
+   "loop": true
+  },
+  "race_kitchen_loop": {
+   "path": "audio/music/race_kitchen_loop.ogg",
+   "seconds": 26.3,
+   "loop": true
+  },
+  "race_study_desk_loop": {
+   "path": "audio/music/race_study_desk_loop.ogg",
+   "seconds": 27.83,
+   "loop": true
+  }
+ },
+ "textures": [
+  "textures/smoke.png"
+ ]
+}

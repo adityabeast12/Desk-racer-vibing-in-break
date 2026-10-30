@@ -1,0 +1,6 @@
+Desk Racer LAN - asset credits
+3D models (vehicles, coin, flag, item block, cloud), smoke sprite and sound effects:
+  Kenney (www.kenney.nl) - Starter Kit Racing, Starter Kit 3D Platformer, Starter Kit FPS,
+  Starter Kit City Builder. Assets licensed CC0 1.0 (public domain). Credit appreciated, not required.
+  Converted to DRM1 meshes with baked vertex colours + paint mask for this project.
+Music and jingles: original compositions generated for Desk Racer LAN (no third-party samples).

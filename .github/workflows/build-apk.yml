@@ -20,6 +20,10 @@ jobs:
         run: |
           echo "ANDROID_HOME=$ANDROID_HOME"
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+      - name: Merge asset pack into app assets
+        run: |
+          mkdir -p app/src/main/assets
+          cp -r asset-pack/. app/src/main/assets/
       - name: Create debug keystore
         run: keytool -genkeypair -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
       - name: Build debug APK
