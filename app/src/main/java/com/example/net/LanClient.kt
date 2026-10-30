@@ -36,7 +36,8 @@ data class RemoteKartInterpSample(
 class LanClient(
     var onCountdownStartedFromHost: (trackId: Int, laps: Int, cpuFill: Boolean, itemMode: ItemMode, assignedSlot: Int, slots: List<LobbySlotInfo>) -> Unit,
     var onHostLeftRoom: (reason: String) -> Unit,
-    var onRemoteSnapshotReceived: (slotIndex: Int, sample: RemoteKartInterpSample) -> Unit
+    var onRemoteSnapshotReceived: (slotIndex: Int, sample: RemoteKartInterpSample) -> Unit,
+    var onRaceResultsReceived: (List<com.example.game.RacerStanding>) -> Unit = {}
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -193,6 +194,10 @@ class LanClient(
                 val mode = ItemMode.fromId(buf.get().toInt())
                 onCountdownStartedFromHost(tId, lps, cpu, mode, _assignedSlot.value, _slots.value)
             }
+            Protocol.OP_RACE_RESULTS -> {
+                val standings = Protocol.decodeRaceResultsFrame(buf, _assignedSlot.value)
+                onRaceResultsReceived(standings)
+            }
             Protocol.OP_HOST_LEFT -> {
                 disconnect()
                 onHostLeftRoom("Host left")
@@ -210,7 +215,7 @@ class LanClient(
                     soTimeout = 1000
                 }
                 udpSocket = udp
-                val buf = ByteArray(256)
+                val buf = ByteArray(384)
                 val pkt = DatagramPacket(buf, buf.size)
                 while (isActive && !udp.isClosed) {
                     try {

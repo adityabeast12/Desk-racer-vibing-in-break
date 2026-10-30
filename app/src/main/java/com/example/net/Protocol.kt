@@ -62,6 +62,7 @@ object Protocol {
     const val OP_ITEM_ACTION: Byte = 9
     const val OP_HOST_LEFT: Byte = 10
     const val OP_REMATCH: Byte = 11
+    const val OP_RACE_RESULTS: Byte = 12
 
     // UDP Fast State Opcodes
     const val UDP_CLIENT_KART: Byte = 20
@@ -208,7 +209,7 @@ object Protocol {
         itemMode: ItemMode,
         slots: List<LobbySlotInfo>
     ): ByteArray {
-        val buf = ByteBuffer.allocate(256)
+        val buf = ByteBuffer.allocate(320)
         buf.put(OP_LOBBY_STATE)
         putShortString(buf, roomCode)
         buf.put(trackId.toByte())
@@ -229,5 +230,57 @@ object Protocol {
         buf.flip()
         buf.get(out)
         return out
+    }
+
+    fun encodeRaceResultsFrame(standings: List<com.example.game.RacerStanding>): ByteArray {
+        val buf = ByteBuffer.allocate(384)
+        buf.put(OP_RACE_RESULTS)
+        buf.put(standings.size.toByte())
+        for (st in standings) {
+            buf.put(st.slotIndex.toByte())
+            buf.put(st.position.toByte())
+            putShortString(buf, st.name)
+            buf.putLong(st.colorHex)
+            buf.put(st.bodyType.id.toByte())
+            buf.put(if (st.isHuman) 1.toByte() else 0.toByte())
+            buf.putLong(st.totalTimeMs)
+            buf.putLong(st.bestLapMs)
+            buf.put(if (st.isDnf) 1.toByte() else 0.toByte())
+        }
+        val out = ByteArray(buf.position())
+        buf.flip()
+        buf.get(out)
+        return out
+    }
+
+    fun decodeRaceResultsFrame(buf: ByteBuffer, localSlot: Int): List<com.example.game.RacerStanding> {
+        val count = (buf.get().toInt() and 0xFF).coerceIn(0, GameConstants.MAX_RACERS)
+        val list = ArrayList<com.example.game.RacerStanding>(count)
+        for (i in 0 until count) {
+            val slot = buf.get().toInt()
+            val pos = buf.get().toInt()
+            val name = getShortString(buf)
+            val color = buf.long
+            val body = KartBodyType.fromId(buf.get().toInt())
+            val isHuman = buf.get().toInt() != 0
+            val totalMs = buf.long
+            val bestLapMs = buf.long
+            val isDnf = buf.get().toInt() != 0
+            list.add(
+                com.example.game.RacerStanding(
+                    slotIndex = slot,
+                    position = pos,
+                    name = name,
+                    colorHex = color,
+                    bodyType = body,
+                    isHuman = isHuman,
+                    isLocal = (slot == localSlot),
+                    totalTimeMs = totalMs,
+                    bestLapMs = bestLapMs,
+                    isDnf = isDnf
+                )
+            )
+        }
+        return list
     }
 }

@@ -155,24 +155,26 @@ object Meshes {
     }
 
     /**
-     * Generates the complete 3D procedural Track Ribbon Mesh (road strip, dashed centre line,
-     * alternating red/white kerbs, and checkered start/finish line) from the closed Catmull-Rom spline.
+     * Generates the complete 3D procedural Track Ribbon Mesh (banked road strip, dashed centre line,
+     * alternating kerbs, elevated bridge guardrails + support pillars, and checkered start/finish line)
+     * from the closed Catmull-Rom spline.
      */
     fun buildTrackRoadMesh(track: Track): GlMesh {
-        val out = ArrayList<Float>(track.samples.size * 36 * 9)
+        val out = ArrayList<Float>(track.samples.size * 54 * 9)
         val roadRgb = hexToRgb(track.roadSurfaceHex)
         val kerb1Rgb = hexToRgb(track.kerbPrimaryHex)
         val kerb2Rgb = hexToRgb(track.kerbSecondaryHex)
 
         val halfWidth = track.roadWidth * 0.5f
-        val kerbWidth = 0.85f
+        val kerbWidth = 0.90f
         val n = track.samples.size
 
-        fun putQuad(
+        fun putQuadWithNormal(
             ax: Float, ay: Float, az: Float,
             bx: Float, by: Float, bz: Float,
             cx: Float, cy: Float, cz: Float,
             dx: Float, dy: Float, dz: Float,
+            nx: Float, ny: Float, nz: Float,
             r: Float, g: Float, b: Float
         ) {
             val verts = arrayOf(
@@ -181,16 +183,32 @@ object Meshes {
             )
             for (v in verts) {
                 out.add(v[0]); out.add(v[1]); out.add(v[2])
-                out.add(0f); out.add(1f); out.add(0f)
+                out.add(nx); out.add(ny); out.add(nz)
                 out.add(r); out.add(g); out.add(b)
             }
+        }
+
+        fun putQuad(
+            ax: Float, ay: Float, az: Float,
+            bx: Float, by: Float, bz: Float,
+            cx: Float, cy: Float, cz: Float,
+            dx: Float, dy: Float, dz: Float,
+            r: Float, g: Float, b: Float
+        ) {
+            putQuadWithNormal(ax, ay, az, bx, by, bz, cx, cy, cz, dx, dy, dz, 0f, 1f, 0f, r, g, b)
         }
 
         for (i in 0 until n) {
             val s0 = track.samples[i]
             val s1 = track.samples[(i + 1) % n]
-            val y0 = s0.pos.y + 0.03f
-            val y1 = s1.pos.y + 0.03f
+
+            val bankDy0 = sin(s0.bankAngleRad) * halfWidth * 0.35f
+            val bankDy1 = sin(s1.bankAngleRad) * halfWidth * 0.35f
+
+            val y0L = s0.pos.y + 0.03f - bankDy0
+            val y0R = s0.pos.y + 0.03f + bankDy0
+            val y1L = s1.pos.y + 0.03f - bankDy1
+            val y1R = s1.pos.y + 0.03f + bankDy1
 
             val l0x = s0.pos.x - s0.rightX * halfWidth
             val l0z = s0.pos.z - s0.rightZ * halfWidth
@@ -202,13 +220,14 @@ object Meshes {
             val r1x = s1.pos.x + s1.rightX * halfWidth
             val r1z = s1.pos.z + s1.rightZ * halfWidth
 
-            // 1. Main Paper/Asphalt Road Ribbon
+            // 1. Main Road Ribbon (subtle alternating shade strips for speed sensation)
+            val shade = if ((i / 2) % 2 == 0) 1.0f else 0.96f
             putQuad(
-                l0x, y0, l0z,
-                r0x, y0, r0z,
-                r1x, y1, r1z,
-                l1x, y1, l1z,
-                roadRgb[0], roadRgb[1], roadRgb[2]
+                l0x, y0L, l0z,
+                r0x, y0R, r0z,
+                r1x, y1R, r1z,
+                l1x, y1L, l1z,
+                roadRgb[0] * shade, roadRgb[1] * shade, roadRgb[2] * shade
             )
 
             // 2. Left & Right Alternating Kerb Strips
@@ -218,10 +237,10 @@ object Meshes {
             val kl1x = l1x - s1.rightX * kerbWidth
             val kl1z = l1z - s1.rightZ * kerbWidth
             putQuad(
-                kl0x, y0 + 0.02f, kl0z,
-                l0x, y0 + 0.02f, l0z,
-                l1x, y1 + 0.02f, l1z,
-                kl1x, y1 + 0.02f, kl1z,
+                kl0x, y0L + 0.02f, kl0z,
+                l0x, y0L + 0.02f, l0z,
+                l1x, y1L + 0.02f, l1z,
+                kl1x, y1L + 0.02f, kl1z,
                 kerbRgb[0], kerbRgb[1], kerbRgb[2]
             )
 
@@ -230,30 +249,53 @@ object Meshes {
             val kr1x = r1x + s1.rightX * kerbWidth
             val kr1z = r1z + s1.rightZ * kerbWidth
             putQuad(
-                r0x, y0 + 0.02f, r0z,
-                kr0x, y0 + 0.02f, kr0z,
-                kr1x, y1 + 0.02f, kr1z,
-                r1x, y1 + 0.02f, r1z,
+                r0x, y0R + 0.02f, r0z,
+                kr0x, y0R + 0.02f, kr0z,
+                kr1x, y1R + 0.02f, kr1z,
+                r1x, y1R + 0.02f, r1z,
                 kerbRgb[0], kerbRgb[1], kerbRgb[2]
             )
 
-            // 3. Dashed Centre Line
+            // 3. Elevated Bridge Side Walls & Support Pillars when road is elevated (y > 0.5)
+            if (s0.pos.y > 0.5f || s1.pos.y > 0.5f) {
+                val wallH = 0.85f
+                putQuadWithNormal(
+                    kl0x, y0L, kl0z,
+                    kl1x, y1L, kl1z,
+                    kl1x, y1L + wallH, kl1z,
+                    kl0x, y0L + wallH, kl0z,
+                    s0.rightX, 0.2f, s0.rightZ,
+                    kerbRgb[0] * 0.85f, kerbRgb[1] * 0.85f, kerbRgb[2] * 0.85f
+                )
+                putQuadWithNormal(
+                    kr1x, y1R, kr1z,
+                    kr0x, y0R, kr0z,
+                    kr0x, y0R + wallH, kr0z,
+                    kr1x, y1R + wallH, kr1z,
+                    -s0.rightX, 0.2f, -s0.rightZ,
+                    kerbRgb[0] * 0.85f, kerbRgb[1] * 0.85f, kerbRgb[2] * 0.85f
+                )
+            }
+
+            // 4. Dashed Centre Line
             if ((i / 3) % 2 == 0) {
                 val cw = 0.25f
+                val cy0 = (y0L + y0R) * 0.5f + 0.025f
+                val cy1 = (y1L + y1R) * 0.5f + 0.025f
                 putQuad(
-                    s0.pos.x - s0.rightX * cw, y0 + 0.025f, s0.pos.z - s0.rightZ * cw,
-                    s0.pos.x + s0.rightX * cw, y0 + 0.025f, s0.pos.z + s0.rightZ * cw,
-                    s1.pos.x + s1.rightX * cw, y1 + 0.025f, s1.pos.z + s1.rightZ * cw,
-                    s1.pos.x - s1.rightX * cw, y1 + 0.025f, s1.pos.z - s1.rightZ * cw,
+                    s0.pos.x - s0.rightX * cw, cy0, s0.pos.z - s0.rightZ * cw,
+                    s0.pos.x + s0.rightX * cw, cy0, s0.pos.z + s0.rightZ * cw,
+                    s1.pos.x + s1.rightX * cw, cy1, s1.pos.z + s1.rightZ * cw,
+                    s1.pos.x - s1.rightX * cw, cy1, s1.pos.z - s1.rightZ * cw,
                     0.96f, 0.82f, 0.18f
                 )
             }
         }
 
-        // 4. Procedural Checkered Start/Finish Line at sample 0
+        // 5. Procedural Checkered Start/Finish Line at sample 0
         val sStart = track.samples[0]
         val sNext = track.samples[2]
-        val tilesAcross = 8
+        val tilesAcross = 10
         for (col in 0 until tilesAcross) {
             val f0 = (col.toFloat() / tilesAcross) * 2f - 1f
             val f1 = ((col + 1).toFloat() / tilesAcross) * 2f - 1f
@@ -262,10 +304,10 @@ object Meshes {
             val isWhite = col % 2 == 0
             val cA = if (isWhite) 0.98f else 0.08f
             putQuad(
-                sStart.pos.x + sStart.rightX * lat0, sStart.pos.y + 0.05f, sStart.pos.z + sStart.rightZ * lat0,
-                sStart.pos.x + sStart.rightX * lat1, sStart.pos.y + 0.05f, sStart.pos.z + sStart.rightZ * lat1,
-                sNext.pos.x + sNext.rightX * lat1, sNext.pos.y + 0.05f, sNext.pos.z + sNext.rightZ * lat1,
-                sNext.pos.x + sNext.rightX * lat0, sNext.pos.y + 0.05f, sNext.pos.z + sNext.rightZ * lat0,
+                sStart.pos.x + sStart.rightX * lat0, sStart.pos.y + 0.06f, sStart.pos.z + sStart.rightZ * lat0,
+                sStart.pos.x + sStart.rightX * lat1, sStart.pos.y + 0.06f, sStart.pos.z + sStart.rightZ * lat1,
+                sNext.pos.x + sNext.rightX * lat1, sNext.pos.y + 0.06f, sNext.pos.z + sNext.rightZ * lat1,
+                sNext.pos.x + sNext.rightX * lat0, sNext.pos.y + 0.06f, sNext.pos.z + sNext.rightZ * lat0,
                 cA, cA, cA
             )
         }

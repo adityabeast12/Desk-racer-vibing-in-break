@@ -3,6 +3,7 @@ package com.example.ui
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,7 +16,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -37,8 +37,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.UserProfileAndSettings
+import com.example.game.GameMode
 import com.example.game.HudState
 import com.example.game.InputState
+import com.example.game.RacePhase
+import com.example.game.Tracks
 import com.example.ui.controls.ActionButtons
 import com.example.ui.controls.SteerZone
 import com.example.ui.hud.CountdownOverlay
@@ -52,10 +55,9 @@ import com.example.ui.theme.DriftAmber
 import com.example.ui.theme.HostEmerald
 import com.example.ui.theme.JoinBlue
 import com.example.ui.theme.OrbitronFontFamily
+import com.example.ui.theme.RulerYellow
 import com.example.ui.theme.SkyCyan
 import com.example.ui.theme.SlateAbyss
-import com.example.ui.theme.SlateBorder
-import com.example.ui.theme.SlateSurface
 
 @Composable
 fun RaceScreen(
@@ -64,6 +66,7 @@ fun RaceScreen(
     inputState: InputState,
     isMultiplayer: Boolean,
     isHost: Boolean,
+    onSkipFlyby: () -> Unit = {},
     onPauseChanged: (Boolean) -> Unit,
     onRestartRace: () -> Unit,
     onOpenSettings: () -> Unit,
@@ -83,7 +86,70 @@ fun RaceScreen(
             .windowInsetsPadding(WindowInsets.safeDrawing.union(WindowInsets.displayCutout))
             .testTag("race_screen")
     ) {
-        // 1. Left 45% Full-Height Steering Zone (Touch writes directly to InputState)
+        // 0. Pre-race 4-second Camera Fly-by Card + Tap to Skip (Part C3)
+        if (hudState.phase == RacePhase.FLYBY_INTRO) {
+            val track = Tracks.byId(hudState.trackId)
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clickable(onClick = onSkipFlyby)
+                    .padding(24.dp)
+                    .testTag("flyby_overlay")
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(18.dp),
+                    color = Color(0xD90F172A),
+                    border = androidx.compose.foundation.BorderStroke(2.dp, SkyCyan),
+                    modifier = Modifier.align(Alignment.BottomStart)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(horizontal = 22.dp, vertical = 14.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text(
+                            text = "${com.example.game.CupType.fromId(track.cupId).title} • ${hudState.gameMode.title}",
+                            fontFamily = OrbitronFontFamily,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp,
+                            color = RulerYellow
+                        )
+                        Text(
+                            text = track.name,
+                            fontFamily = OrbitronFontFamily,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 26.sp,
+                            color = Color.White
+                        )
+                        Text(
+                            text = "${track.subtitle} • ${track.difficultyLabel}",
+                            fontFamily = OrbitronFontFamily,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp,
+                            color = SkyCyan
+                        )
+                    }
+                }
+
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = Color(0xCC0F172A),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, RulerYellow),
+                    modifier = Modifier.align(Alignment.BottomEnd)
+                ) {
+                    Text(
+                        text = "TAP ANYWHERE TO SKIP ▶",
+                        fontFamily = OrbitronFontFamily,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 12.sp,
+                        color = RulerYellow,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
+                    )
+                }
+            }
+            return@Box
+        }
+
+        // 1. Left 42% Full-Height Steering Zone (Touch writes directly to InputState)
         Row(modifier = Modifier.fillMaxSize()) {
             SteerZone(
                 inputState = inputState,
@@ -102,12 +168,15 @@ fun RaceScreen(
                 .fillMaxSize()
                 .padding(16.dp)
         ) {
-            // Top-Left: Position Badge + Lap Counter
+            // Top-Left: Position Badge + Lap Counter + Coin Counter + Delta Chip
             PositionBadge(
                 position = hudState.position,
                 totalRacers = hudState.totalRacers,
                 lap = hudState.lap,
                 totalLaps = hudState.totalLaps,
+                coinsHeld = hudState.coinsHeld,
+                positionDeltaChip = hudState.positionDeltaChip,
+                balloonsRemaining = if (hudState.gameMode == GameMode.BATTLE_BALLOONS) hudState.balloonsRemaining else -1,
                 modifier = Modifier.align(Alignment.TopStart)
             )
 
@@ -140,13 +209,14 @@ fun RaceScreen(
                 )
             }
 
-            // Centre Overlays: 3-2-1-GO Countdown, WRONG WAY, Banners, Toasts
+            // Centre Overlays: DNF Countdown, 3-2-1-GO Countdown, WRONG WAY, Banners, Toasts
             CountdownOverlay(
                 countdownNumber = hudState.countdownNumber,
                 showRocketStartTip = hudState.showRocketStartTip,
                 isWrongWay = hudState.isWrongWay,
                 bannerText = hudState.bannerText,
                 toastText = hudState.toastText,
+                dnfCountdownSec = hudState.dnfCountdownSec,
                 modifier = Modifier.align(Alignment.Center)
             )
 

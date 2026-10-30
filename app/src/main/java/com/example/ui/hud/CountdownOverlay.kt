@@ -24,6 +24,7 @@ import com.example.ui.theme.GasGreen
 import com.example.ui.theme.OrbitronFontFamily
 import com.example.ui.theme.RulerYellow
 import com.example.ui.theme.SkyCyan
+import java.util.Locale
 
 @Composable
 fun CountdownOverlay(
@@ -32,6 +33,7 @@ fun CountdownOverlay(
     isWrongWay: Boolean,
     bannerText: String?,
     toastText: String?,
+    dnfCountdownSec: Int = -1,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -39,6 +41,29 @@ fun CountdownOverlay(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
+        // 0. 30-second DNF Countdown after first racer finishes (Part B4)
+        AnimatedVisibility(
+            visible = dnfCountdownSec >= 0,
+            enter = fadeIn(),
+            exit = fadeOut()
+        ) {
+            Box(
+                modifier = Modifier
+                    .background(Color(0xD90F172A), RoundedCornerShape(10.dp))
+                    .border(1.5.dp, ArcadeCrimson, RoundedCornerShape(10.dp))
+                    .padding(horizontal = 16.dp, vertical = 4.dp)
+                    .testTag("hud_dnf_countdown")
+            ) {
+                Text(
+                    text = String.format(Locale.US, "RACE ENDS IN 0:%02d", dnfCountdownSec.coerceAtLeast(0)),
+                    fontFamily = OrbitronFontFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 13.sp,
+                    color = RulerYellow
+                )
+            }
+        }
+
         // 1. 3-2-1-GO Countdown
         AnimatedVisibility(
             visible = countdownNumber in 0..3,
@@ -70,7 +95,7 @@ fun CountdownOverlay(
                 }
                 if (showRocketStartTip && countdownNumber in 1..3) {
                     Text(
-                        text = "TIP: Hold GAS right as '2' fades for a ROCKET START!",
+                        text = "TIP: Tap GAS in the 0.35s window right as '2' fades for a ROCKET START!",
                         fontFamily = OrbitronFontFamily,
                         fontWeight = FontWeight.Bold,
                         fontSize = 11.sp,

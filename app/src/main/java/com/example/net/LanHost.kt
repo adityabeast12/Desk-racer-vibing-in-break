@@ -290,7 +290,7 @@ class LanHost(
     }
 
     fun updateTrack(trackId: Int) {
-        _trackId.value = trackId.coerceIn(0, 2)
+        _trackId.value = trackId.coerceIn(0, 7)
         broadcastLobbyStateToAll()
     }
 
@@ -325,11 +325,19 @@ class LanHost(
         }
     }
 
+    fun broadcastRaceResults(standings: List<com.example.game.RacerStanding>) {
+        raceInProgress = false
+        val bytes = Protocol.encodeRaceResultsFrame(standings)
+        for (c in clients) {
+            scope.launch { sendTcpFrame(c.output, bytes) }
+        }
+    }
+
     fun broadcastWorldSnapshotUdp(snap: WorldRenderSnapshot) {
         if (!raceInProgress || clients.isEmpty()) return
         val udp = udpStateSocket ?: return
         worldSeq++
-        val buf = ByteBuffer.allocate(240)
+        val buf = ByteBuffer.allocate(340)
         buf.put(Protocol.UDP_WORLD_SNAPSHOT)
         buf.putInt(worldSeq)
         buf.put(snap.karts.size.toByte())

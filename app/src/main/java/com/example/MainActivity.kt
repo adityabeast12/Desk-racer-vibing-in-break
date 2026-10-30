@@ -50,15 +50,20 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import com.example.audio.SynthAudio
 import com.example.data.Prefs
+import com.example.game.CcClass
 import com.example.game.ControlSchemeType
+import com.example.game.CpuDifficulty
+import com.example.game.CupType
 import com.example.game.GameConstants
 import com.example.game.GameLoop
+import com.example.game.GameMode
 import com.example.game.InputState
 import com.example.game.ItemMode
 import com.example.game.KartBodyType
 import com.example.game.KartRuntime
 import com.example.game.RacePhase
 import com.example.game.RaceSession
+import com.example.game.Tracks
 import com.example.net.LanClient
 import com.example.net.LanDiscovery
 import com.example.net.LanHost
@@ -131,20 +136,33 @@ class MainActivity : ComponentActivity(), SensorEventListener {
             hapticsEnabled = initialProfile.hapticsEnabled
         }
 
+        lanDiscovery = LanDiscovery(applicationContext)
+
         raceSession = RaceSession(
             synthAudio = synthAudio,
             onNewBestLapRecorded = { trackId, lapMs ->
                 prefs.recordLapTime(trackId, lapMs)
+            },
+            onSaveTimeTrialGhost = { ghost ->
+                prefs.saveTimeTrialGhost(ghost)
+            },
+            onLoadTimeTrialGhost = { trackId ->
+                prefs.loadTimeTrialGhost(trackId)
             }
-        )
+        ).apply {
+            onHostRaceResultsReady = { standings ->
+                if (::lanHost.isInitialized) {
+                    lanHost.broadcastRaceResults(standings)
+                }
+            }
+        }
+
         raceSession.setupShowroom(
             playerName = initialProfile.playerName,
             colorHex = GameConstants.KART_COLORS[initialProfile.kartColorIndex],
             bodyType = initialProfile.kartBody,
-            trackId = 0
+            trackId = initialProfile.selectedTrackId
         )
-
-        lanDiscovery = LanDiscovery(applicationContext)
 
         lanHost = LanHost(
             discovery = lanDiscovery,
@@ -181,6 +199,9 @@ class MainActivity : ComponentActivity(), SensorEventListener {
                     sparkTier = sample.sparkTier,
                     isBoosting = sample.isBoosting
                 )
+            },
+            onRaceResultsReceived = { standings ->
+                raceSession.applyHostFinalResults(standings)
             }
         )
 
@@ -315,7 +336,7 @@ private fun DeskRacerAppRoot(
 
     var currentScreen by remember { mutableStateOf<Screen>(Screen.Splash) }
     var showHowToPlayModal by remember { mutableStateOf(false) }
-    var selectedSoloTrackId by remember { mutableIntStateOf(0) }
+    var selectedSoloTrackId by remember { mutableIntStateOf(profile.selectedTrackId) }
     var lobbyOpenedAtMs by remember { mutableLongStateOf(0L) }
     var canForceStartHost by remember { mutableStateOf(false) }
 
@@ -339,6 +360,12 @@ private fun DeskRacerAppRoot(
     // Automatically navigate from Race -> Results when RacePhase reaches RESULTS
     LaunchedEffect(hudState.phase, currentScreen) {
         if (currentScreen == Screen.Race && hudState.phase == RacePhase.RESULTS) {
+            if (raceSession.gameMode == GameMode.GRAND_PRIX && raceSession.grandPrixRaceIndex >= 3) {
+                val localRank = hudState.standings.firstOrNull { it.isLocal }?.position ?: 8
+                if (localRank in 1..3) {
+                    prefs.recordCupTrophy(raceSession.activeCup.id, localRank)
+                }
+            }
             currentScreen = Screen.Results
         }
     }
@@ -385,6 +412,56 @@ private fun DeskRacerAppRoot(
         onDispose { }
     }
 
+    fun launchSoloRace(
+        mode: GameMode,
+        cup: CupType,
+        trackId: Int,
+        startNewCup: Boolean = false
+    ) {
+        val currentProfile = prefs.state.value
+        selectedSoloTrackId = trackId
+        val effectiveBotCount = when {
+            mode == GameMode.TIME_TRIAL -> 0
+            currentProfile.raceWithBots -> currentProfile.botCount
+            else -> 0
+        }
+        val racers = buildSoloRacers(
+            playerName = currentProfile.playerName,
+            colorIndex = currentProfile.kartColorIndex,
+            bodyType = currentProfile.kartBody,
+            botCount = effectiveBotCount
+        )
+        gameLoop.isPausedSolo = false
+        inputState.reset()
+        if (mode == GameMode.GRAND_PRIX && startNewCup) {
+            raceSession.startGrandPrixCup(
+                cup = cup,
+                laps = currentProfile.selectedLaps,
+                mode = currentProfile.selectedItemMode,
+                difficulty = currentProfile.cpuDifficulty,
+                cc = currentProfile.selectedCcClass,
+                localSlot = 0,
+                racerConfigs = racers
+            )
+        } else {
+            raceSession.startNewRace(
+                trackId = trackId,
+                laps = if (mode == GameMode.TIME_TRIAL) 3 else currentProfile.selectedLaps,
+                mode = if (mode == GameMode.TIME_TRIAL) ItemMode.OFF else currentProfile.selectedItemMode,
+                difficulty = currentProfile.cpuDifficulty,
+                cc = currentProfile.selectedCcClass,
+                gameMode = mode,
+                multiplayer = false,
+                hostAuthority = true,
+                localSlot = 0,
+                racerConfigs = racers,
+                skipFlyby = true
+            )
+        }
+        gameLoop.forceHudRefresh()
+        currentScreen = Screen.Race
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
         // 1. Single Persistent Native OpenGL ES 3.0 Renderer Surface
         AndroidView(
@@ -394,7 +471,7 @@ private fun DeskRacerAppRoot(
                     val supportsEs3 = (am?.deviceConfigurationInfo?.reqGlEsVersion ?: 0) >= 0x30000
                     setEGLContextClientVersion(if (supportsEs3) 3 else 2)
                     setEGLConfigChooser(8, 8, 8, 8, 16, 0)
-                    setRenderer(GameRenderer(gameLoop.latestRenderSnapshot))
+                    setRenderer(GameRenderer(gameLoop.latestRenderSnapshot, ctx.applicationContext))
                     renderMode = GLSurfaceView.RENDERMODE_CONTINUOUSLY
                     onGlSurfaceViewCreated(this)
                 }
@@ -414,25 +491,39 @@ private fun DeskRacerAppRoot(
                 MainMenuScreen(
                     profile = profile,
                     onQuickRace = {
-                        val racers = buildSoloRacers(
-                            playerName = profile.playerName,
-                            colorIndex = profile.kartColorIndex,
-                            bodyType = profile.kartBody
+                        launchSoloRace(
+                            mode = GameMode.QUICK_RACE,
+                            cup = profile.selectedCup,
+                            trackId = profile.selectedTrackId,
+                            startNewCup = false
                         )
-                        gameLoop.isPausedSolo = false
-                        inputState.reset()
-                        raceSession.startNewRace(
-                            trackId = selectedSoloTrackId,
-                            laps = 3,
-                            mode = ItemMode.NORMAL,
-                            difficulty = profile.cpuDifficulty,
-                            multiplayer = false,
-                            hostAuthority = true,
-                            localSlot = 0,
-                            racerConfigs = racers
+                    },
+                    onStartConfiguredRace = { mode, cup, trackId ->
+                        val startTrack = if (mode == GameMode.GRAND_PRIX) cup.trackIds.first() else trackId
+                        launchSoloRace(
+                            mode = mode,
+                            cup = cup,
+                            trackId = startTrack,
+                            startNewCup = (mode == GameMode.GRAND_PRIX)
+                        )
+                    },
+                    onUpdateRaceSetup = { raceWithBots, botCount, difficulty, laps, itemMode, ccClass, trackId, cup ->
+                        selectedSoloTrackId = trackId
+                        prefs.updateRaceWithBots(raceWithBots)
+                        prefs.updateBotCount(botCount)
+                        prefs.updateCpuDifficulty(difficulty)
+                        prefs.updateSelectedLaps(laps)
+                        prefs.updateSelectedItemMode(itemMode)
+                        prefs.updateSelectedCcClass(ccClass)
+                        prefs.updateSelectedTrackId(trackId)
+                        prefs.updateSelectedCup(cup)
+                        raceSession.setupShowroom(
+                            playerName = profile.playerName,
+                            colorHex = GameConstants.KART_COLORS[profile.kartColorIndex],
+                            bodyType = profile.kartBody,
+                            trackId = trackId
                         )
                         gameLoop.forceHudRefresh()
-                        currentScreen = Screen.Race
                     },
                     onHostRace = {
                         lanClient.disconnect()
@@ -531,11 +622,8 @@ private fun DeskRacerAppRoot(
                     onSelectLaps = { lanHost.updateLaps(it) },
                     onToggleCpuFill = { lanHost.updateCpuFill(!cpuFill) },
                     onCycleItemMode = {
-                        val next = when (itemMode) {
-                            ItemMode.NORMAL -> ItemMode.FRANTIC
-                            ItemMode.FRANTIC -> ItemMode.OFF
-                            ItemMode.OFF -> ItemMode.NORMAL
-                        }
+                        val entries = ItemMode.entries
+                        val next = entries[(itemMode.ordinal + 1) % entries.size]
                         lanHost.updateItemMode(next)
                     },
                     onKickSlot = { lanHost.kickSlot(it) },
@@ -610,6 +698,10 @@ private fun DeskRacerAppRoot(
                     inputState = inputState,
                     isMultiplayer = raceSession.isMultiplayer,
                     isHost = raceSession.isHostAuthority,
+                    onSkipFlyby = {
+                        raceSession.skipFlybyIntro()
+                        gameLoop.forceHudRefresh()
+                    },
                     onPauseChanged = { paused ->
                         if (!raceSession.isMultiplayer) {
                             gameLoop.isPausedSolo = paused
@@ -618,24 +710,12 @@ private fun DeskRacerAppRoot(
                     },
                     onRestartRace = {
                         prefs.markRocketStartTipSeen()
-                        gameLoop.isPausedSolo = false
-                        inputState.reset()
-                        val racers = buildSoloRacers(
-                            playerName = profile.playerName,
-                            colorIndex = profile.kartColorIndex,
-                            bodyType = profile.kartBody
-                        )
-                        raceSession.startNewRace(
+                        launchSoloRace(
+                            mode = raceSession.gameMode,
+                            cup = raceSession.activeCup,
                             trackId = raceSession.currentTrack.id,
-                            laps = raceSession.totalLaps,
-                            mode = raceSession.itemMode,
-                            difficulty = profile.cpuDifficulty,
-                            multiplayer = false,
-                            hostAuthority = true,
-                            localSlot = 0,
-                            racerConfigs = racers
+                            startNewCup = false
                         )
-                        gameLoop.forceHudRefresh()
                     },
                     onOpenSettings = {
                         currentScreen = Screen.Settings(returnToRace = true)
@@ -664,6 +744,8 @@ private fun DeskRacerAppRoot(
                     standings = hudState.standings,
                     isMultiplayer = raceSession.isMultiplayer,
                     isHost = raceSession.isHostAuthority,
+                    gameMode = raceSession.gameMode,
+                    cupRaceIndex = raceSession.grandPrixRaceIndex,
                     onRematch = {
                         prefs.markRocketStartTipSeen()
                         inputState.reset()
@@ -681,26 +763,51 @@ private fun DeskRacerAppRoot(
                                 localSlot = 0,
                                 lobbySlots = lanHost.slots.value
                             )
+                            currentScreen = Screen.Race
                         } else {
-                            selectedSoloTrackId = (raceSession.currentTrack.id + 1) % 3
-                            val racers = buildSoloRacers(
-                                playerName = profile.playerName,
-                                colorIndex = profile.kartColorIndex,
-                                bodyType = profile.kartBody
+                            launchSoloRace(
+                                mode = raceSession.gameMode,
+                                cup = raceSession.activeCup,
+                                trackId = raceSession.currentTrack.id,
+                                startNewCup = false
                             )
-                            raceSession.startNewRace(
-                                trackId = selectedSoloTrackId,
-                                laps = raceSession.totalLaps,
-                                mode = raceSession.itemMode,
-                                difficulty = profile.cpuDifficulty,
-                                multiplayer = false,
-                                hostAuthority = true,
-                                localSlot = 0,
-                                racerConfigs = racers
-                            )
-                            gameLoop.forceHudRefresh()
                         }
-                        currentScreen = Screen.Race
+                    },
+                    onNextRace = {
+                        prefs.markRocketStartTipSeen()
+                        inputState.reset()
+                        val currentProfile = prefs.state.value
+                        val racers = buildSoloRacers(
+                            playerName = currentProfile.playerName,
+                            colorIndex = currentProfile.kartColorIndex,
+                            bodyType = currentProfile.kartBody,
+                            botCount = if (currentProfile.raceWithBots) currentProfile.botCount else 0
+                        )
+                        if (raceSession.gameMode == GameMode.GRAND_PRIX) {
+                            val advanced = raceSession.advanceGrandPrixNextRace(racers, localSlot = 0)
+                            if (!advanced) {
+                                raceSession.startGrandPrixCup(
+                                    cup = raceSession.activeCup,
+                                    laps = currentProfile.selectedLaps,
+                                    mode = currentProfile.selectedItemMode,
+                                    difficulty = currentProfile.cpuDifficulty,
+                                    cc = currentProfile.selectedCcClass,
+                                    localSlot = 0,
+                                    racerConfigs = racers
+                                )
+                            }
+                            gameLoop.forceHudRefresh()
+                            currentScreen = Screen.Race
+                        } else {
+                            val nextTrack = (raceSession.currentTrack.id + 1) % Tracks.all.size
+                            prefs.updateSelectedTrackId(nextTrack)
+                            launchSoloRace(
+                                mode = raceSession.gameMode,
+                                cup = raceSession.activeCup,
+                                trackId = nextTrack,
+                                startNewCup = false
+                            )
+                        }
                     },
                     onBackToLobby = {
                         raceSession.setupShowroom(
@@ -825,10 +932,12 @@ private fun SplashScreenOverlay() {
 private fun buildSoloRacers(
     playerName: String,
     colorIndex: Int,
-    bodyType: KartBodyType
+    bodyType: KartBodyType,
+    botCount: Int = 7
 ): List<KartRuntime> {
-    val cpuNames = listOf("NIBBLES", "GRAPHITE", "VOLT", "SKETCH", "TURBO")
-    val list = ArrayList<KartRuntime>(GameConstants.MAX_RACERS)
+    val cpuNames = listOf("NIBBLES", "GRAPHITE", "VOLT", "SKETCH", "TURBO", "APEX", "PIXEL")
+    val totalCount = (1 + botCount).coerceIn(1, GameConstants.MAX_RACERS)
+    val list = ArrayList<KartRuntime>(totalCount)
     list.add(
         KartRuntime(
             slotIndex = 0,
@@ -839,9 +948,9 @@ private fun buildSoloRacers(
             bodyType = bodyType
         )
     )
-    for (slot in 1 until GameConstants.MAX_RACERS) {
+    for (slot in 1 until totalCount) {
         val cpuColorIdx = (colorIndex + slot) % GameConstants.KART_COLORS.size
-        val cpuBody = KartBodyType.fromId(slot % 3)
+        val cpuBody = KartBodyType.fromId(slot % KartBodyType.entries.size)
         list.add(
             KartRuntime(
                 slotIndex = slot,
@@ -868,7 +977,7 @@ private fun startMultiplayerRaceFromLobby(
     localSlot: Int,
     lobbySlots: List<LobbySlotInfo>
 ) {
-    val cpuNames = listOf("NIBBLES", "GRAPHITE", "VOLT", "SKETCH", "TURBO", "APEX")
+    val cpuNames = listOf("NIBBLES", "GRAPHITE", "VOLT", "SKETCH", "TURBO", "APEX", "PIXEL", "BLITZ")
     val racers = ArrayList<KartRuntime>()
     val humanMap = lobbySlots.associateBy { it.slotIndex }
 
@@ -894,7 +1003,7 @@ private fun startMultiplayerRaceFromLobby(
                     isHuman = false,
                     isLocalPlayer = false,
                     colorHex = GameConstants.KART_COLORS[slot % GameConstants.KART_COLORS.size],
-                    bodyType = KartBodyType.fromId(slot % 3)
+                    bodyType = KartBodyType.fromId(slot % KartBodyType.entries.size)
                 )
             )
         }
@@ -907,10 +1016,13 @@ private fun startMultiplayerRaceFromLobby(
         laps = laps,
         mode = itemMode,
         difficulty = prefs.state.value.cpuDifficulty,
+        cc = prefs.state.value.selectedCcClass,
+        gameMode = GameMode.MULTIPLAYER,
         multiplayer = true,
         hostAuthority = isHost,
         localSlot = localSlot,
-        racerConfigs = racers
+        racerConfigs = racers,
+        skipFlyby = true
     )
     gameLoop.forceHudRefresh()
 }

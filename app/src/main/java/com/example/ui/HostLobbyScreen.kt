@@ -6,6 +6,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,6 +24,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -98,7 +100,7 @@ fun HostLobbyScreen(
             // LEFT CARD: "Connect your friends"
             Surface(
                 modifier = Modifier
-                    .weight(0.92f)
+                    .weight(0.90f)
                     .fillMaxHeight(),
                 shape = RoundedCornerShape(16.dp),
                 color = SlateAbyss,
@@ -132,7 +134,7 @@ fun HostLobbyScreen(
                                 color = SkyCyan
                             )
                             Text(
-                                text = "Zero internet required • 2–6 players",
+                                text = "Zero internet required • 2–8 players",
                                 fontSize = 11.sp,
                                 color = Color(0xFF94A3B8)
                             )
@@ -174,7 +176,7 @@ fun HostLobbyScreen(
                                 shape = RoundedCornerShape(8.dp),
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(48.dp)
+                                    .height(44.dp)
                                     .testTag("btn_open_hotspot_settings")
                             ) {
                                 Icon(Icons.Default.WifiTethering, contentDescription = null, modifier = Modifier.size(18.dp))
@@ -240,10 +242,10 @@ fun HostLobbyScreen(
                 }
             }
 
-            // RIGHT CARD: "Race" (6 Player Slots, Track Picker, Laps, CPU Fill, Item Mode, START Button)
+            // RIGHT CARD: "Race" (8 Player Slots, 8-Track Picker, Laps, CPU Fill, Item Mode, START Button)
             Surface(
                 modifier = Modifier
-                    .weight(1.08f)
+                    .weight(1.10f)
                     .fillMaxHeight(),
                 shape = RoundedCornerShape(16.dp),
                 color = SlateAbyss,
@@ -252,21 +254,23 @@ fun HostLobbyScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(14.dp),
+                        .padding(12.dp),
                     verticalArrangement = Arrangement.SpaceBetween
                 ) {
-                    // Track Picker (3 Thumbnails) & Race Options
+                    // Track Picker (8 Tracks in scrollable row) & Race Options
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState()),
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
                             Tracks.all.forEach { t ->
                                 val selected = t.id == selectedTrackId
                                 Surface(
                                     modifier = Modifier
-                                        .weight(1f)
-                                        .height(48.dp)
+                                        .width(126.dp)
+                                        .height(44.dp)
                                         .clickable { onSelectTrack(t.id) }
                                         .testTag("host_track_${t.id}"),
                                     shape = RoundedCornerShape(10.dp),
@@ -277,7 +281,7 @@ fun HostLobbyScreen(
                                     )
                                 ) {
                                     Column(
-                                        modifier = Modifier.padding(6.dp),
+                                        modifier = Modifier.padding(4.dp),
                                         horizontalAlignment = Alignment.CenterHorizontally,
                                         verticalArrangement = Arrangement.Center
                                     ) {
@@ -285,13 +289,15 @@ fun HostLobbyScreen(
                                             text = t.name,
                                             fontFamily = OrbitronFontFamily,
                                             fontWeight = FontWeight.Bold,
-                                            fontSize = 10.sp,
-                                            color = Color.White
+                                            fontSize = 9.sp,
+                                            color = Color.White,
+                                            maxLines = 1
                                         )
                                         Text(
                                             text = t.difficultyLabel,
-                                            fontSize = 9.sp,
-                                            color = if (selected) RulerYellow else Color(0xFF94A3B8)
+                                            fontSize = 8.sp,
+                                            color = if (selected) RulerYellow else Color(0xFF94A3B8),
+                                            maxLines = 1
                                         )
                                     }
                                 }
@@ -307,7 +313,7 @@ fun HostLobbyScreen(
                                 val active = selectedLaps == l
                                 Surface(
                                     modifier = Modifier
-                                        .height(36.dp)
+                                        .height(34.dp)
                                         .clickable { onSelectLaps(l) }
                                         .testTag("host_laps_$l"),
                                     shape = RoundedCornerShape(8.dp),
@@ -330,7 +336,7 @@ fun HostLobbyScreen(
 
                             Surface(
                                 modifier = Modifier
-                                    .height(36.dp)
+                                    .height(34.dp)
                                     .clickable(onClick = onToggleCpuFill)
                                     .testTag("host_cpu_fill_toggle"),
                                 shape = RoundedCornerShape(8.dp),
@@ -356,7 +362,7 @@ fun HostLobbyScreen(
 
                             Surface(
                                 modifier = Modifier
-                                    .height(36.dp)
+                                    .height(34.dp)
                                     .clickable(onClick = onCycleItemMode)
                                     .testTag("host_item_mode_toggle"),
                                 shape = RoundedCornerShape(8.dp),
@@ -379,9 +385,9 @@ fun HostLobbyScreen(
                         }
                     }
 
-                    // 6 Racer Slots (2x3 Compact Grid)
+                    // 8 Racer Slots (2x4 Compact Grid)
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        for (row in 0 until 3) {
+                        for (row in 0 until 4) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -410,7 +416,7 @@ fun HostLobbyScreen(
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(50.dp)
+                            .height(46.dp)
                             .testTag("btn_host_start_race")
                     ) {
                         Text(
@@ -442,7 +448,7 @@ private fun LobbySlotBadge(
     }
 
     Surface(
-        modifier = modifier.height(34.dp),
+        modifier = modifier.height(30.dp),
         shape = RoundedCornerShape(8.dp),
         color = SlateSurface,
         border = androidx.compose.foundation.BorderStroke(
@@ -470,7 +476,7 @@ private fun LobbySlotBadge(
                     text = info?.playerName ?: if (cpuFill) "CPU BOT ${slotIdx + 1}" else "OPEN SLOT",
                     fontFamily = OrbitronFontFamily,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 10.sp,
+                    fontSize = 9.sp,
                     color = if (info != null) Color.White else Color(0xFF94A3B8)
                 )
             }
@@ -481,7 +487,7 @@ private fun LobbySlotBadge(
                 ) {
                     Text(
                         text = "${info.pingMs}ms",
-                        fontSize = 9.sp,
+                        fontSize = 8.sp,
                         color = Color(0xFF94A3B8)
                     )
                     if (info.isReady) {
@@ -498,7 +504,7 @@ private fun LobbySlotBadge(
                             contentDescription = "Kick Player",
                             tint = ArcadeCrimson,
                             modifier = Modifier
-                                .size(16.dp)
+                                .size(15.dp)
                                 .clickable(onClick = onKick)
                         )
                     }

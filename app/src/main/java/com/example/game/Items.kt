@@ -1,5 +1,6 @@
 package com.example.game
 
+import kotlin.math.abs
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.hypot
@@ -41,6 +42,16 @@ data class ActiveItemBox(
     var rotationRad: Float = 0f
 )
 
+data class ActiveCoin(
+    val id: Int,
+    val x: Float,
+    val y: Float,
+    val z: Float,
+    var active: Boolean = true,
+    var respawnTimerSec: Float = 0f,
+    var rotationRad: Float = 0f
+)
+
 data class WorldProjectile(
     val id: Int,
     val kind: ProjectileKind,
@@ -59,11 +70,17 @@ data class WorldProjectile(
 object ItemsEngine {
 
     /**
-     * Rubber-banded item probability table based on race position (1..6) and ItemMode.
+     * Rubber-banded item probability table based on race position (1..8) and ItemMode.
      */
     fun rollItemForPosition(position: Int, itemMode: ItemMode, random: Random = Random.Default): ItemType {
         if (itemMode == ItemMode.OFF) return ItemType.NONE
         val r = random.nextFloat()
+
+        // Skill Only mode (Part C): boxes give only Battery and Tacks
+        if (itemMode == ItemMode.SKILL_ONLY) {
+            return if (r < 0.55f) ItemType.BATTERY else ItemType.TRIPLE_TACKS
+        }
+
         if (itemMode == ItemMode.FRANTIC) {
             return when {
                 position == 1 -> when {
@@ -86,7 +103,7 @@ object ItemsEngine {
             }
         }
 
-        // Normal Item Mode
+        // Normal Item Mode (1..8)
         return when (position) {
             1 -> when {
                 r < 0.45f -> ItemType.ERASER
@@ -99,7 +116,7 @@ object ItemsEngine {
                 r < 0.76f -> ItemType.BATTERY
                 else -> ItemType.TRIPLE_TACKS
             }
-            4 -> when {
+            4, 5 -> when {
                 r < 0.35f -> ItemType.BATTERY
                 r < 0.60f -> ItemType.TRIPLE_TACKS
                 r < 0.80f -> ItemType.MARBLE
@@ -107,7 +124,7 @@ object ItemsEngine {
                 else -> ItemType.PAPER_PLANE
             }
             else -> when {
-                // 5th & 6th places: Battery, Paper Plane, Magnet
+                // 6th..8th places: Battery, Paper Plane, Magnet
                 r < 0.36f -> ItemType.BATTERY
                 r < 0.68f -> ItemType.PAPER_PLANE
                 r < 0.92f -> ItemType.MAGNET
@@ -121,15 +138,18 @@ object ItemsEngine {
         track: Track,
         karts: List<KartRuntime>,
         itemBoxes: List<ActiveItemBox>,
+        coins: List<ActiveCoin>,
         projectiles: MutableList<WorldProjectile>,
         itemMode: ItemMode,
+        isTimeTrial: Boolean = false,
         onHitEvent: (victimSlot: Int, attackerSlot: Int, kind: ProjectileKind) -> Unit,
-        onBoxPickedUp: (slot: Int, boxId: Int, grantedItem: ItemType) -> Unit
+        onBoxPickedUp: (slot: Int, boxId: Int, grantedItem: ItemType) -> Unit,
+        onCoinPickedUp: (slot: Int, coinId: Int) -> Unit = { _, _ -> }
     ) {
         // 1. Update Item Boxes & Check Pickups
         for (box in itemBoxes) {
             box.rotationRad += dt * 2.2f
-            if (itemMode == ItemMode.OFF) {
+            if (itemMode == ItemMode.OFF || isTimeTrial) {
                 box.active = false
                 continue
             }
@@ -144,7 +164,7 @@ object ItemsEngine {
                 if (kart.isRespawning) continue
                 val dx = kart.x - box.x
                 val dz = kart.z - box.z
-                if (dx * dx + dz * dz < 3.6f) {
+                if (dx * dx + dz * dz < 3.6f && abs(kart.y - box.y) < 3.0f) {
                     box.active = false
                     box.respawnTimerSec = GameConstants.ITEM_BOX_RESPAWN_SEC
                     if (kart.heldItem == ItemType.NONE && kart.rouletteTimerSec <= 0f) {
@@ -158,7 +178,33 @@ object ItemsEngine {
             }
         }
 
-        // 2. Step Active Projectiles
+        // 2. Update Coins & Check Pickups (Part D6: 10 coins per track, +0.6% top speed each, 8s respawn)
+        for (coin in coins) {
+            coin.rotationRad += dt * 3.2f
+            if (!coin.active) {
+                coin.respawnTimerSec -= dt
+                if (coin.respawnTimerSec <= 0f) {
+                    coin.active = true
+                }
+                continue
+            }
+            for (kart in karts) {
+                if (kart.isRespawning) continue
+                val dx = kart.x - coin.x
+                val dz = kart.z - coin.z
+                if (dx * dx + dz * dz < 3.2f && abs(kart.y - coin.y) < 2.8f) {
+                    coin.active = false
+                    coin.respawnTimerSec = GameConstants.COIN_RESPAWN_SEC
+                    if (kart.coinsHeld < GameConstants.MAX_COINS_HELD) {
+                        kart.coinsHeld++
+                    }
+                    onCoinPickedUp(kart.slotIndex, coin.id)
+                    break
+                }
+            }
+        }
+
+        // 3. Step Active Projectiles
         val iter = projectiles.iterator()
         while (iter.hasNext()) {
             val p = iter.next()
@@ -170,7 +216,6 @@ object ItemsEngine {
 
             when (p.kind) {
                 ProjectileKind.ERASER -> {
-                    // Stationary obstacle on the desk
                     p.headingRad += dt * 0.5f
                 }
                 ProjectileKind.MARBLE, ProjectileKind.TACK -> {
@@ -179,23 +224,29 @@ object ItemsEngine {
                     var bounced = false
 
                     // Bounce against desk boundaries
-                    if (kotlin.math.abs(nextX) > track.deskHalfExtentX - 2f) {
+                    if (abs(nextX) > track.deskHalfExtentX - 2f) {
                         p.vx = -p.vx
                         bounced = true
                     }
-                    if (kotlin.math.abs(nextZ) > track.deskHalfExtentZ - 2f) {
+                    if (abs(nextZ) > track.deskHalfExtentZ - 2f) {
                         p.vz = -p.vz
                         bounced = true
                     }
 
-                    // Bounce against solid track props
+                    // Bounce against solid oriented track props
                     for (prop in track.props) {
                         if (!prop.isSolidWall) continue
+                        val dx = nextX - prop.x
+                        val dz = nextZ - prop.z
+                        val c = cos(-prop.yawRad)
+                        val s = sin(-prop.yawRad)
+                        val localX = dx * c - dz * s
+                        val localZ = dx * s + dz * c
                         val hx = prop.sx * 0.5f + 0.6f
                         val hz = prop.sz * 0.5f + 0.6f
-                        if (kotlin.math.abs(nextX - prop.x) < hx && kotlin.math.abs(nextZ - prop.z) < hz) {
-                            val ox = hx - kotlin.math.abs(nextX - prop.x)
-                            val oz = hz - kotlin.math.abs(nextZ - prop.z)
+                        if (abs(localX) < hx && abs(localZ) < hz) {
+                            val ox = hx - abs(localX)
+                            val oz = hz - abs(localZ)
                             if (ox < oz) p.vx = -p.vx else p.vz = -p.vz
                             bounced = true
                             break
@@ -225,7 +276,7 @@ object ItemsEngine {
                         p.vz = (dz / dist) * speed
                         p.x += p.vx * dt
                         p.z += p.vz * dt
-                        p.y = 1.4f + sin(p.lifeRemainingSec * 7f) * 0.35f
+                        p.y = target.y + 1.4f + sin(p.lifeRemainingSec * 7f) * 0.35f
                     } else {
                         p.x += p.vx * dt
                         p.z += p.vz * dt
@@ -236,15 +287,13 @@ object ItemsEngine {
             // Check collision with karts
             var hitAnyone = false
             for (kart in karts) {
-                if (kart.isRespawning || kart.invulnerableTimerSec > 0f) continue
-                // Grace period for the shooter on newly spawned forward projectiles
+                if (kart.isRespawning || kart.invulnerableTimerSec > 0f || kart.ghostTimerSec > 0f) continue
                 if (kart.slotIndex == p.ownerSlot && p.lifeRemainingSec > GameConstants.MARBLE_LIFETIME_SEC - 0.35f) {
                     continue
                 }
                 val dx = kart.x - p.x
                 val dz = kart.z - p.z
-                if (dx * dx + dz * dz < 2.35f && kotlin.math.abs(kart.y - p.y) < 2.0f) {
-                    // Check if victim is holding an Eraser shield behind or orbiting Tacks
+                if (dx * dx + dz * dz < 2.35f && abs(kart.y - p.y) < 2.4f) {
                     if (kart.shieldEraserHeld) {
                         kart.shieldEraserHeld = false
                         kart.heldItem = ItemType.NONE

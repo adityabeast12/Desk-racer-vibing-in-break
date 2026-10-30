@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -19,7 +18,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.union
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -75,10 +73,10 @@ fun GarageScreen(
             modifier = Modifier.fillMaxSize(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            // Left Half: Live 3D Rotating Kart Preview Window + Back Button
+            // Left Half: Live 3D Rotating Kart Preview Window + Stat Bars
             Column(
                 modifier = Modifier
-                    .weight(0.95f)
+                    .weight(0.92f)
                     .fillMaxHeight(),
                 verticalArrangement = Arrangement.SpaceBetween
             ) {
@@ -109,7 +107,7 @@ fun GarageScreen(
                             color = Color.White
                         )
                         Text(
-                            text = "LIVE 3D SHOWROOM TURNTABLE",
+                            text = "5 HIGH-DETAIL 3D CHASSIS • LIVE TURNTABLE",
                             fontFamily = OrbitronFontFamily,
                             fontWeight = FontWeight.Bold,
                             fontSize = 10.sp,
@@ -120,24 +118,35 @@ fun GarageScreen(
 
                 Surface(
                     shape = RoundedCornerShape(12.dp),
-                    color = Color(0xCC0F172A),
+                    color = Color(0xD90F172A),
                     border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x38FFFFFF))
                 ) {
-                    Text(
-                        text = "${profile.kartBody.title} • ${profile.kartBody.subtitle}",
-                        fontFamily = OrbitronFontFamily,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 11.sp,
-                        color = RulerYellow,
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
-                    )
+                    Column(
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text(
+                            text = "${profile.kartBody.title} • ${profile.kartBody.subtitle}",
+                            fontFamily = OrbitronFontFamily,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp,
+                            color = RulerYellow
+                        )
+                        Text(
+                            text = "SPEED ${(profile.kartBody.topSpeedFactor * 100).toInt()}%  •  ACCEL ${(profile.kartBody.accelFactor * 100).toInt()}%  •  HANDLING ${(profile.kartBody.handlingFactor * 100).toInt()}%  •  MASS ${(profile.kartBody.mass * 100).toInt()}%",
+                            fontFamily = OrbitronFontFamily,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 9.sp,
+                            color = SkyCyan
+                        )
+                    }
                 }
             }
 
-            // Right Half: Name Input (max 10 chars), 8 Colour Swatches, 3 Kart Bodies
+            // Right Half: Name Input (max 10 chars), 8 Colour Swatches, 5 Kart Bodies
             Surface(
                 modifier = Modifier
-                    .weight(1.05f)
+                    .weight(1.08f)
                     .fillMaxHeight(),
                 shape = RoundedCornerShape(18.dp),
                 color = Color(0xE60F172A),
@@ -146,16 +155,16 @@ fun GarageScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(16.dp),
+                        .padding(14.dp),
                     verticalArrangement = Arrangement.SpaceBetween
                 ) {
                     // 1. Player Name Input
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text(
                             text = "DRIVER NAME (MAX 10 CHARS)",
                             fontFamily = OrbitronFontFamily,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 11.sp,
+                            fontSize = 10.sp,
                             color = SkyCyan
                         )
                         BasicTextField(
@@ -165,27 +174,27 @@ fun GarageScreen(
                             textStyle = TextStyle(
                                 fontFamily = OrbitronFontFamily,
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 16.sp,
+                                fontSize = 15.sp,
                                 color = Color.White
                             ),
                             cursorBrush = SolidColor(SkyCyan),
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(48.dp)
+                                .height(44.dp)
                                 .background(SlateSurface, RoundedCornerShape(10.dp))
                                 .border(1.dp, SlateBorder, RoundedCornerShape(10.dp))
-                                .padding(horizontal = 14.dp, vertical = 12.dp)
+                                .padding(horizontal = 14.dp, vertical = 10.dp)
                                 .testTag("garage_name_input")
                         )
                     }
 
                     // 2. 8 Kart Paint Swatches
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text(
                             text = "KART PAINT COLOUR",
                             fontFamily = OrbitronFontFamily,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 11.sp,
+                            fontSize = 10.sp,
                             color = SkyCyan
                         )
                         Row(
@@ -196,7 +205,7 @@ fun GarageScreen(
                                 val selected = profile.kartColorIndex == idx
                                 Box(
                                     modifier = Modifier
-                                        .size(38.dp)
+                                        .size(36.dp)
                                         .clip(CircleShape)
                                         .background(Color(hex))
                                         .border(
@@ -211,20 +220,21 @@ fun GarageScreen(
                         }
                     }
 
-                    // 3. 3 Kart Bodies (Classic, Pencil Rocket, Eraser Tank)
+                    // 3. 5 Kart Bodies (2 rows: 3 + 2)
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text(
-                            text = "CHASSIS BODY (COSMETIC)",
+                            text = "3D CHASSIS BODY (5 MODELS)",
                             fontFamily = OrbitronFontFamily,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 11.sp,
+                            fontSize = 10.sp,
                             color = SkyCyan
                         )
+                        val bodies = KartBodyType.entries
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
-                            KartBodyType.entries.forEach { body ->
+                            bodies.take(3).forEach { body ->
                                 val selected = profile.kartBody == body
                                 Button(
                                     onClick = { onBodySelected(body) },
@@ -234,15 +244,44 @@ fun GarageScreen(
                                     ),
                                     modifier = Modifier
                                         .weight(1f)
-                                        .height(48.dp)
+                                        .height(44.dp)
                                         .testTag("garage_body_${body.id}")
                                 ) {
                                     Text(
                                         text = body.title.uppercase(),
                                         fontFamily = OrbitronFontFamily,
                                         fontWeight = FontWeight.Bold,
-                                        fontSize = 10.sp,
-                                        color = if (selected) SlateAbyss else Color.White
+                                        fontSize = 9.sp,
+                                        color = if (selected) SlateAbyss else Color.White,
+                                        maxLines = 1
+                                    )
+                                }
+                            }
+                        }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            bodies.drop(3).forEach { body ->
+                                val selected = profile.kartBody == body
+                                Button(
+                                    onClick = { onBodySelected(body) },
+                                    shape = RoundedCornerShape(10.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = if (selected) HostEmerald else SlateSurface
+                                    ),
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(44.dp)
+                                        .testTag("garage_body_${body.id}")
+                                ) {
+                                    Text(
+                                        text = body.title.uppercase(),
+                                        fontFamily = OrbitronFontFamily,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 9.sp,
+                                        color = if (selected) SlateAbyss else Color.White,
+                                        maxLines = 1
                                     )
                                 }
                             }

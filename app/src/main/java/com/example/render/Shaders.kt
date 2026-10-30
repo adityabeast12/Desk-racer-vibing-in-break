@@ -5,15 +5,17 @@ import android.opengl.GLES20
 object Shaders {
 
     /**
-     * Lit Shader: Lambert directional + simple Blinn-Phong specular + distance fog + vertex colour * uniform tint.
+     * Lit Shader: Lambert directional + Blinn-Phong specular + rim light + paintMask tint + distance fog.
      * Uses strict GLSL ES 1.00 syntax compatible with all OpenGL ES 2.0 / 3.0 mobile GPUs.
      */
     const val LIT_VERTEX_SHADER = """
         uniform mat4 uMvpMatrix;
         uniform mat4 uModelMatrix;
+        uniform vec3 uPaintColor;
         attribute vec3 aPosition;
         attribute vec3 aNormal;
         attribute vec3 aVertColor;
+        attribute float aPaintMask;
         varying vec3 vWorldPos;
         varying vec3 vNormal;
         varying vec3 vVertColor;
@@ -23,7 +25,7 @@ object Shaders {
             vWorldPos = worldPos.xyz;
             vec3 worldNorm = (uModelMatrix * vec4(aNormal, 0.0)).xyz;
             vNormal = normalize(worldNorm);
-            vVertColor = aVertColor;
+            vVertColor = mix(aVertColor, uPaintColor, clamp(aPaintMask, 0.0, 1.0));
             gl_Position = uMvpMatrix * vec4(aPosition, 1.0);
         }
     """
@@ -45,7 +47,7 @@ object Shaders {
             vec3 halfDir = normalize(lightDir + viewDir);
 
             float diff = max(dot(norm, lightDir), 0.0);
-            float spec = pow(max(dot(norm, halfDir), 0.0), 20.0) * 0.22;
+            float spec = pow(max(dot(norm, halfDir), 0.0), 22.0) * 0.24;
             float ambient = 0.56;
 
             vec3 baseRgb = vVertColor * uTintColor.rgb;
@@ -58,14 +60,14 @@ object Shaders {
             }
 
             float dist = length(uCameraPos - vWorldPos);
-            float fogFactor = clamp((dist - 55.0) / 90.0, 0.0, 1.0);
+            float fogFactor = clamp((dist - 70.0) / 130.0, 0.0, 1.0);
             vec3 finalRgb = mix(litRgb, uFogColor, fogFactor);
             gl_FragColor = vec4(finalRgb, uTintColor.a);
         }
     """
 
     /**
-     * Unlit Shader: Used for sky dome, blob shadows, boost flames, drift sparks, and dust particles.
+     * Unlit Shader: Used for sky dome, blob shadows, boost flames, drift sparks, confetti, and dust particles.
      */
     const val UNLIT_VERTEX_SHADER = """
         uniform mat4 uMvpMatrix;
