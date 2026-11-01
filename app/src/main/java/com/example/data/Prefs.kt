@@ -2,6 +2,7 @@ package com.example.data
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.os.Build
 import android.util.Log
 import com.example.game.CcClass
 import com.example.game.ControlSchemeType
@@ -17,6 +18,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import java.io.DataInputStream
 import java.io.DataOutputStream
 import java.io.File
+import java.util.UUID
+import javax.crypto.Mac
+import javax.crypto.spec.SecretKeySpec
 import kotlin.random.Random
 
 data class GhostPoseSample(
@@ -38,14 +42,29 @@ data class UserProfileAndSettings(
     val playerName: String = "RACER",
     val kartColorIndex: Int = 0,
     val kartBody: KartBodyType = KartBodyType.CLASSIC,
-    val controlScheme: ControlSchemeType = ControlSchemeType.THUMB_STEER,
+    val toyCarLiveryIndex: Int = 0, // 0..2 hue shift liveries for Classic Toy (Part B8)
+    val wheelStyleIndex: Int = 0,
+    val controlScheme: ControlSchemeType = ControlSchemeType.SMART,
     val steerSensitivity: Float = 1.0f,
+    val tiltDeadZoneDeg: Float = 2.0f,
     val autoAccelerate: Boolean = true,
     val smartSteering: Boolean = true,
+    val separateHopButton: Boolean = false,
+    val controlsOpacity: Float = 0.90f, // 0.30..1.00 (Part F6)
+    val controlsScale: Float = 1.00f,   // 0.85..1.15 (Part F6)
+    val controlsOffsetXFrac: Float = 0f,
+    val controlsOffsetYFrac: Float = 0f,
+    val leftHandedMirror: Boolean = false,
     val showMinimap: Boolean = true,
+    val showHudDebugZones: Boolean = false, // Part E5
     val soundEnabled: Boolean = true,
     val hapticsEnabled: Boolean = true,
     val graphicsQuality: GraphicsQuality = GraphicsQuality.MEDIUM,
+    val fxaaEnabled: Boolean = true,
+    val bloomEnabled: Boolean = true,
+    val tiltShiftDofEnabled: Boolean = true,
+    val filmGrainEnabled: Boolean = true,
+    val reducedMotion: Boolean = false,
     val cpuDifficulty: CpuDifficulty = CpuDifficulty.PRO,
     val raceWithBots: Boolean = true,
     val botCount: Int = 7,
@@ -56,19 +75,97 @@ data class UserProfileAndSettings(
     val selectedCup: CupType = CupType.DESK_CUP,
     val hasSeenRocketStartTip: Boolean = false,
     val hasSeenHowToPlay: Boolean = false,
+    val completedInteractiveTutorial: Boolean = false,
+    val coinsBalance: Int = 300,
+    val gemsBalance: Int = 60,
+    val deskPassXp: Int = 240,
+    val hasDeskPassPremium: Boolean = false,
+    val hasProUpgrade: Boolean = false,
+    val ownedShopIds: Set<String> = setOf("body_0", "paint_0", "paint_1", "paint_2"),
+    val claimedFreePassTiers: Set<Int> = emptySet(),
+    val claimedPremiumPassTiers: Set<Int> = emptySet(),
+    val soloRacesSinceLastAd: Int = 0,
     val bestLapMsByTrack: Map<Int, Long> = emptyMap(),
     val cupTrophies: Map<Int, Int> = emptyMap() // cupId -> best place (1=Gold, 2=Silver, 3=Bronze)
 ) {
     val kartColorHex: Long
         get() = GameConstants.KART_COLORS.getOrElse(kartColorIndex) { GameConstants.KART_COLORS[0] }
+
+    val deskPassLevel: Int
+        get() = ((deskPassXp / 200) + 1).coerceIn(1, 40)
+
+    val deskPassLevelProgress: Float
+        get() = ((deskPassXp % 200) / 200f).coerceIn(0f, 1f)
+
+    val kartLiveryIndex: Int get() = toyCarLiveryIndex
+    val buttonScale: Float get() = controlsScale
+    val hudOpacity: Float get() = controlsOpacity
+    val swapHands: Boolean get() = leftHandedMirror
+    val contactShadowsEnabled: Boolean get() = fxaaEnabled
+    val showDebugHudZones: Boolean get() = showHudDebugZones
+    val starterPackOwned: Boolean get() = "starter_pack" in ownedShopIds
+    val proUnlocked: Boolean get() = hasProUpgrade
+    val trackPackUnlocked: Boolean get() = hasProUpgrade || "track_pack" in ownedShopIds
+    val deskPassPremium: Boolean get() = hasDeskPassPremium
+    val unlockedCosmetics: Set<String> get() = ownedShopIds
+    val unlockedBodies: Set<Int>
+        get() = (0..5).filter { it < 5 || hasProUpgrade || "body_$it" in ownedShopIds }.toSet()
+    val claimedPassTiers: Set<Int> get() = claimedFreePassTiers + claimedPremiumPassTiers
 }
 
 class Prefs(private val context: Context) {
     private val prefs: SharedPreferences =
         context.getSharedPreferences("desk_racer_lan_prefs", Context.MODE_PRIVATE)
 
+    private val installId: String = run {
+        val existing = prefs.getString("install_id", null)
+        if (!existing.isNullOrBlank()) {
+            existing
+        } else {
+            val generated = UUID.randomUUID().toString()
+            prefs.edit().putString("install_id", generated).apply()
+            generated
+        }
+    }
+
     private val _state = MutableStateFlow(load())
     val state: StateFlow<UserProfileAndSettings> = _state.asStateFlow()
+
+    /**
+     * Part J1: HMAC key derived from Build fingerprint + installId to deter casual tampering
+     * of offline coin/gem balances.
+     */
+    private fun computeBalanceHmac(coins: Int, gems: Int, xp: Int, pro: Boolean, pass: Boolean): String {
+        return try {
+            val secret = "DRv3:${Build.FINGERPRINT}:${Build.MODEL}:$installId"
+            val mac = Mac.getInstance("HmacSHA256")
+            mac.init(SecretKeySpec(secret.toByteArray(Charsets.UTF_8), "HmacSHA256"))
+            val payload = "$coins|$gems|$xp|$pro|$pass".toByteArray(Charsets.UTF_8)
+            val digest = mac.doFinal(payload)
+            digest.joinToString("") { "%02x".format(it) }.take(32)
+        } catch (e: Exception) {
+            Log.w("DeskRacer", "HMAC fallback: ${e.message}")
+            "${coins * 31 + gems * 17 + xp}"
+        }
+    }
+
+    private fun saveBalancesWithHmac(
+        coins: Int,
+        gems: Int,
+        xp: Int,
+        pro: Boolean,
+        pass: Boolean
+    ) {
+        val tag = computeBalanceHmac(coins, gems, xp, pro, pass)
+        prefs.edit()
+            .putInt("coins_balance", coins)
+            .putInt("gems_balance", gems)
+            .putInt("desk_pass_xp", xp)
+            .putBoolean("has_pro_upgrade", pro)
+            .putBoolean("has_desk_pass_prem", pass)
+            .putString("wallet_hmac", tag)
+            .apply()
+    }
 
     private fun load(): UserProfileAndSettings {
         val defaultName = "RACER${Random.nextInt(10, 99)}"
@@ -82,18 +179,58 @@ class Prefs(private val context: Context) {
             val rank = prefs.getInt("cup_trophy_$cupId", 0)
             if (rank in 1..3) trophies[cupId] = rank
         }
+
+        val rawCoins = prefs.getInt("coins_balance", 300).coerceAtLeast(0)
+        val rawGems = prefs.getInt("gems_balance", 60).coerceAtLeast(0)
+        val rawXp = prefs.getInt("desk_pass_xp", 240).coerceAtLeast(0)
+        val rawPro = prefs.getBoolean("has_pro_upgrade", false)
+        val rawPass = prefs.getBoolean("has_desk_pass_prem", false)
+        val storedHmac = prefs.getString("wallet_hmac", null)
+        val expectedHmac = computeBalanceHmac(rawCoins, rawGems, rawXp, rawPro, rawPass)
+
+        val validWallet = storedHmac == null || storedHmac == expectedHmac
+        if (storedHmac == null) {
+            saveBalancesWithHmac(rawCoins, rawGems, rawXp, rawPro, rawPass)
+        }
+
+        val scheme = ControlSchemeType.fromId(prefs.getInt("control_scheme", 0))
+        val ownedIds = prefs.getStringSet(
+            "owned_shop_ids",
+            setOf("body_0", "paint_0", "paint_1", "paint_2")
+        )?.toSet() ?: setOf("body_0", "paint_0", "paint_1", "paint_2")
+
+        val claimedFree = prefs.getStringSet("claimed_free_tiers", emptySet())
+            ?.mapNotNull { it.toIntOrNull() }?.toSet() ?: emptySet()
+        val claimedPrem = prefs.getStringSet("claimed_prem_tiers", emptySet())
+            ?.mapNotNull { it.toIntOrNull() }?.toSet() ?: emptySet()
+
         return UserProfileAndSettings(
-            playerName = prefs.getString("player_name", defaultName)?.take(10) ?: defaultName,
+            playerName = prefs.getString("player_name", defaultName)?.take(12) ?: defaultName,
             kartColorIndex = prefs.getInt("kart_color_idx", 0).coerceIn(0, GameConstants.KART_COLORS.lastIndex),
             kartBody = KartBodyType.fromId(prefs.getInt("kart_body_id", 0)),
-            controlScheme = ControlSchemeType.fromId(prefs.getInt("control_scheme", 0)),
-            steerSensitivity = prefs.getFloat("steer_sensitivity", 1.0f).coerceIn(0.5f, 1.8f),
+            toyCarLiveryIndex = prefs.getInt("toy_livery_idx", 0).coerceIn(0, 2),
+            wheelStyleIndex = prefs.getInt("wheel_style_idx", 0).coerceIn(0, 5),
+            controlScheme = scheme,
+            steerSensitivity = prefs.getFloat("steer_sensitivity", 1.0f).coerceIn(0.6f, 1.6f),
+            tiltDeadZoneDeg = prefs.getFloat("tilt_deadzone_deg", 2.0f).coerceIn(0.5f, 6.0f),
             autoAccelerate = prefs.getBoolean("auto_accelerate", true),
-            smartSteering = prefs.getBoolean("smart_steering", true),
+            smartSteering = prefs.getBoolean("smart_steering", scheme == ControlSchemeType.SMART),
+            separateHopButton = prefs.getBoolean("separate_hop_btn", false),
+            controlsOpacity = prefs.getFloat("controls_opacity", 0.90f).coerceIn(0.30f, 1.00f),
+            controlsScale = prefs.getFloat("controls_scale", 1.00f).coerceIn(0.85f, 1.15f),
+            controlsOffsetXFrac = prefs.getFloat("controls_offset_x", 0f).coerceIn(-0.15f, 0.15f),
+            controlsOffsetYFrac = prefs.getFloat("controls_offset_y", 0f).coerceIn(-0.15f, 0.15f),
+            leftHandedMirror = prefs.getBoolean("left_handed_mirror", false),
             showMinimap = prefs.getBoolean("show_minimap", true),
+            showHudDebugZones = prefs.getBoolean("show_hud_debug_zones", false),
             soundEnabled = prefs.getBoolean("sound_enabled", true),
             hapticsEnabled = prefs.getBoolean("haptics_enabled", true),
             graphicsQuality = GraphicsQuality.fromId(prefs.getInt("graphics_quality", 1)),
+            fxaaEnabled = prefs.getBoolean("fxaa_enabled", true),
+            bloomEnabled = prefs.getBoolean("bloom_enabled", true),
+            tiltShiftDofEnabled = prefs.getBoolean("tilt_shift_dof", true),
+            filmGrainEnabled = prefs.getBoolean("film_grain", true),
+            reducedMotion = prefs.getBoolean("reduced_motion", false),
             cpuDifficulty = CpuDifficulty.fromId(prefs.getInt("cpu_difficulty", 1)),
             raceWithBots = prefs.getBoolean("race_with_bots", true),
             botCount = prefs.getInt("bot_count", 7).coerceIn(0, 7),
@@ -104,13 +241,22 @@ class Prefs(private val context: Context) {
             selectedCup = CupType.fromId(prefs.getInt("selected_cup_id", 0)),
             hasSeenRocketStartTip = prefs.getBoolean("seen_rocket_tip", false),
             hasSeenHowToPlay = prefs.getBoolean("seen_how_to_play", false),
+            completedInteractiveTutorial = prefs.getBoolean("completed_tutorial", false),
+            coinsBalance = if (validWallet) rawCoins else 300,
+            gemsBalance = if (validWallet) rawGems else 60,
+            deskPassXp = if (validWallet) rawXp else 240,
+            hasDeskPassPremium = if (validWallet) rawPass else false,
+            hasProUpgrade = if (validWallet) rawPro else false,
+            ownedShopIds = ownedIds,
+            claimedFreePassTiers = claimedFree,
+            claimedPremiumPassTiers = claimedPrem,
             bestLapMsByTrack = bestLaps,
             cupTrophies = trophies
         )
     }
 
     fun updatePlayerName(name: String) {
-        val clean = name.trim().take(10).ifEmpty { "RACER" }
+        val clean = name.trim().take(12).ifEmpty { "RACER" }
         prefs.edit().putString("player_name", clean).apply()
         _state.value = _state.value.copy(playerName = clean)
     }
@@ -126,15 +272,50 @@ class Prefs(private val context: Context) {
         _state.value = _state.value.copy(kartBody = body)
     }
 
+    fun updateToyCarLivery(index: Int) {
+        val idx = index.coerceIn(0, 2)
+        prefs.edit().putInt("toy_livery_idx", idx).apply()
+        _state.value = _state.value.copy(toyCarLiveryIndex = idx)
+    }
+
+    fun updateWheelStyle(index: Int) {
+        val idx = index.coerceIn(0, 5)
+        prefs.edit().putInt("wheel_style_idx", idx).apply()
+        _state.value = _state.value.copy(wheelStyleIndex = idx)
+    }
+
     fun updateControlScheme(scheme: ControlSchemeType) {
-        prefs.edit().putInt("control_scheme", scheme.id).apply()
-        _state.value = _state.value.copy(controlScheme = scheme)
+        val smartDefault = when (scheme) {
+            ControlSchemeType.SMART -> true
+            ControlSchemeType.PRO -> false
+            else -> _state.value.smartSteering
+        }
+        val autoAccelDefault = when (scheme) {
+            ControlSchemeType.SMART -> true
+            else -> _state.value.autoAccelerate
+        }
+        prefs.edit()
+            .putInt("control_scheme", scheme.id)
+            .putBoolean("smart_steering", smartDefault)
+            .putBoolean("auto_accelerate", autoAccelDefault)
+            .apply()
+        _state.value = _state.value.copy(
+            controlScheme = scheme,
+            smartSteering = smartDefault,
+            autoAccelerate = autoAccelDefault
+        )
     }
 
     fun updateSteerSensitivity(sens: Float) {
-        val c = sens.coerceIn(0.5f, 1.8f)
+        val c = sens.coerceIn(0.6f, 1.6f)
         prefs.edit().putFloat("steer_sensitivity", c).apply()
         _state.value = _state.value.copy(steerSensitivity = c)
+    }
+
+    fun updateTiltDeadZone(deg: Float) {
+        val c = deg.coerceIn(0.5f, 6.0f)
+        prefs.edit().putFloat("tilt_deadzone_deg", c).apply()
+        _state.value = _state.value.copy(tiltDeadZoneDeg = c)
     }
 
     fun updateAutoAccelerate(enabled: Boolean) {
@@ -147,9 +328,56 @@ class Prefs(private val context: Context) {
         _state.value = _state.value.copy(smartSteering = enabled)
     }
 
+    fun updateSeparateHopButton(enabled: Boolean) {
+        prefs.edit().putBoolean("separate_hop_btn", enabled).apply()
+        _state.value = _state.value.copy(separateHopButton = enabled)
+    }
+
+    fun updateControlsLayout(
+        opacity: Float = _state.value.controlsOpacity,
+        scale: Float = _state.value.controlsScale,
+        offsetXFrac: Float = _state.value.controlsOffsetXFrac,
+        offsetYFrac: Float = _state.value.controlsOffsetYFrac,
+        leftHanded: Boolean = _state.value.leftHandedMirror
+    ) {
+        val op = opacity.coerceIn(0.30f, 1.00f)
+        val sc = scale.coerceIn(0.85f, 1.15f)
+        val ox = offsetXFrac.coerceIn(-0.15f, 0.15f)
+        val oy = offsetYFrac.coerceIn(-0.15f, 0.15f)
+        prefs.edit()
+            .putFloat("controls_opacity", op)
+            .putFloat("controls_scale", sc)
+            .putFloat("controls_offset_x", ox)
+            .putFloat("controls_offset_y", oy)
+            .putBoolean("left_handed_mirror", leftHanded)
+            .apply()
+        _state.value = _state.value.copy(
+            controlsOpacity = op,
+            controlsScale = sc,
+            controlsOffsetXFrac = ox,
+            controlsOffsetYFrac = oy,
+            leftHandedMirror = leftHanded
+        )
+    }
+
+    fun resetControlsLayout() {
+        updateControlsLayout(
+            opacity = 0.90f,
+            scale = 1.00f,
+            offsetXFrac = 0f,
+            offsetYFrac = 0f,
+            leftHanded = false
+        )
+    }
+
     fun updateShowMinimap(enabled: Boolean) {
         prefs.edit().putBoolean("show_minimap", enabled).apply()
         _state.value = _state.value.copy(showMinimap = enabled)
+    }
+
+    fun updateShowHudDebugZones(enabled: Boolean) {
+        prefs.edit().putBoolean("show_hud_debug_zones", enabled).apply()
+        _state.value = _state.value.copy(showHudDebugZones = enabled)
     }
 
     fun updateSoundEnabled(enabled: Boolean) {
@@ -165,6 +393,29 @@ class Prefs(private val context: Context) {
     fun updateGraphicsQuality(quality: GraphicsQuality) {
         prefs.edit().putInt("graphics_quality", quality.id).apply()
         _state.value = _state.value.copy(graphicsQuality = quality)
+    }
+
+    fun updatePostEffects(
+        fxaa: Boolean = _state.value.fxaaEnabled,
+        bloom: Boolean = _state.value.bloomEnabled,
+        tiltShiftDof: Boolean = _state.value.tiltShiftDofEnabled,
+        filmGrain: Boolean = _state.value.filmGrainEnabled,
+        reducedMotion: Boolean = _state.value.reducedMotion
+    ) {
+        prefs.edit()
+            .putBoolean("fxaa_enabled", fxaa)
+            .putBoolean("bloom_enabled", bloom)
+            .putBoolean("tilt_shift_dof", tiltShiftDof)
+            .putBoolean("film_grain", filmGrain)
+            .putBoolean("reduced_motion", reducedMotion)
+            .apply()
+        _state.value = _state.value.copy(
+            fxaaEnabled = fxaa,
+            bloomEnabled = bloom,
+            tiltShiftDofEnabled = tiltShiftDof,
+            filmGrainEnabled = filmGrain,
+            reducedMotion = reducedMotion
+        )
     }
 
     fun updateCpuDifficulty(diff: CpuDifficulty) {
@@ -210,6 +461,155 @@ class Prefs(private val context: Context) {
         _state.value = _state.value.copy(selectedCup = cup)
     }
 
+    fun addRaceRewards(coinsEarned: Int, xpEarned: Int) {
+        val cur = _state.value
+        val proMult = if (cur.hasProUpgrade) 1.10f else 1.0f
+        val newCoins = (cur.coinsBalance + (coinsEarned * proMult).toInt()).coerceAtLeast(0)
+        val newXp = (cur.deskPassXp + xpEarned).coerceAtLeast(0)
+        saveBalancesWithHmac(newCoins, cur.gemsBalance, newXp, cur.hasProUpgrade, cur.hasDeskPassPremium)
+        _state.value = cur.copy(
+            coinsBalance = newCoins,
+            deskPassXp = newXp,
+            soloRacesSinceLastAd = cur.soloRacesSinceLastAd + 1
+        )
+    }
+
+    fun addCoinsAndGems(deltaCoins: Int, deltaGems: Int): Boolean {
+        val cur = _state.value
+        val nextCoins = cur.coinsBalance + deltaCoins
+        val nextGems = cur.gemsBalance + deltaGems
+        if (nextCoins < 0 || nextGems < 0) return false
+        saveBalancesWithHmac(nextCoins, nextGems, cur.deskPassXp, cur.hasProUpgrade, cur.hasDeskPassPremium)
+        _state.value = cur.copy(coinsBalance = nextCoins, gemsBalance = nextGems)
+        return true
+    }
+
+    fun unlockShopItem(itemId: String, costCoins: Int = 0, costGems: Int = 0): Boolean {
+        val cur = _state.value
+        if (itemId in cur.ownedShopIds) return true
+        if (cur.coinsBalance < costCoins || cur.gemsBalance < costGems) return false
+        val nextCoins = cur.coinsBalance - costCoins
+        val nextGems = cur.gemsBalance - costGems
+        val nextOwned = cur.ownedShopIds + itemId
+        saveBalancesWithHmac(nextCoins, nextGems, cur.deskPassXp, cur.hasProUpgrade, cur.hasDeskPassPremium)
+        prefs.edit().putStringSet("owned_shop_ids", nextOwned).apply()
+        _state.value = cur.copy(
+            coinsBalance = nextCoins,
+            gemsBalance = nextGems,
+            ownedShopIds = nextOwned
+        )
+        return true
+    }
+
+    fun grantEntitlement(proUpgrade: Boolean = false, deskPassPremium: Boolean = false, bonusGems: Int = 0, unlockId: String? = null) {
+        val cur = _state.value
+        val nextPro = cur.hasProUpgrade || proUpgrade
+        val nextPass = cur.hasDeskPassPremium || deskPassPremium
+        val nextGems = cur.gemsBalance + bonusGems
+        val nextOwned = if (unlockId != null) cur.ownedShopIds + unlockId else cur.ownedShopIds
+        saveBalancesWithHmac(cur.coinsBalance, nextGems, cur.deskPassXp, nextPro, nextPass)
+        prefs.edit().putStringSet("owned_shop_ids", nextOwned).apply()
+        _state.value = cur.copy(
+            hasProUpgrade = nextPro,
+            hasDeskPassPremium = nextPass,
+            gemsBalance = nextGems,
+            ownedShopIds = nextOwned
+        )
+    }
+
+    fun claimDeskPassTier(tier: Int, isPremiumTrack: Boolean, rewardCoins: Int, rewardGems: Int, rewardShopId: String?) {
+        val cur = _state.value
+        if (tier > cur.deskPassLevel) return
+        if (isPremiumTrack && !cur.hasDeskPassPremium) return
+        if (!isPremiumTrack && tier in cur.claimedFreePassTiers) return
+        if (isPremiumTrack && tier in cur.claimedPremiumPassTiers) return
+
+        val nextCoins = cur.coinsBalance + rewardCoins
+        val nextGems = cur.gemsBalance + rewardGems
+        val nextOwned = if (rewardShopId != null) cur.ownedShopIds + rewardShopId else cur.ownedShopIds
+        val nextFree = if (!isPremiumTrack) cur.claimedFreePassTiers + tier else cur.claimedFreePassTiers
+        val nextPrem = if (isPremiumTrack) cur.claimedPremiumPassTiers + tier else cur.claimedPremiumPassTiers
+
+        saveBalancesWithHmac(nextCoins, nextGems, cur.deskPassXp, cur.hasProUpgrade, cur.hasDeskPassPremium)
+        prefs.edit()
+            .putStringSet("owned_shop_ids", nextOwned)
+            .putStringSet("claimed_free_tiers", nextFree.map { it.toString() }.toSet())
+            .putStringSet("claimed_prem_tiers", nextPrem.map { it.toString() }.toSet())
+            .apply()
+
+        _state.value = cur.copy(
+            coinsBalance = nextCoins,
+            gemsBalance = nextGems,
+            ownedShopIds = nextOwned,
+            claimedFreePassTiers = nextFree,
+            claimedPremiumPassTiers = nextPrem
+        )
+    }
+
+    fun updateKartLivery(index: Int) = updateToyCarLivery(index)
+    fun updateSwapHands(swap: Boolean) = updateControlsLayout(leftHanded = swap)
+    fun updateButtonScale(scale: Float) = updateControlsLayout(scale = scale)
+    fun updateHudOpacity(opacity: Float) = updateControlsLayout(opacity = opacity)
+    fun updatePostFxEnabled(enabled: Boolean) = updatePostEffects(fxaa = enabled, bloom = enabled)
+    fun updateContactShadowsEnabled(enabled: Boolean) = updatePostEffects(fxaa = enabled)
+    fun updateShowDebugHudZones(enabled: Boolean) = updateShowHudDebugZones(enabled)
+
+    fun addCoins(amount: Int) {
+        if (amount > 0) addCoinsAndGems(amount, 0)
+    }
+
+    fun addGems(amount: Int) {
+        if (amount > 0) addCoinsAndGems(0, amount)
+    }
+
+    fun spendCoins(amount: Int): Boolean = addCoinsAndGems(-amount, 0)
+
+    fun spendGems(amount: Int): Boolean = addCoinsAndGems(0, -amount)
+
+    fun addDeskPassXp(xp: Int) {
+        if (xp > 0) addRaceRewards(0, xp)
+    }
+
+    fun currentDeskPassTier(): Int = _state.value.deskPassLevel
+
+    fun unlockBody(bodyId: Int) {
+        unlockShopItem("body_$bodyId", 0, 0)
+    }
+
+    fun unlockCosmetic(id: String) {
+        unlockShopItem(id, 0, 0)
+    }
+
+    fun grantEntitlement(
+        starterPack: Boolean = false,
+        proUnlocked: Boolean = false,
+        trackPackUnlocked: Boolean = false,
+        deskPassPremium: Boolean = false,
+        bonusCoins: Int = 0,
+        bonusGems: Int = 0
+    ) {
+        if (bonusCoins > 0) addCoinsAndGems(bonusCoins, 0)
+        val unlockKey = when {
+            starterPack -> "starter_pack"
+            trackPackUnlocked -> "track_pack"
+            else -> null
+        }
+        grantEntitlement(
+            proUpgrade = proUnlocked,
+            deskPassPremium = deskPassPremium,
+            bonusGems = bonusGems,
+            unlockId = unlockKey
+        )
+    }
+
+    fun claimDeskPassTier(tier: Int): Boolean {
+        val cur = _state.value
+        if (tier > cur.deskPassLevel) return false
+        if (tier in cur.claimedFreePassTiers) return false
+        claimDeskPassTier(tier, isPremiumTrack = false, rewardCoins = 0, rewardGems = 0, rewardShopId = null)
+        return true
+    }
+
     fun recordCupTrophy(cupId: Int, rank: Int) {
         if (rank !in 1..3) return
         val existing = _state.value.cupTrophies[cupId] ?: 99
@@ -228,7 +628,7 @@ class Prefs(private val context: Context) {
 
     fun markHowToPlaySeen() {
         prefs.edit().putBoolean("seen_how_to_play", true).apply()
-        _state.value = _state.value.copy(hasSeenHowToPlay = true)
+        _state.value = _state.value.copy(hasSeenHowToPlay = true, completedInteractiveTutorial = true)
     }
 
     fun recordLapTime(trackId: Int, lapMs: Long): Boolean {
@@ -244,24 +644,21 @@ class Prefs(private val context: Context) {
         return false
     }
 
-    /**
-     * Saves a 20 Hz Time Trial ghost lap to local file storage (Part C).
-     */
     fun saveTimeTrialGhost(ghost: StoredGhostLap) {
         try {
             val file = File(context.filesDir, "ghost_track_${ghost.trackId}.bin")
-            DataOutputStream(file.outputStream().buffered()).use { dos ->
-                dos.writeInt(1) // format version
-                dos.writeInt(ghost.trackId)
-                dos.writeLong(ghost.lapTimeMs)
-                dos.writeInt(ghost.bodyType.id)
-                dos.writeLong(ghost.colorHex)
-                dos.writeInt(ghost.samples.size)
+            DataOutputStream(file.outputStream().buffered()).use { out ->
+                out.writeInt(0x44524732) // "DRG2"
+                out.writeInt(ghost.trackId)
+                out.writeLong(ghost.lapTimeMs)
+                out.writeInt(ghost.bodyType.id)
+                out.writeLong(ghost.colorHex)
+                out.writeInt(ghost.samples.size)
                 for (s in ghost.samples) {
-                    dos.writeFloat(s.x)
-                    dos.writeFloat(s.y)
-                    dos.writeFloat(s.z)
-                    dos.writeFloat(s.headingRad)
+                    out.writeFloat(s.x)
+                    out.writeFloat(s.y)
+                    out.writeFloat(s.z)
+                    out.writeFloat(s.headingRad)
                 }
             }
         } catch (e: Exception) {
@@ -273,26 +670,26 @@ class Prefs(private val context: Context) {
         val file = File(context.filesDir, "ghost_track_$trackId.bin")
         if (!file.exists()) return null
         return try {
-            DataInputStream(file.inputStream().buffered()).use { dis ->
-                val ver = dis.readInt()
-                if (ver != 1) return null
-                val tId = dis.readInt()
-                val lapMs = dis.readLong()
-                val body = KartBodyType.fromId(dis.readInt())
-                val color = dis.readLong()
-                val count = dis.readInt().coerceIn(0, 20000)
+            DataInputStream(file.inputStream().buffered()).use { inp ->
+                val magic = inp.readInt()
+                if (magic != 0x44524732) return null
+                val tid = inp.readInt()
+                val lapMs = inp.readLong()
+                val body = KartBodyType.fromId(inp.readInt())
+                val color = inp.readLong()
+                val count = inp.readInt().coerceIn(0, 10_000)
                 val list = ArrayList<GhostPoseSample>(count)
                 for (i in 0 until count) {
                     list.add(
                         GhostPoseSample(
-                            x = dis.readFloat(),
-                            y = dis.readFloat(),
-                            z = dis.readFloat(),
-                            headingRad = dis.readFloat()
+                            x = inp.readFloat(),
+                            y = inp.readFloat(),
+                            z = inp.readFloat(),
+                            headingRad = inp.readFloat()
                         )
                     )
                 }
-                StoredGhostLap(tId, lapMs, body, color, list)
+                StoredGhostLap(tid, lapMs, body, color, list)
             }
         } catch (e: Exception) {
             Log.w("Prefs", "Failed to load ghost for track $trackId: ${e.message}")

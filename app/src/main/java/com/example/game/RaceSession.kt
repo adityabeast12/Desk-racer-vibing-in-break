@@ -61,7 +61,8 @@ data class RenderKartSnapshot(
     val shieldEraserHeld: Boolean,
     val heldItem: ItemType,
     val coinsHeld: Int = 0,
-    val balloonsRemaining: Int = 0
+    val balloonsRemaining: Int = 0,
+    val liveryIndex: Int = 0
 )
 
 data class RenderGhostSnapshot(
@@ -79,7 +80,21 @@ data class RenderProjectileSnapshot(
     val x: Float,
     val y: Float,
     val z: Float,
-    val headingRad: Float
+    val headingRad: Float,
+    val distanceTravelled: Float = 0f
+)
+
+data class RenderPylonSnapshot(
+    val propId: Int,
+    val modelPath: String,
+    val x: Float,
+    val y: Float,
+    val z: Float,
+    val yawRad: Float,
+    val pitchRad: Float,
+    val rollRad: Float,
+    val scale: Float,
+    val radius: Float
 )
 
 data class RenderItemBoxSnapshot(
@@ -120,6 +135,7 @@ data class WorldRenderSnapshot(
     val karts: List<RenderKartSnapshot> = emptyList(),
     val ghostKart: RenderGhostSnapshot? = null,
     val projectiles: List<RenderProjectileSnapshot> = emptyList(),
+    val pylons: List<RenderPylonSnapshot> = emptyList(),
     val itemBoxes: List<RenderItemBoxSnapshot> = emptyList(),
     val coins: List<RenderCoinSnapshot> = emptyList(),
     val dynamicHazards: List<RenderDynamicHazardSnapshot> = emptyList(),
@@ -231,6 +247,27 @@ class RaceSession(
     val itemBoxes = ArrayList<ActiveItemBox>()
     val coins = ArrayList<ActiveCoin>()
     val projectiles = ArrayList<WorldProjectile>()
+    val pylons = ArrayList<ActivePylon>()
+
+    private fun rebuildTrackPylons() {
+        pylons.clear()
+        for (p in currentTrack.placedProps) {
+            if (p.isPylon) {
+                pylons.add(
+                    ActivePylon(
+                        propId = p.id,
+                        modelPath = p.model,
+                        baseX = p.x,
+                        baseY = p.y,
+                        baseZ = p.z,
+                        baseYawRad = p.yawRad,
+                        scale = p.scale,
+                        radius = p.radius
+                    )
+                )
+            }
+        }
+    }
 
     // Remote Kart Snapshot Interpolation Buffer (Part B9: 8 samples per kart)
     private val remoteBuffers = Array(GameConstants.MAX_RACERS) { ArrayDeque<RemoteSnapshotEntry>(8) }
@@ -281,7 +318,8 @@ class RaceSession(
         playerName: String,
         colorHex: Long,
         bodyType: KartBodyType,
-        trackId: Int
+        trackId: Int,
+        liveryIndex: Int = 0
     ) {
         phase = RacePhase.SHOWROOM_MENU
         currentTrack = Tracks.byId(trackId)
@@ -289,6 +327,7 @@ class RaceSession(
         projectiles.clear()
         itemBoxes.clear()
         coins.clear()
+        rebuildTrackPylons()
         val slot0 = currentTrack.startGrid.first()
         val demoKart = KartRuntime(
             slotIndex = 0,
@@ -296,7 +335,8 @@ class RaceSession(
             isHuman = true,
             isLocalPlayer = true,
             colorHex = colorHex,
-            bodyType = bodyType
+            bodyType = bodyType,
+            liveryIndex = liveryIndex
         ).apply {
             x = slot0.x
             y = slot0.y
@@ -416,6 +456,7 @@ class RaceSession(
             coins.add(ActiveCoin(c.id, c.x, c.y, c.z, active = true))
         }
         projectiles.clear()
+        rebuildTrackPylons()
 
         currentLapGhostSamples.clear()
         ghostSampleTickCounter = 0
@@ -750,7 +791,9 @@ class RaceSession(
                             smartSteering = smartSteering,
                             speedScale = ccClass.speedScale,
                             raceElapsedSec = raceElapsedSec,
+                            activePylons = pylons,
                             onWallBump = { synthAudio.playWallBumpTick() },
+                            onPylonKnocked = { synthAudio.playWallBumpTick() },
                             onBoostTriggered = { synthAudio.playBoostWhoosh() },
                             onLanded = { synthAudio.playLandSound() },
                             onRespawnToast = { showToast("RESPAWN", 1.5f) },
@@ -805,6 +848,7 @@ class RaceSession(
                                 smartSteering = true,
                                 speedScale = speedScale,
                                 raceElapsedSec = raceElapsedSec,
+                                activePylons = pylons,
                                 onLapCompleted = { completedLap ->
                                     handleKartLapCompleted(kart, completedLap, raceMs)
                                 }
@@ -812,6 +856,7 @@ class RaceSession(
                         }
                     }
                 }
+                KartPhysics.stepPylons(effectiveDt, pylons)
 
                 // Step Items, Coins & Projectiles
                 if (isHostAuthority || !isMultiplayer) {
@@ -1182,7 +1227,8 @@ class RaceSession(
                 shieldEraserHeld = k.shieldEraserHeld,
                 heldItem = k.heldItem,
                 coinsHeld = k.coinsHeld,
-                balloonsRemaining = if (gameMode == GameMode.BATTLE_BALLOONS) k.balloonsRemaining else 0
+                balloonsRemaining = if (gameMode == GameMode.BATTLE_BALLOONS) k.balloonsRemaining else 0,
+                liveryIndex = k.liveryIndex
             )
         }
 
@@ -1217,7 +1263,23 @@ class RaceSession(
                 x = p.x,
                 y = p.y,
                 z = p.z,
-                headingRad = p.headingRad
+                headingRad = p.headingRad,
+                distanceTravelled = p.distanceTravelled
+            )
+        }
+
+        val pylonSnapshots = pylons.map { py ->
+            RenderPylonSnapshot(
+                propId = py.propId,
+                modelPath = py.modelPath,
+                x = py.x,
+                y = py.y,
+                z = py.z,
+                yawRad = py.yawRad,
+                pitchRad = py.pitchRad,
+                rollRad = py.rollRad,
+                scale = py.scale,
+                radius = py.radius
             )
         }
 
@@ -1281,6 +1343,7 @@ class RaceSession(
             karts = kartSnapshots,
             ghostKart = ghostSnap,
             projectiles = projSnapshots,
+            pylons = pylonSnapshots,
             itemBoxes = boxSnapshots,
             coins = coinSnapshots,
             dynamicHazards = hazardSnapshots,

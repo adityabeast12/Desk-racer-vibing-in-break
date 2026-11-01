@@ -43,6 +43,8 @@ object GameConstants {
     const val FALL_OFF_Y = -5f
     const val LAKITU_RESPAWN_SEC = 1.00f
     const val GHOST_AFTER_RESPAWN_SEC = 1.50f
+    const val PYLON_RESPAWN_SEC = 6.00f       // Part H3: Knockable pylons respawn upright after 6s
+    const val PYLON_HIT_SPEED_FACTOR = 0.85f  // Part H3: Knockable pylons slow kart by 15%
 
     // Progress Watchdog (Part B5)
     const val WATCHDOG_WINDOW_SEC = 3.0f
@@ -86,7 +88,7 @@ object GameConstants {
     const val MAGNET_DURATION_SEC = 3.0f
     const val MAGNET_PULL_ACCEL = 16f
 
-    // Networking & Remote Interpolation (Part B9)
+    // Networking & Remote Interpolation
     const val PROTOCOL_VERSION: Byte = 3
     const val UDP_DISCOVERY_PORT = 47777
     const val TCP_CONTROL_PORT = 47778
@@ -103,29 +105,40 @@ object GameConstants {
     // Grand Prix Points for 8 positions
     val GRAND_PRIX_POINTS = intArrayOf(15, 12, 10, 8, 6, 4, 2, 1)
 
-    // Palette of 8 Kart Swatches
+    // Palette of 16 Kart Swatches
     val KART_COLORS = longArrayOf(
-        0xFFFF2A5FL, // Crimson Red
-        0xFF00F5D4L, // Rival Teal
-        0xFF38BDF8L, // Sky Cyan
-        0xFFFACC15L, // Ruler Yellow
-        0xFF22C55EL, // Nitro Green
+        0xFFFF3D7FL, // Hot Pink
+        0xFFFFB547L, // Lamp Amber
+        0xFF2DE2E6L, // Boost Cyan
+        0xFFA3E635L, // Success Lime
+        0xFFFB7185L, // Danger Coral
         0xFFA855F7L, // Hyper Purple
-        0xFFF97316L, // Blaze Orange
-        0xFFF8FAFCL  // Chalk White
+        0xFF3B82F6L, // Cobalt Blue
+        0xFFF8FAFCL, // Chalk White
+        0xFFEF4444L, // Racing Red
+        0xFF10B981L, // Mint Emerald
+        0xFFFACC15L, // Solar Gold
+        0xFFF97316L, // Tangerine
+        0xFFEC4899L, // Magenta Neon
+        0xFF06B6D4L, // Aqua Marine
+        0xFF8B5CF6L, // Electric Violet
+        0xFF94A3B8L  // Titanium Silver
     )
 
     val KART_COLOR_NAMES = arrayOf(
-        "Crimson", "Teal", "Sky", "Yellow", "Emerald", "Purple", "Blaze", "Chalk"
+        "Hot Pink", "Lamp Amber", "Boost Cyan", "Lime",
+        "Coral", "Purple", "Cobalt", "Chalk",
+        "Crimson", "Emerald", "Gold", "Tangerine",
+        "Magenta", "Aqua", "Violet", "Silver"
     )
 
     val ROTATING_LOADING_TIPS = arrayOf(
         "Hold DRIFT through a corner until sparks turn purple for an Ultra Mini-Turbo!",
         "Tap gas in the 0.35s window right after '2' fades for a Rocket Start!",
         "Collect up to 10 gold coins on the racing line for +6% extra top speed!",
-        "Hold the ITEM button with a Pink Eraser to trail it behind you as a shield!",
+        "Traffic cones & chess pawns are knockable pylons — clip the apex with only 15% slowdown!",
         "Tap DRIFT right at the lip of a bridge or ramp to pull off a Trick Boost!",
-        "Paint puddles on Art Desk tint your kart and trigger an instant mini-turbo!"
+        "Host Shares the Party: any Track Pack owned by the host is playable by the whole LAN lobby!"
     )
 }
 
@@ -134,10 +147,15 @@ enum class KartBodyType(
     val title: String,
     val subtitle: String,
     val drmAssetPath: String,
+    val isDrm2: Boolean = false,
     val mass: Float,
     val topSpeedFactor: Float,
     val accelFactor: Float,
-    val handlingFactor: Float
+    val handlingFactor: Float,
+    val statSpeed: Int = 3,
+    val statAccel: Int = 3,
+    val statHandling: Int = 3,
+    val statWeight: Int = 3
 ) {
     CLASSIC(
         id = 0,
@@ -147,7 +165,11 @@ enum class KartBodyType(
         mass = 1.00f,
         topSpeedFactor = 1.00f,
         accelFactor = 1.00f,
-        handlingFactor = 1.00f
+        handlingFactor = 1.00f,
+        statSpeed = 3,
+        statAccel = 3,
+        statHandling = 3,
+        statWeight = 3
     ),
     PENCIL_ROCKET(
         id = 1,
@@ -157,7 +179,11 @@ enum class KartBodyType(
         mass = 0.78f,
         topSpeedFactor = 0.98f,
         accelFactor = 1.14f,
-        handlingFactor = 1.12f
+        handlingFactor = 1.12f,
+        statSpeed = 3,
+        statAccel = 5,
+        statHandling = 5,
+        statWeight = 1
     ),
     ERASER_TANK(
         id = 2,
@@ -167,7 +193,11 @@ enum class KartBodyType(
         mass = 1.32f,
         topSpeedFactor = 1.04f,
         accelFactor = 0.90f,
-        handlingFactor = 0.92f
+        handlingFactor = 0.92f,
+        statSpeed = 5,
+        statAccel = 2,
+        statHandling = 2,
+        statWeight = 5
     ),
     TURBO_COUPE(
         id = 3,
@@ -177,7 +207,11 @@ enum class KartBodyType(
         mass = 0.94f,
         topSpeedFactor = 1.01f,
         accelFactor = 1.04f,
-        handlingFactor = 1.06f
+        handlingFactor = 1.06f,
+        statSpeed = 4,
+        statAccel = 4,
+        statHandling = 4,
+        statWeight = 2
     ),
     RALLY_HATCH(
         id = 4,
@@ -187,7 +221,27 @@ enum class KartBodyType(
         mass = 1.12f,
         topSpeedFactor = 1.02f,
         accelFactor = 0.97f,
-        handlingFactor = 1.02f
+        handlingFactor = 1.02f,
+        statSpeed = 4,
+        statAccel = 3,
+        statHandling = 4,
+        statWeight = 4
+    ),
+    // Part B8: 6th body "CLASSIC TOY" (DRM2 models/props/toy_car.drm, length 2.2 u, stats 4/2/3/3)
+    CLASSIC_TOY(
+        id = 5,
+        title = "Classic Toy",
+        subtitle = "Vintage die-cast roadster • 3 custom liveries",
+        drmAssetPath = "models/props/toy_car.drm",
+        isDrm2 = true,
+        mass = 1.02f,
+        topSpeedFactor = 1.03f,
+        accelFactor = 0.93f,
+        handlingFactor = 1.00f,
+        statSpeed = 4,
+        statAccel = 2,
+        statHandling = 3,
+        statWeight = 3
     );
 
     companion object {
@@ -195,20 +249,27 @@ enum class KartBodyType(
     }
 }
 
+/**
+ * Part F1-F4: Control schemes (SMART default for new players, PRO, TILT, BUTTONS).
+ */
 enum class ControlSchemeType(val id: Int, val title: String, val description: String) {
-    THUMB_STEER(0, "Thumb Steer Zone", "Left 40% screen virtual thumb-drag steering"),
-    DPAD_BUTTONS(1, "Left / Right Buttons", "Classic arcade directional buttons on left"),
-    TILT_STEER(2, "Gyro Tilt Steer", "Steer by tilting phone in landscape");
+    SMART(0, "Smart Drive", "Auto-accelerate + Smart Steering • Drag left zone to steer"),
+    PRO(1, "Pro Drift", "Manual Gas + Purple Ultra Drifts • Full off-road freedom"),
+    TILT(2, "Gyro Tilt", "Calibrated rotation sensor (±25° lock) • Left-side brake"),
+    BUTTONS(3, "Arcade Buttons", "Large 88dp ◀ ▶ buttons with smooth 120ms analogue ramp");
 
     companion object {
-        fun fromId(id: Int): ControlSchemeType = entries.firstOrNull { it.id == id } ?: THUMB_STEER
+        val THUMB_STEER = SMART
+        val DPAD_BUTTONS = BUTTONS
+        val TILT_STEER = TILT
+        fun fromId(id: Int): ControlSchemeType = entries.firstOrNull { it.id == id } ?: SMART
     }
 }
 
 enum class GraphicsQuality(val id: Int, val label: String, val renderScale: Float) {
-    LOW(0, "Low (Battery 30 FPS)", 0.75f),
-    MEDIUM(1, "Medium (60 FPS)", 1.0f),
-    HIGH(2, "High (60 FPS + 4x MSAA)", 1.0f);
+    LOW(0, "Low (80k tri • Blob Shadows)", 0.75f),
+    MEDIUM(1, "Medium (150k tri • 1024 Shadows)", 1.0f),
+    HIGH(2, "High (250k tri • 2048 PCF + Post FX)", 1.0f);
 
     companion object {
         fun fromId(id: Int): GraphicsQuality = entries.firstOrNull { it.id == id } ?: MEDIUM
@@ -252,7 +313,7 @@ enum class CcClass(val id: Int, val label: String, val speedScale: Float) {
 
 enum class GameMode(val id: Int, val title: String, val subtitle: String) {
     GRAND_PRIX(0, "GRAND PRIX", "4-Race Cup Championship • Desk Cup & Room Cup"),
-    QUICK_RACE(1, "QUICK RACE", "Pick any of the 8 tracks • Custom bots, laps & CC"),
+    QUICK_RACE(1, "QUICK RACE", "Pick any of the 8 real-world tracks • Custom bots, laps & CC"),
     TIME_TRIAL(2, "TIME TRIAL", "3-Lap solo attack • Race your 20 Hz translucent Ghost"),
     MULTIPLAYER(3, "MULTIPLAYER LAN", "Host or Join 2–8 friends over Wi-Fi Hotspot"),
     BATTLE_BALLOONS(4, "BATTLE BALLOONS", "3-Balloon Toy Box Arena • Last kart standing wins");
@@ -264,7 +325,7 @@ enum class GameMode(val id: Int, val title: String, val subtitle: String) {
 
 enum class CupType(val id: Int, val title: String, val subtitle: String, val trackIds: List<Int>) {
     DESK_CUP(0, "DESK CUP", "Study Desk • Gamer Desk • Kitchen Counter • Art Desk", listOf(0, 1, 2, 3)),
-    ROOM_CUP(1, "ROOM CUP", "Bookshelf Spiral • Bathtub Rim • Toy Box • Workshop Bench", listOf(4, 5, 6, 7));
+    ROOM_CUP(1, "ROOM CUP", "Bookshelf Spiral • Bathtub Rim • Toy Box • Midnight Office", listOf(4, 5, 6, 7));
 
     companion object {
         fun fromId(id: Int): CupType = entries.firstOrNull { it.id == id } ?: DESK_CUP

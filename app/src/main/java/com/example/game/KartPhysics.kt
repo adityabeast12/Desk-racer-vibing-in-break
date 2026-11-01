@@ -12,7 +12,8 @@ class KartRuntime(
     var isHuman: Boolean,
     var isLocalPlayer: Boolean,
     var colorHex: Long,
-    var bodyType: KartBodyType = KartBodyType.CLASSIC
+    var bodyType: KartBodyType = KartBodyType.CLASSIC,
+    var liveryIndex: Int = 0
 ) {
     // Spatial & Kinematic State
     var x: Float = 0f
@@ -48,7 +49,7 @@ class KartRuntime(
     // Status Timers & Special Zones
     var spinOutTimerSec: Float = 0f
     var invulnerableTimerSec: Float = 0f
-    var ghostTimerSec: Float = 0f // 1.5s ghost mode after respawn (50% alpha, no kart collisions)
+    var ghostTimerSec: Float = 0f
     var isOffTrack: Boolean = false
     var isOnSlipperyZone: Boolean = false
     var paintTintHex: Long = 0L
@@ -59,7 +60,7 @@ class KartRuntime(
     var isWrongWay: Boolean = false
     var farOffTrackTimerSec: Float = 0f
 
-    // Progress Watchdog (Part B5: 6 samples at 0.5s intervals = 3.0s window)
+    // Progress Watchdog (6 samples at 0.5s intervals = 3.0s window)
     val watchdogHistory = FloatArray(6)
     var watchdogWriteIdx: Int = 0
     var watchdogSampleCount: Int = 0
@@ -67,7 +68,7 @@ class KartRuntime(
     var lastGoodSampleIndex: Int = 0
     var watchdogRespawnCount: Int = 0
 
-    // Rocket Start Tracking (Part D2)
+    // Rocket Start Tracking
     var rocketStartHoldSec: Float = 0f
     var rocketStartOverheated: Boolean = false
     var rocketStartStallTimerSec: Float = 0f
@@ -82,7 +83,7 @@ class KartRuntime(
     var coinsHeld: Int = 0
     var balloonsRemaining: Int = 3
 
-    // Unwrapped Progress & Lap Timing (Part B3 & B4)
+    // Unwrapped Progress & Lap Timing
     var lastSampleIndex: Int = -1
     var trackS: Float = 0f
     var splineDistance: Float = 0f
@@ -170,7 +171,6 @@ object KartPhysics {
             kart.lastGoodSampleIndex = res.sample.index
             kart.trackS = res.sample.distance
             kart.splineDistance = res.sample.distance
-            // Start slightly negative corresponding to grid distance behind start line
             kart.raceDistance = res.sample.distance - track.totalLength
         } else {
             kart.lastSampleIndex = -1
@@ -198,12 +198,10 @@ object KartPhysics {
         kart.isDrifting = false
         kart.driftChargeUnits = 0
         kart.boostTimerSec = 0f
-        // Part D6: getting hit drops 2 coins (and pops 1 balloon in Battle mode)
         kart.coinsHeld = (kart.coinsHeld - 2).coerceAtLeast(0)
         if (kart.balloonsRemaining > 0) {
             kart.balloonsRemaining--
         }
-        // Reset watchdog window so spin-out doesn't count as stuck
         kart.watchdogSampleCount = 0
         kart.watchdogSampleTimerSec = 0f
     }
@@ -219,10 +217,6 @@ object KartPhysics {
         }
     }
 
-    /**
-     * Places the kart on the centreline 10u BEHIND the last good position, facing the spline tangent,
-     * with 1.5s of ghost mode (no kart collisions, 50% alpha) — Part B5.
-     */
     fun respawnKartBehindLastGood(kart: KartRuntime, track: Track) {
         val goodSample = track.samples.getOrElse(kart.lastGoodSampleIndex) { track.samples.first() }
         val targetS = track.wrapDistance(goodSample.distance - GameConstants.WATCHDOG_RESPAWN_BACK_OFFSET)
@@ -251,7 +245,6 @@ object KartPhysics {
         kart.watchdogSampleCount = 0
         kart.watchdogSampleTimerSec = 0f
 
-        // Re-seat trackS without corrupting unwrapped raceDistance
         val deltaBack = track.wrapSignedDelta(respawnSample.distance - kart.trackS)
         kart.trackS = respawnSample.distance
         kart.splineDistance = respawnSample.distance
@@ -264,6 +257,42 @@ object KartPhysics {
         kart.watchdogRespawnCount++
     }
 
+    fun stepPylons(dt: Float, pylons: List<ActivePylon>) {
+        for (p in pylons) {
+            if (!p.isKnocked) continue
+            p.respawnTimerSec -= dt
+            if (p.respawnTimerSec <= 0f) {
+                p.respawnTimerSec = 0f
+                p.x = p.baseX
+                p.y = p.baseY
+                p.z = p.baseZ
+                p.yawRad = p.baseYawRad
+                p.pitchRad = 0f
+                p.rollRad = 0f
+                p.vx = 0f
+                p.vy = 0f
+                p.vz = 0f
+                p.omegaPitch = 0f
+                p.omegaRoll = 0f
+            } else {
+                p.x += p.vx * dt
+                p.z += p.vz * dt
+                p.y += p.vy * dt
+                if (p.y > p.baseY) {
+                    p.vy -= 22f * dt
+                }
+                if (p.y <= p.baseY) {
+                    p.y = p.baseY
+                    p.vy = 0f
+                    p.vx *= (1f - 3.5f * dt).coerceAtLeast(0f)
+                    p.vz *= (1f - 3.5f * dt).coerceAtLeast(0f)
+                }
+                p.pitchRad = (p.pitchRad + p.omegaPitch * dt).coerceAtMost(1.48f)
+                p.rollRad += p.omegaRoll * dt * 0.35f
+            }
+        }
+    }
+
     fun stepKart(
         dt: Float,
         kart: KartRuntime,
@@ -274,7 +303,9 @@ object KartPhysics {
         smartSteering: Boolean,
         speedScale: Float = 1.0f,
         raceElapsedSec: Float = 0f,
+        activePylons: List<ActivePylon> = emptyList(),
         onWallBump: () -> Unit = {},
+        onPylonKnocked: () -> Unit = {},
         onBoostTriggered: () -> Unit = {},
         onLanded: () -> Unit = {},
         onRespawnToast: () -> Unit = {},
@@ -328,7 +359,7 @@ object KartPhysics {
             kart.rocketStartStallTimerSec = (kart.rocketStartStallTimerSec - dt).coerceAtLeast(0f)
         }
 
-        // 3. Windowed Height-Aware Nearest Spline Sample (Part B3)
+        // 3. Windowed Height-Aware Nearest Spline Sample
         val nearestRes = track.findNearestSampleWindowed(
             worldX = kart.x,
             worldY = kart.y,
@@ -457,7 +488,6 @@ object KartPhysics {
             kart.headingRad -= effectiveSteer * steerRate * dt
             kart.frontWheelSteerRad = (-effectiveSteer * 0.42f).coerceIn(-0.45f, 0.45f)
 
-            // Smart Steering Assist pulls gently back inside track boundaries
             if (smartSteering && abs(signedLateral) > halfRoad * 0.82f) {
                 val pullError = wrapAngle(nearestSample.headingRad - kart.headingRad)
                 kart.headingRad += pullError.coerceIn(-0.6f, 0.6f) * GameConstants.SMART_STEERING_PULL * dt
@@ -512,7 +542,6 @@ object KartPhysics {
             kart.forwardSpeed *= (1f - 6f * dt).coerceAtLeast(0f)
         }
 
-        // Spin wheels proportional to distance travelled
         kart.wheelSpinRad = (kart.wheelSpinRad + (kart.forwardSpeed / 0.30f) * dt) % (PI.toFloat() * 20f)
 
         // 8. Velocity Integration with Lateral Grip Damping
@@ -532,7 +561,6 @@ object KartPhysics {
         kart.vx = fwdX * kart.forwardSpeed + rightX * dampedLatVel
         kart.vz = fwdZ * kart.forwardSpeed + rightZ * dampedLatVel
 
-        // Magnet pull toward nearest kart ahead
         if (kart.magnetTimerSec > 0f) {
             val aheadKart = allKarts.firstOrNull {
                 it.slotIndex != kart.slotIndex && it.racePosition == kart.racePosition - 1
@@ -552,7 +580,6 @@ object KartPhysics {
         // 9. Vertical Physics, Elevated Bridges, Guard Walls, Ramps & Sink/Water Hazards
         var supportY = nearestSample.pos.y
 
-        // Elevated bridge guard rails (Study Desk ruler bridge, Gamer Desk laptop bridge, Bookshelf Spiral, Toy Box bridge)
         if (nearestSample.pos.y > 1.5f) {
             val bridgeWallLimit = halfRoad + 0.4f
             val curDx = kart.x - nearestSample.pos.x
@@ -564,7 +591,6 @@ object KartPhysics {
                 kart.x -= nearestSample.rightX * excessLat
                 kart.z -= nearestSample.rightZ * excessLat
                 kart.forwardSpeed *= 0.96f
-                // Redirect heading slightly toward bridge tangent so bots/players slide cleanly along the rail
                 val wallHeadingErr = wrapAngle(nearestSample.headingRad - kart.headingRad)
                 kart.headingRad += wallHeadingErr.coerceIn(-0.4f, 0.4f) * 4.5f * dt
             }
@@ -632,8 +658,8 @@ object KartPhysics {
             return
         }
 
-        // 10. Collisions (Part B1 & B6):
-        // Step A: Mass-weighted Kart-vs-Kart impulse collision (0.25u separation bias, 30% velocity exchange)
+        // 10. Collisions
+        // Step A: Mass-weighted Kart-vs-Kart impulse collision
         if (kart.ghostTimerSec <= 0f) {
             for (other in allKarts) {
                 if (other.slotIndex == kart.slotIndex || other.isRespawning || other.ghostTimerSec > 0f) continue
@@ -650,14 +676,12 @@ object KartPhysics {
                     val invM2 = 1f / m2
                     val invMassSum = invM1 + invM2
 
-                    // 0.25 u separation bias distributed by inverse mass
                     val overlap = (minSep - d) + 0.25f
                     kart.x += nx * overlap * (invM1 / invMassSum)
                     kart.z += nz * overlap * (invM1 / invMassSum)
                     other.x -= nx * overlap * (invM2 / invMassSum)
                     other.z -= nz * overlap * (invM2 / invMassSum)
 
-                    // Exchange 30% of relative normal velocity
                     val rvx = kart.vx - other.vx
                     val rvz = kart.vz - other.vz
                     val relNormalVel = rvx * nx + rvz * nz
@@ -667,7 +691,6 @@ object KartPhysics {
                         kart.vz += nz * (impulse * invM1) * 0.30f
                         other.vx -= nx * (impulse * invM2) * 0.30f
                         other.vz -= nz * (impulse * invM2) * 0.30f
-                        // Update forwardSpeed projection
                         kart.forwardSpeed = kart.vx * fwdX + kart.vz * fwdZ
                     }
 
@@ -680,13 +703,40 @@ object KartPhysics {
             }
         }
 
-        // Step B: Oriented Bounding Box (OBB) & Round Bumper Prop Collisions (Part B1)
+        // Step B: Knockable Pylons (Part H3: 15% slowdown, tumble away, respawn after 6s)
+        var knockedAnyPylon = false
+        for (pylon in activePylons) {
+            if (pylon.isKnocked) continue
+            if (abs(kart.y - pylon.baseY) > 2.5f) continue
+            val dx = kart.x - pylon.x
+            val dz = kart.z - pylon.z
+            val d = hypot(dx, dz)
+            val hitR = pylon.radius + 0.85f
+            if (d < hitR) {
+                kart.forwardSpeed *= 0.85f // 15% speed reduction instead of solid stop
+                val pushDirX = if (d > 0.01f) -dx / d else fwdX
+                val pushDirZ = if (d > 0.01f) -dz / d else fwdZ
+                val launchSpeed = maxOf(abs(kart.forwardSpeed) * 1.2f, 14f)
+                pylon.vx = pushDirX * launchSpeed + kart.vx * 0.35f
+                pylon.vz = pushDirZ * launchSpeed + kart.vz * 0.35f
+                pylon.vy = 3.5f
+                pylon.omegaPitch = 7.8f
+                pylon.omegaRoll = 5.2f
+                pylon.respawnTimerSec = 6.0f
+                knockedAnyPylon = true
+            }
+        }
+        if (knockedAnyPylon) {
+            onPylonKnocked()
+        }
+
+        // Step C: Solid Landmarks & OBB Props
         val hitProp = resolvePropCollisions(kart, track)
         if (hitProp) {
             onWallBump()
         }
 
-        // Step C: Dynamic Hazards (Rolling Peas on Kitchen Counter, Scissors Gate on Art Desk, Spinning Top on Toy Box)
+        // Step D: Dynamic Hazards
         if (kart.invulnerableTimerSec <= 0f && kart.ghostTimerSec <= 0f) {
             for (h in track.dynamicHazards) {
                 val phase = ((raceElapsedSec / h.periodSec) + h.phaseOffset) * (2f * PI.toFloat())
@@ -704,15 +754,13 @@ object KartPhysics {
             }
         }
 
-        // 11. Progress Watchdog (Part B5)
-        // Track far-off-track timer (> roadWidth/2 + 18u for > 2.5s)
+        // 11. Progress Watchdog
         if (abs(signedLateral) > halfRoad + GameConstants.FAR_OFF_TRACK_MARGIN) {
             kart.farOffTrackTimerSec += dt
         } else {
             kart.farOffTrackTimerSec = 0f
         }
 
-        // Wrong-way check (heading opposes spline tangent)
         val dotTangent = fwdX * nearestSample.tangentX + fwdZ * nearestSample.tangentZ
         if (dotTangent < -0.30f && kart.forwardSpeed > 2.0f) {
             kart.wrongWayTimerSec += dt
@@ -765,7 +813,7 @@ object KartPhysics {
         val targetPitch = if (kart.vy > 1f) -0.18f else if (kart.vy < -2f) 0.14f else 0f
         kart.visualPitchRad += (targetPitch - kart.visualPitchRad) * (10f * dt).coerceAtMost(1f)
 
-        // 13. Plane-Crossing Checkpoint Gates & Unwrapped Lap Completion (Part B3)
+        // 13. Plane-Crossing Checkpoint Gates & Unwrapped Lap Completion
         for (g in track.checkpoints) {
             if (g.index == 0) continue
             val prevSide = (kart.prevX - g.center.x) * g.normalX + (kart.prevZ - g.center.z) * g.normalZ
@@ -778,7 +826,6 @@ object KartPhysics {
             }
         }
 
-        // Finish Gate (Gate 0) crossing + unwrapped raceDistance verification
         val gate0 = track.checkpoints[0]
         val prevSide0 = (kart.prevX - gate0.center.x) * gate0.normalX + (kart.prevZ - gate0.center.z) * gate0.normalZ
         val currSide0 = (kart.x - gate0.center.x) * gate0.normalX + (kart.z - gate0.center.z) * gate0.normalZ
@@ -792,20 +839,43 @@ object KartPhysics {
             val completedLap = kart.lapsCompleted
             kart.lap = kart.lapsCompleted + 1
             kart.highestCheckpointPassed = 0
-            // Snap raceDistance cleanly to exact lap boundary + newS so multi-lap drift never accumulates
             kart.raceDistance = kart.lapsCompleted * track.totalLength + newS
             onLapCompleted(completedLap)
         }
     }
 
-    /**
-     * Resolves solid prop collisions using Oriented Bounding Boxes (OBB) respecting prop.yawRad (Part B1)
-     * and round cylinder bumpers with restitution (Part E3).
-     */
     private fun resolvePropCollisions(kart: KartRuntime, track: Track): Boolean {
         var hitAny = false
         val kartRadius = 1.0f
 
+        // 1. Solid Placed Landmarks from JSON (vertical cylinder collisions)
+        for (prop in track.placedProps) {
+            if (!prop.solid || prop.isPylon) continue
+            if (kart.y > prop.y + 25f || kart.y + 1.5f < prop.y) continue
+            val radius = prop.radius + kartRadius
+            val dx = kart.x - prop.x
+            val dz = kart.z - prop.z
+            val d = hypot(dx, dz)
+            if (d < radius && d > 0.001f) {
+                val nx = dx / d
+                val nz = dz / d
+                kart.x = prop.x + nx * (radius + 0.08f)
+                kart.z = prop.z + nz * (radius + 0.08f)
+                if (prop.name.contains("orange", ignoreCase = true)) {
+                    val dot = kart.vx * nx + kart.vz * nz
+                    if (dot < 0f) {
+                        kart.vx -= 1.8f * dot * nx
+                        kart.vz -= 1.8f * dot * nz
+                    }
+                    kart.forwardSpeed *= 0.84f
+                } else {
+                    kart.forwardSpeed *= 0.72f
+                }
+                hitAny = true
+            }
+        }
+
+        // 2. Any remaining solid TrackProps
         for (prop in track.props) {
             if (!prop.isSolidWall) continue
             if (kart.y > prop.y + prop.sy + 0.5f || kart.y + 1.5f < prop.y) continue
@@ -821,7 +891,6 @@ object KartPhysics {
                     kart.x = prop.x + nx * (radius + 0.08f)
                     kart.z = prop.z + nz * (radius + 0.08f)
                     if (prop.restitution >= 0.6f) {
-                        // Bouncy orange bumper on Kitchen Counter (restitution 0.8)
                         val dot = kart.vx * nx + kart.vz * nz
                         if (dot < 0f) {
                             kart.vx -= (1f + prop.restitution) * dot * nx
@@ -834,7 +903,6 @@ object KartPhysics {
                     hitAny = true
                 }
             } else {
-                // Oriented Box (OBB): transform kart position into prop's local frame by rotating by -yawRad
                 val dx = kart.x - prop.x
                 val dz = kart.z - prop.z
                 val c = cos(-prop.yawRad)
@@ -860,7 +928,6 @@ object KartPhysics {
                         pushLocalX = (diffX / dist) * penetration
                         pushLocalZ = (diffZ / dist) * penetration
                     } else {
-                        // Kart center is inside OBB: push out along nearest face normal
                         val ox = hx - abs(localX)
                         val oz = hz - abs(localZ)
                         if (ox < oz) {
@@ -872,7 +939,6 @@ object KartPhysics {
                         }
                     }
 
-                    // Rotate push back from prop local space (+yawRad) to world space
                     val cw = cos(prop.yawRad)
                     val sw = sin(prop.yawRad)
                     val worldPushX = pushLocalX * cw - pushLocalZ * sw

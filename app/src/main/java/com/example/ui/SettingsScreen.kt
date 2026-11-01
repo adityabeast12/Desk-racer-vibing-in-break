@@ -21,7 +21,9 @@ import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
@@ -42,6 +44,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -53,11 +56,12 @@ import com.example.game.CpuDifficulty
 import com.example.game.GraphicsQuality
 import com.example.game.HeadlessRaceTest
 import com.example.game.TrackQaResult
+import com.example.render.AssetRepository
 import com.example.ui.theme.ArcadeCrimson
 import com.example.ui.theme.DriftAmber
 import com.example.ui.theme.HostEmerald
 import com.example.ui.theme.JoinBlue
-import com.example.ui.theme.OrbitronFontFamily
+import com.example.ui.theme.Poppins
 import com.example.ui.theme.RulerYellow
 import com.example.ui.theme.SkyCyan
 import com.example.ui.theme.SlateAbyss
@@ -81,17 +85,26 @@ fun SettingsScreen(
     onHapticsChanged: (Boolean) -> Unit,
     onGraphicsChanged: (GraphicsQuality) -> Unit,
     onDifficultyChanged: (CpuDifficulty) -> Unit,
+    onSwapHandsChanged: (Boolean) -> Unit = {},
+    onButtonScaleChanged: (Float) -> Unit = {},
+    onHudOpacityChanged: (Float) -> Unit = {},
+    onPostFxChanged: (Boolean) -> Unit = {},
+    onContactShadowsChanged: (Boolean) -> Unit = {},
+    onShowDebugHudZonesChanged: (Boolean) -> Unit = {},
     onBack: () -> Unit
 ) {
     BackHandler(onBack = onBack)
+    val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var qaRunning by remember { mutableStateOf(false) }
     var qaResults by remember { mutableStateOf<List<TrackQaResult>?>(null) }
+    var showCreditsModal by remember { mutableStateOf(false) }
+    val creditsText = remember { AssetRepository.readCreditsText(context) }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xE6090D16))
+            .background(Color(0xEB0B1020))
             .windowInsetsPadding(WindowInsets.safeDrawing.union(WindowInsets.displayCutout))
             .padding(horizontal = 18.dp, vertical = 10.dp)
             .testTag("settings_screen")
@@ -100,7 +113,7 @@ fun SettingsScreen(
             modifier = Modifier.fillMaxSize(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Left Card: Controls & Driving Assists + Developer Track QA
+            // Left Card: Controls, Customizer, Driving Assists + Developer QA
             Surface(
                 modifier = Modifier
                     .weight(1f)
@@ -112,8 +125,9 @@ fun SettingsScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(14.dp),
-                    verticalArrangement = Arrangement.SpaceBetween
+                        .padding(12.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -129,19 +143,19 @@ fun SettingsScreen(
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
                         }
                         Text(
-                            text = "CONTROLS & ASSISTS",
-                            fontFamily = OrbitronFontFamily,
+                            text = "CONTROLS & HUD CUSTOMIZER",
+                            fontFamily = Poppins,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 15.sp,
+                            fontSize = 14.sp,
                             color = SkyCyan
                         )
                     }
 
-                    // Control Scheme Selector
+                    // 4 Control Schemes: SMART, PRO, TILT, BUTTONS
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text(
-                            text = "STEERING SCHEME",
-                            fontFamily = OrbitronFontFamily,
+                            text = "CONTROL SCHEME",
+                            fontFamily = Poppins,
                             fontWeight = FontWeight.Bold,
                             fontSize = 10.sp,
                             color = RulerYellow
@@ -155,19 +169,20 @@ fun SettingsScreen(
                                 Surface(
                                     modifier = Modifier
                                         .weight(1f)
-                                        .height(40.dp)
+                                        .height(38.dp)
                                         .clickable { onControlSchemeChanged(scheme) }
                                         .testTag("settings_scheme_${scheme.id}"),
                                     shape = RoundedCornerShape(8.dp),
                                     color = if (active) SkyCyan else SlateSurface
                                 ) {
-                                    Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(4.dp)) {
+                                    Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(2.dp)) {
                                         Text(
                                             text = scheme.title.uppercase(),
-                                            fontFamily = OrbitronFontFamily,
+                                            fontFamily = Poppins,
                                             fontWeight = FontWeight.Bold,
                                             fontSize = 9.sp,
-                                            color = if (active) SlateAbyss else Color.White
+                                            color = if (active) SlateAbyss else Color.White,
+                                            maxLines = 1
                                         )
                                     }
                                 }
@@ -175,11 +190,11 @@ fun SettingsScreen(
                         }
                     }
 
-                    // Sensitivity Slider
+                    // Sensitivity + Button Size + HUD Opacity Sliders
                     Column {
                         Text(
                             text = "STEER SENSITIVITY: ${(settings.steerSensitivity * 100).roundToInt()}%",
-                            fontFamily = OrbitronFontFamily,
+                            fontFamily = Poppins,
                             fontWeight = FontWeight.Bold,
                             fontSize = 10.sp,
                             color = Color.White
@@ -189,22 +204,53 @@ fun SettingsScreen(
                             onValueChange = onSensitivityChanged,
                             valueRange = 0.5f..1.8f,
                             colors = SliderDefaults.colors(thumbColor = SkyCyan, activeTrackColor = SkyCyan),
-                            modifier = Modifier.height(28.dp)
+                            modifier = Modifier.height(26.dp)
                         )
                     }
 
-                    SettingToggleRow(
-                        label = "Auto-Accelerate (Hands-Free Gas)",
-                        checked = settings.autoAccelerate,
-                        onCheckedChange = onAutoAccelerateChanged
-                    )
-                    SettingToggleRow(
-                        label = "Smart Steering (Track Assist)",
-                        checked = settings.smartSteering,
-                        onCheckedChange = onSmartSteeringChanged
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "BUTTON SIZE: ${(settings.buttonScale * 100).roundToInt()}%",
+                                fontFamily = Poppins,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 9.sp,
+                                color = Color.White
+                            )
+                            Slider(
+                                value = settings.buttonScale,
+                                onValueChange = onButtonScaleChanged,
+                                valueRange = 0.85f..1.25f,
+                                colors = SliderDefaults.colors(thumbColor = RulerYellow, activeTrackColor = RulerYellow),
+                                modifier = Modifier.height(24.dp)
+                            )
+                        }
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "HUD OPACITY: ${(settings.hudOpacity * 100).roundToInt()}%",
+                                fontFamily = Poppins,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 9.sp,
+                                color = Color.White
+                            )
+                            Slider(
+                                value = settings.hudOpacity,
+                                onValueChange = onHudOpacityChanged,
+                                valueRange = 0.50f..1.0f,
+                                colors = SliderDefaults.colors(thumbColor = HostEmerald, activeTrackColor = HostEmerald),
+                                modifier = Modifier.height(24.dp)
+                            )
+                        }
+                    }
 
-                    // Developer -> Run Track QA (Part B8)
+                    SettingToggleRow("Auto-Accelerate (Hands-Free Gas)", settings.autoAccelerate, onAutoAccelerateChanged)
+                    SettingToggleRow("Smart Steering (Track Edge Assist)", settings.smartSteering, onSmartSteeringChanged)
+                    SettingToggleRow("Left-Handed Swap (Steer Right / Actions Left)", settings.swapHands, onSwapHandsChanged)
+
+                    // Developer -> Run Track QA
                     Button(
                         onClick = {
                             if (!qaRunning) {
@@ -222,12 +268,12 @@ fun SettingsScreen(
                         shape = RoundedCornerShape(10.dp),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(40.dp)
+                            .height(38.dp)
                             .testTag("btn_run_track_qa")
                     ) {
                         Text(
-                            text = if (qaRunning) "RUNNING 8-TRACK BOT QA..." else "DEVELOPER: RUN TRACK QA (8 BOTS × 3 LAPS)",
-                            fontFamily = OrbitronFontFamily,
+                            text = if (qaRunning) "RUNNING 8-TRACK BOT QA..." else "DEV: RUN TRACK QA (8 BOTS × 3 LAPS)",
+                            fontFamily = Poppins,
                             fontWeight = FontWeight.Bold,
                             fontSize = 10.sp,
                             color = Color.White
@@ -236,7 +282,7 @@ fun SettingsScreen(
                 }
             }
 
-            // Right Card: Graphics Quality, Audio/Haptics, Minimap, CPU Difficulty
+            // Right Card: Graphics Quality, Post FX, Audio/Haptics, Developer HUD Zones & Credits
             Surface(
                 modifier = Modifier
                     .weight(1f)
@@ -248,22 +294,45 @@ fun SettingsScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(14.dp),
-                    verticalArrangement = Arrangement.SpaceBetween
+                        .padding(12.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text(
-                        text = "GRAPHICS, AUDIO & AI",
-                        fontFamily = OrbitronFontFamily,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 15.sp,
-                        color = SkyCyan
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "GRAPHICS, AUDIO & CREDITS",
+                            fontFamily = Poppins,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            color = SkyCyan
+                        )
+                        Button(
+                            onClick = { showCreditsModal = true },
+                            colors = ButtonDefaults.buttonColors(containerColor = SlateSurface),
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier
+                                .height(34.dp)
+                                .testTag("btn_open_credits")
+                        ) {
+                            Text(
+                                text = "CREDITS & LICENSES",
+                                fontFamily = Poppins,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 9.sp,
+                                color = RulerYellow
+                            )
+                        }
+                    }
 
                     // Graphics Quality
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text(
                             text = "GRAPHICS QUALITY",
-                            fontFamily = OrbitronFontFamily,
+                            fontFamily = Poppins,
                             fontWeight = FontWeight.Bold,
                             fontSize = 10.sp,
                             color = RulerYellow
@@ -277,16 +346,16 @@ fun SettingsScreen(
                                 Surface(
                                     modifier = Modifier
                                         .weight(1f)
-                                        .height(40.dp)
+                                        .height(36.dp)
                                         .clickable { onGraphicsChanged(q) }
                                         .testTag("settings_gfx_${q.id}"),
                                     shape = RoundedCornerShape(8.dp),
                                     color = if (active) HostEmerald else SlateSurface
                                 ) {
-                                    Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(4.dp)) {
+                                    Box(contentAlignment = Alignment.Center) {
                                         Text(
                                             text = q.name,
-                                            fontFamily = OrbitronFontFamily,
+                                            fontFamily = Poppins,
                                             fontWeight = FontWeight.Bold,
                                             fontSize = 10.sp,
                                             color = if (active) SlateAbyss else Color.White
@@ -298,10 +367,10 @@ fun SettingsScreen(
                     }
 
                     // CPU Difficulty
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text(
                             text = "CPU DIFFICULTY",
-                            fontFamily = OrbitronFontFamily,
+                            fontFamily = Poppins,
                             fontWeight = FontWeight.Bold,
                             fontSize = 10.sp,
                             color = RulerYellow
@@ -315,7 +384,7 @@ fun SettingsScreen(
                                 Surface(
                                     modifier = Modifier
                                         .weight(1f)
-                                        .height(40.dp)
+                                        .height(36.dp)
                                         .clickable { onDifficultyChanged(d) }
                                         .testTag("settings_cpu_${d.id}"),
                                     shape = RoundedCornerShape(8.dp),
@@ -324,7 +393,7 @@ fun SettingsScreen(
                                     Box(contentAlignment = Alignment.Center) {
                                         Text(
                                             text = d.label.uppercase(),
-                                            fontFamily = OrbitronFontFamily,
+                                            fontFamily = Poppins,
                                             fontWeight = FontWeight.Bold,
                                             fontSize = 10.sp,
                                             color = if (active) SlateAbyss else Color.White
@@ -338,11 +407,79 @@ fun SettingsScreen(
                     SettingToggleRow("Music & Sound Effects", settings.soundEnabled, onSoundChanged)
                     SettingToggleRow("Haptic Vibration Feedback", settings.hapticsEnabled, onHapticsChanged)
                     SettingToggleRow("Show Track Minimap", settings.showMinimap, onShowMinimapChanged)
+                    SettingToggleRow("PBR Contact Shadows & Post FX", settings.contactShadowsEnabled, onContactShadowsChanged)
+                    SettingToggleRow("Developer: Show HUD Layout Zones", settings.showDebugHudZones, onShowDebugHudZonesChanged)
                 }
             }
         }
 
-        // Track QA Report Modal (Part B8)
+        // About / Credits Modal (Part B7 & G6: reads assets/CREDITS.txt verbatim)
+        if (showCreditsModal) {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color(0xEB0B1020))
+                    .testTag("credits_modal")
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = SlateAbyss,
+                    border = androidx.compose.foundation.BorderStroke(1.5.dp, RulerYellow),
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "ABOUT DESK RACER LAN v3 • OPEN ASSET CREDITS",
+                                fontFamily = Poppins,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp,
+                                color = RulerYellow
+                            )
+                            Button(
+                                onClick = { showCreditsModal = false },
+                                colors = ButtonDefaults.buttonColors(containerColor = SlateSurface),
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier
+                                    .height(36.dp)
+                                    .testTag("btn_close_credits")
+                            ) {
+                                Text("CLOSE", fontFamily = Poppins, fontWeight = FontWeight.Bold, fontSize = 10.sp)
+                            }
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxWidth()
+                                .padding(vertical = 8.dp)
+                                .background(SlateSurface, RoundedCornerShape(10.dp))
+                                .padding(12.dp)
+                                .verticalScroll(rememberScrollState())
+                        ) {
+                            Text(
+                                text = creditsText,
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 11.sp,
+                                color = Color.White
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        // Track QA Report Modal
         val report = qaResults
         if (report != null) {
             Box(
@@ -371,7 +508,7 @@ fun SettingsScreen(
                         ) {
                             Text(
                                 text = "HEADLESS TRACK QA REPORT (8 BOTS × 3 LAPS @ 60 HZ)",
-                                fontFamily = OrbitronFontFamily,
+                                fontFamily = Poppins,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 14.sp,
                                 color = RulerYellow
@@ -382,7 +519,7 @@ fun SettingsScreen(
                                 shape = RoundedCornerShape(8.dp),
                                 modifier = Modifier.height(36.dp)
                             ) {
-                                Text("CLOSE", fontFamily = OrbitronFontFamily, fontWeight = FontWeight.Bold, fontSize = 10.sp)
+                                Text("CLOSE", fontFamily = Poppins, fontWeight = FontWeight.Bold, fontSize = 10.sp)
                             }
                         }
 
@@ -412,7 +549,7 @@ fun SettingsScreen(
                                     ) {
                                         Text(
                                             text = "${r.trackName} (${if (r.passed) "PASS" else "FAIL"})",
-                                            fontFamily = OrbitronFontFamily,
+                                            fontFamily = Poppins,
                                             fontWeight = FontWeight.Bold,
                                             fontSize = 11.sp,
                                             color = if (r.passed) HostEmerald else ArcadeCrimson
@@ -449,13 +586,16 @@ private fun SettingToggleRow(
     onCheckedChange: (Boolean) -> Unit
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(32.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
             text = label,
-            fontSize = 12.sp,
+            fontFamily = Poppins,
+            fontSize = 11.sp,
             fontWeight = FontWeight.Medium,
             color = Color.White
         )

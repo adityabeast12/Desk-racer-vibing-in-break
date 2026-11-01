@@ -13,6 +13,100 @@ data class Vec3(val x: Float, val y: Float, val z: Float) {
     operator fun times(s: Float) = Vec3(x * s, y * s, z * s)
 }
 
+enum class LightingPreset(
+    val skyAmbientRgb: FloatArray,
+    val groundAmbientRgb: FloatArray,
+    val keyLightDir: FloatArray,
+    val keyLightRgb: FloatArray,
+    val pointLightRgb: FloatArray
+) {
+    DUSK_LAMP(
+        skyAmbientRgb = floatArrayOf(0.32f, 0.36f, 0.56f),
+        groundAmbientRgb = floatArrayOf(0.42f, 0.28f, 0.18f),
+        keyLightDir = floatArrayOf(0.38f, 0.84f, 0.38f),
+        keyLightRgb = floatArrayOf(1.05f, 0.86f, 0.64f),
+        pointLightRgb = floatArrayOf(1.0f, 0.76f, 0.38f)
+    ),
+    NIGHT_RGB(
+        skyAmbientRgb = floatArrayOf(0.18f, 0.24f, 0.48f),
+        groundAmbientRgb = floatArrayOf(0.28f, 0.16f, 0.38f),
+        keyLightDir = floatArrayOf(0.32f, 0.88f, 0.34f),
+        keyLightRgb = floatArrayOf(0.78f, 0.88f, 1.05f),
+        pointLightRgb = floatArrayOf(0.95f, 0.25f, 0.85f)
+    ),
+    MORNING_SUN(
+        skyAmbientRgb = floatArrayOf(0.55f, 0.64f, 0.78f),
+        groundAmbientRgb = floatArrayOf(0.48f, 0.44f, 0.40f),
+        keyLightDir = floatArrayOf(0.48f, 0.78f, 0.40f),
+        keyLightRgb = floatArrayOf(1.08f, 0.98f, 0.88f),
+        pointLightRgb = floatArrayOf(1.0f, 0.90f, 0.70f)
+    ),
+    SUNNY_STUDIO(
+        skyAmbientRgb = floatArrayOf(0.58f, 0.64f, 0.74f),
+        groundAmbientRgb = floatArrayOf(0.50f, 0.44f, 0.36f),
+        keyLightDir = floatArrayOf(0.35f, 0.88f, 0.32f),
+        keyLightRgb = floatArrayOf(1.05f, 1.00f, 0.94f),
+        pointLightRgb = floatArrayOf(1.0f, 0.85f, 0.55f)
+    ),
+    LIBRARY_WARM(
+        skyAmbientRgb = floatArrayOf(0.36f, 0.32f, 0.46f),
+        groundAmbientRgb = floatArrayOf(0.44f, 0.28f, 0.16f),
+        keyLightDir = floatArrayOf(0.40f, 0.85f, 0.34f),
+        keyLightRgb = floatArrayOf(1.06f, 0.84f, 0.58f),
+        pointLightRgb = floatArrayOf(1.0f, 0.72f, 0.34f)
+    ),
+    BATHROOM_BRIGHT(
+        skyAmbientRgb = floatArrayOf(0.56f, 0.68f, 0.78f),
+        groundAmbientRgb = floatArrayOf(0.46f, 0.54f, 0.60f),
+        keyLightDir = floatArrayOf(0.28f, 0.92f, 0.28f),
+        keyLightRgb = floatArrayOf(0.98f, 1.04f, 1.08f),
+        pointLightRgb = floatArrayOf(0.75f, 0.95f, 1.0f)
+    ),
+    PLAYROOM_SOFT(
+        skyAmbientRgb = floatArrayOf(0.54f, 0.62f, 0.76f),
+        groundAmbientRgb = floatArrayOf(0.42f, 0.48f, 0.36f),
+        keyLightDir = floatArrayOf(0.42f, 0.84f, 0.34f),
+        keyLightRgb = floatArrayOf(1.04f, 0.98f, 0.90f),
+        pointLightRgb = floatArrayOf(1.0f, 0.82f, 0.48f)
+    ),
+    MIDNIGHT_CITY(
+        skyAmbientRgb = floatArrayOf(0.24f, 0.30f, 0.52f),
+        groundAmbientRgb = floatArrayOf(0.32f, 0.22f, 0.18f),
+        keyLightDir = floatArrayOf(0.36f, 0.86f, 0.35f),
+        keyLightRgb = floatArrayOf(0.92f, 0.86f, 1.04f),
+        pointLightRgb = floatArrayOf(1.0f, 0.68f, 0.32f)
+    );
+
+    companion object {
+        fun fromString(name: String): LightingPreset {
+            return entries.firstOrNull { it.name.equals(name, ignoreCase = true) } ?: DUSK_LAMP
+        }
+    }
+}
+
+/**
+ * Prop placed via tracks/<slug>.json (Part B5 & Part H3).
+ * role == "pylon" -> knockable pylon (15% slowdown, tumbles away, respawns after 6s).
+ * role == "landmark" -> solid vertical cylinder of [radius] when [solid] is true.
+ */
+data class PlacedTrackProp(
+    val id: Int,
+    val model: String,
+    val name: String,
+    val role: String, // "pylon" | "landmark"
+    val x: Float,
+    val y: Float,
+    val z: Float,
+    val yawRad: Float,
+    val scale: Float = 100f,
+    val radius: Float = 2.1f,
+    val solid: Boolean = true
+) {
+    val isPylon: Boolean get() = role.equals("pylon", ignoreCase = true)
+    val isEmissiveLamp: Boolean
+        get() = name.contains("lamp", ignoreCase = true) || name.contains("lantern", ignoreCase = true)
+}
+
 enum class PropKind {
     BOOK,
     MUG_ROUNDABOUT,
@@ -147,6 +241,7 @@ data class NearestSampleResult(
 class Track(
     val id: Int,
     val cupId: Int,
+    val slug: String = "study_desk",
     val name: String,
     val subtitle: String,
     val difficultyStars: Int,
@@ -159,12 +254,20 @@ class Track(
     val skyTopHex: Long,
     val skyBottomHex: Long,
     val fogHex: Long,
+    val surfaceTexture: String = "textures/surfaces/wood_walnut.jpg",
+    val surfaceTextureTileUnits: Float = 60f,
+    val roadTexture: String = "textures/surfaces/road_asphalt.jpg",
+    val roadTextureTileUnits: Float = 24f,
+    val kerbTexture: String = "textures/surfaces/kerb_red_white.png",
+    val finishTexture: String = "textures/surfaces/checker_finish.png",
+    val backdropEquirect: String = "textures/backdrops/room_apartment.jpg",
+    val lightingPreset: LightingPreset = LightingPreset.DUSK_LAMP,
     val musicAssetPath: String = "audio/music/race_study_desk_loop.ogg",
     val goldTimeMs: Long = 95_000L,
     val silverTimeMs: Long = 108_000L,
     val bronzeTimeMs: Long = 125_000L,
-    val deskHalfExtentX: Float = 155f,
-    val deskHalfExtentZ: Float = 145f,
+    val deskHalfExtentX: Float = 165f,
+    val deskHalfExtentZ: Float = 152f,
     val hasSinkGapZone: Boolean = false,
     val sinkGapMinX: Float = 0f,
     val sinkGapMaxX: Float = 0f,
@@ -175,8 +278,10 @@ class Track(
     val waterPoolRadiusZ: Float = 48f,
     val hasRgbKerbs: Boolean = false,
     val bankedSegmentRange: ClosedFloatingPointRange<Float>? = null,
+    val splineSubdivisionsPerSegment: Int = 18,
     val controlPoints: List<Vec3>,
     rawProps: List<TrackProp> = emptyList(),
+    rawPlacedProps: List<PlacedTrackProp> = emptyList(),
     val paintPuddles: List<PaintPuddleZone> = emptyList(),
     val slipperyZones: List<SlipperyZone> = emptyList(),
     val dynamicHazards: List<DynamicHazardSpec> = emptyList()
@@ -188,9 +293,10 @@ class Track(
     val itemBoxes: List<ItemBoxPlacement>
     val coins: List<TrackCoinPlacement>
     val props: List<TrackProp>
+    val placedProps: List<PlacedTrackProp>
 
     init {
-        val rawPoints = buildCatmullRomLoop(controlPoints, subdivisionsPerSegment = 18)
+        val rawPoints = buildCatmullRomLoop(controlPoints, subdivisionsPerSegment = splineSubdivisionsPerSegment)
         val tempSamples = ArrayList<SplineSample>(rawPoints.size)
         var accumDist = 0f
 
@@ -213,7 +319,6 @@ class Track(
             val rz = tx
             val heading = atan2(tx, tz)
 
-            // Signed curvature estimate from previous and next segments
             val tx1 = curr.x - prev.x
             val tz1 = curr.z - prev.z
             val tx2 = next.x - curr.x
@@ -255,7 +360,7 @@ class Track(
         for (s in tempSamples) {
             val normT = (s.distance / totalLength).coerceIn(0f, 1f)
             val bank = if (bankedSegmentRange != null && normT in bankedSegmentRange) {
-                (s.curvature * 14f).coerceIn(-0.21f, 0.21f) // ~12 degrees bank into turn
+                (s.curvature * 14f).coerceIn(-0.21f, 0.21f)
             } else {
                 0f
             }
@@ -263,7 +368,7 @@ class Track(
         }
         samples = finalizedSamples
 
-        // 16 evenly spaced vertical plane CheckpointGates across the road (Part B3)
+        // 16 evenly spaced vertical plane CheckpointGates across the road
         val gateCount = GameConstants.NUM_CHECKPOINT_GATES
         val builtGates = ArrayList<CheckpointGate>(gateCount)
         val gateHalfWidth = roadWidth * 0.5f + 8.0f
@@ -287,14 +392,14 @@ class Track(
         }
         checkpoints = builtGates
 
-        // 2x4 Staggered 8-Kart Start Grid behind finish line (Part D1: 4.2u lateral, 6u row, 3u stagger)
+        // 2x4 Staggered 8-Kart Start Grid behind finish line
         val builtGrid = ArrayList<StartGridSlot>(GameConstants.MAX_RACERS)
         for (slot in 0 until GameConstants.MAX_RACERS) {
-            val row = slot / 2      // 0..3
-            val col = slot % 2      // 0 (left), 1 (right)
+            val row = slot / 2
+            val col = slot % 2
             val backDist = 6.0f + row * 6.0f + col * 3.0f
             val s = sampleAtDistance(totalLength - backDist)
-            val lateral = if (col == 0) -2.1f else 2.1f // 4.2 u lateral spacing between columns
+            val lateral = if (col == 0) -2.1f else 2.1f
             builtGrid.add(
                 StartGridSlot(
                     slotIndex = slot,
@@ -307,7 +412,7 @@ class Track(
         }
         startGrid = builtGrid
 
-        // 3 rows of 4 Item Boxes at 22%, 50%, and 78% of the lap (Part E1)
+        // 3 rows of 4 Item Boxes at 22%, 50%, and 78% of the lap
         val builtBoxes = ArrayList<ItemBoxPlacement>(12)
         val rowFractions = floatArrayOf(0.22f, 0.50f, 0.78f)
         val laneFactors = floatArrayOf(-0.55f, -0.18f, 0.18f, 0.55f)
@@ -329,7 +434,7 @@ class Track(
         }
         itemBoxes = builtBoxes
 
-        // 10 Coins in racing-line arcs at ~35% and ~65% of the lap (Part D6)
+        // 10 Coins in racing-line arcs at ~33% and ~63% of the lap
         val builtCoins = ArrayList<TrackCoinPlacement>(GameConstants.COINS_PER_TRACK)
         var coinId = 0
         val arcStarts = floatArrayOf(0.33f, 0.63f)
@@ -352,8 +457,8 @@ class Track(
         }
         coins = builtCoins
 
-        // Sanitize solid props so none violate Part B2 clearance (roadWidth/2 + 1.5u)
         props = sanitizePropsClearance(rawProps)
+        placedProps = sanitizePlacedPropsClearance(rawPlacedProps)
     }
 
     private fun sanitizePropsClearance(inputProps: List<TrackProp>): List<TrackProp> {
@@ -364,12 +469,10 @@ class Track(
             } else {
                 var adjustedX = p.x
                 var adjustedZ = p.z
-                // Check against spline samples that overlap the prop's vertical span
                 for (s in samples) {
                     if (s.pos.y + 2.0f < p.y || s.pos.y > p.y + p.sy + 2.0f) continue
                     val dx = adjustedX - s.pos.x
                     val dz = adjustedZ - s.pos.z
-                    // Transform (dx, dz) into prop's local oriented frame (-yawRad)
                     val c = cos(-p.yawRad)
                     val sn = sin(-p.yawRad)
                     val localX = dx * c - dz * sn
@@ -383,6 +486,32 @@ class Track(
                     val distToBox = hypot(diffX, diffZ)
                     if (distToBox < minCenterlineClearance) {
                         val pushNeeded = (minCenterlineClearance - distToBox) + 0.4f
+                        val lat = dx * s.rightX + dz * s.rightZ
+                        val sideSign = if (lat >= 0f) 1f else -1f
+                        adjustedX += s.rightX * sideSign * pushNeeded
+                        adjustedZ += s.rightZ * sideSign * pushNeeded
+                    }
+                }
+                p.copy(x = adjustedX, z = adjustedZ)
+            }
+        }
+    }
+
+    private fun sanitizePlacedPropsClearance(input: List<PlacedTrackProp>): List<PlacedTrackProp> {
+        val minCenterlineClearance = roadWidth * 0.5f + 1.55f
+        return input.map { p ->
+            if (!p.solid || p.isPylon) {
+                p
+            } else {
+                var adjustedX = p.x
+                var adjustedZ = p.z
+                for (s in samples) {
+                    val dx = adjustedX - s.pos.x
+                    val dz = adjustedZ - s.pos.z
+                    val distCenter = hypot(dx, dz)
+                    val distEdge = distCenter - p.radius
+                    if (distEdge < minCenterlineClearance) {
+                        val pushNeeded = (minCenterlineClearance - distEdge) + 0.35f
                         val lat = dx * s.rightX + dz * s.rightZ
                         val sideSign = if (lat >= 0f) 1f else -1f
                         adjustedX += s.rightX * sideSign * pushNeeded
@@ -423,12 +552,6 @@ class Track(
         return samples[low.coerceIn(0, samples.lastIndex)]
     }
 
-    /**
-     * Windowed search around previous sample index (±windowRadius samples), preferring samples
-     * whose deck elevation matches worldY. Falls back to full search only
-     * when prevSampleIndex < 0 (e.g. initial placement) or horizontal distance exceeds 30u.
-     * Prevents snapping to the wrong part of the track on bridges/crossovers (Part B3).
-     */
     fun findNearestSampleWindowed(
         worldX: Float,
         worldY: Float,
@@ -459,7 +582,6 @@ class Track(
             }
         }
 
-        // Fallback to full search if no previous index or kart is horizontally far from windowed candidate
         if (bestIdx < 0 || bestHorizSq > 900f) {
             bestScore = Float.MAX_VALUE
             for (i in 0 until n) {

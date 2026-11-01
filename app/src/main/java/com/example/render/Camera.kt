@@ -1,5 +1,6 @@
 package com.example.render
 
+import com.example.game.GameConstants
 import com.example.game.RacePhase
 import com.example.game.RenderKartSnapshot
 import com.example.game.Track
@@ -38,7 +39,7 @@ class Camera {
             shakeTimerSec = 0.22f
         }
 
-        // 1. Pre-race 4s camera fly-by along the track spline (Part C3)
+        // 1. Pre-race 4s camera fly-by along the track spline
         if (phase == RacePhase.FLYBY_INTRO && track.samples.isNotEmpty()) {
             val n = track.samples.size
             val idxFloat = (flybyProgress01.coerceIn(0f, 1f) * 0.35f + 0.65f) * n
@@ -63,7 +64,7 @@ class Camera {
 
         if (targetKart == null) return
 
-        // 2. Showroom / Results / Finished local player orbit camera (Part B4)
+        // 2. Showroom / Results / Finished local player orbit camera
         val isOrbitMode = phase == RacePhase.SHOWROOM_MENU ||
             phase == RacePhase.RESULTS ||
             phase == RacePhase.FINISHED
@@ -116,8 +117,10 @@ class Camera {
             lookY += (Random.nextFloat() - 0.5f) * mag
         }
 
-        // FOV kick (+8 degrees on boost)
-        val targetFov = if (targetKart.isBoosting) 70f else 62f + (abs(targetKart.speed) / 30f) * 2.5f
-        currentFovDeg += (targetFov - currentFovDeg) * (8f * dt).coerceIn(0.05f, 0.3f)
+        // Part H1: Speed FOV — 62° at rest -> 70° at top speed (+6° on boost), damped at 8 rad/s
+        val speedNorm = (abs(targetKart.speed) / GameConstants.TOP_SPEED).coerceIn(0f, 1.15f)
+        val boostKick = if (targetKart.isBoosting) 6.0f else 0.0f
+        val targetFov = 62.0f + speedNorm * 8.0f + boostKick
+        currentFovDeg += (targetFov - currentFovDeg) * (8.0f * dt).coerceIn(0.05f, 0.35f)
     }
 }

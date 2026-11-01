@@ -4,18 +4,22 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.ui.theme.OrbitronFontFamily
-import com.example.ui.theme.SkyCyan
+import com.example.ui.theme.BoostCyan
+import com.example.ui.theme.DRType
+import com.example.ui.theme.InkBorder
+import com.example.ui.theme.InkSurface
+import com.example.ui.theme.TextPrimary
 import java.util.Locale
 
 @Composable
@@ -26,26 +30,31 @@ fun LapTimer(
 ) {
     Column(
         modifier = modifier
-            .background(Color(0xB30F172A), RoundedCornerShape(12.dp))
-            .border(1.dp, Color(0x38FFFFFF), RoundedCornerShape(12.dp))
-            .padding(horizontal = 14.dp, vertical = 6.dp)
+            .widthIn(min = 108.dp, max = 188.dp)
+            .background(InkSurface.copy(alpha = 0.88f), RoundedCornerShape(12.dp))
+            .border(1.dp, InkBorder, RoundedCornerShape(12.dp))
+            .padding(horizontal = 12.dp, vertical = 4.dp)
             .testTag("hud_lap_timer"),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
             text = formatRaceTime(raceTimeMs),
-            fontFamily = OrbitronFontFamily,
-            fontWeight = FontWeight.Bold,
-            fontSize = 18.sp,
-            color = Color.White
+            style = DRType.TabularSubtitle.copy(fontSize = 16.sp, fontWeight = FontWeight.W800),
+            color = TextPrimary,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
         if (bestLapMs > 0L) {
             Text(
                 text = "BEST ${formatRaceTime(bestLapMs)}",
-                fontFamily = OrbitronFontFamily,
-                fontWeight = FontWeight.Bold,
-                fontSize = 10.sp,
-                color = SkyCyan
+                style = DRType.Caption.copy(
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.W700,
+                    fontFeatureSettings = "tnum"
+                ),
+                color = BoostCyan,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
     }

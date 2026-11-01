@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -15,12 +16,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.ui.theme.ArcadeCrimson
-import com.example.ui.theme.HostEmerald
-import com.example.ui.theme.OrbitronFontFamily
-import com.example.ui.theme.RulerYellow
+import com.example.ui.theme.BoostCyan
+import com.example.ui.theme.DRType
+import com.example.ui.theme.DangerCoral
+import com.example.ui.theme.InkBorder
+import com.example.ui.theme.InkSurface
+import com.example.ui.theme.LampAmber
+import com.example.ui.theme.SuccessLime
+import com.example.ui.theme.TextPrimary
+import com.example.ui.theme.TextSecondary
 
 @Composable
 fun PositionBadge(
@@ -34,10 +41,10 @@ fun PositionBadge(
     modifier: Modifier = Modifier
 ) {
     val rankColor = when (position) {
-        1 -> Color(0xFFFACC15) // Gold
-        2 -> Color(0xFFE2E8F0) // Silver
-        3 -> Color(0xFFF97316) // Bronze
-        else -> Color(0xFF38BDF8)
+        1 -> LampAmber
+        2 -> Color(0xFFE2E8F0)
+        3 -> Color(0xFFF97316)
+        else -> BoostCyan
     }
     val suffix = when (position) {
         1 -> "st"
@@ -48,68 +55,72 @@ fun PositionBadge(
 
     Column(
         modifier = modifier
-            .background(Color(0xB30F172A), RoundedCornerShape(14.dp))
-            .border(1.5.dp, rankColor.copy(alpha = 0.7f), RoundedCornerShape(14.dp))
-            .padding(horizontal = 14.dp, vertical = 8.dp)
+            .widthIn(min = 96.dp, max = 186.dp)
+            .background(InkSurface.copy(alpha = 0.88f), RoundedCornerShape(14.dp))
+            .border(1.5.dp, rankColor.copy(alpha = 0.75f), RoundedCornerShape(14.dp))
+            .padding(horizontal = 12.dp, vertical = 6.dp)
             .testTag("hud_position_badge"),
         horizontalAlignment = Alignment.Start,
         verticalArrangement = Arrangement.spacedBy(2.dp)
     ) {
         Row(
             verticalAlignment = Alignment.Bottom,
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
+            horizontalArrangement = Arrangement.spacedBy(5.dp)
         ) {
             Text(
                 text = "$position$suffix",
-                fontFamily = OrbitronFontFamily,
-                fontWeight = FontWeight.Bold,
-                fontSize = 26.sp,
-                color = rankColor
+                style = DRType.HudNumber.copy(fontSize = 26.sp, lineHeight = 28.sp),
+                color = rankColor,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
             Text(
                 text = "/$totalRacers",
-                fontFamily = OrbitronFontFamily,
-                fontWeight = FontWeight.Bold,
-                fontSize = 13.sp,
-                color = Color(0xFFCBD5E1),
-                modifier = Modifier.padding(bottom = 3.dp)
+                style = DRType.TabularLabel,
+                color = TextSecondary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(bottom = 2.dp)
             )
             if (!positionDeltaChip.isNullOrBlank()) {
                 val isGain = positionDeltaChip.startsWith("▲")
                 Surface(
                     shape = RoundedCornerShape(6.dp),
-                    color = if (isGain) HostEmerald else ArcadeCrimson,
-                    modifier = Modifier.padding(bottom = 4.dp)
+                    color = if (isGain) SuccessLime else DangerCoral,
+                    modifier = Modifier.padding(bottom = 3.dp)
                 ) {
                     Text(
                         text = positionDeltaChip,
-                        fontFamily = OrbitronFontFamily,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 10.sp,
-                        color = Color.White,
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        style = DRType.Caption.copy(
+                            fontWeight = FontWeight.W800,
+                            fontFeatureSettings = "tnum"
+                        ),
+                        color = Color(0xFF0B1020),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
                     )
                 }
             }
         }
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Text(
-                text = if (balloonsRemaining >= 0) "BALLOONS: $balloonsRemaining" else "LAP $lap/$totalLaps",
-                fontFamily = OrbitronFontFamily,
-                fontWeight = FontWeight.Bold,
-                fontSize = 12.sp,
-                color = Color.White,
+                text = if (balloonsRemaining >= 0) "🎈 $balloonsRemaining" else "LAP $lap/$totalLaps",
+                style = DRType.TabularLabel.copy(fontSize = 12.sp),
+                color = TextPrimary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.testTag("hud_lap_counter")
             )
             Text(
                 text = "🪙 ${coinsHeld.coerceIn(0, 10)}",
-                fontFamily = OrbitronFontFamily,
-                fontWeight = FontWeight.Bold,
-                fontSize = 12.sp,
-                color = RulerYellow,
+                style = DRType.TabularLabel.copy(fontSize = 12.sp),
+                color = LampAmber,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.testTag("hud_coin_counter")
             )
         }

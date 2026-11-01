@@ -3,36 +3,60 @@ package com.example.ui.theme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.Color
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 
 private val DeskRacerColorScheme = darkColorScheme(
-    primary = SkyCyan,
-    onPrimary = SlateAbyss,
-    primaryContainer = JoinBlue,
-    onPrimaryContainer = Color.White,
-    secondary = HostEmerald,
-    onSecondary = SlateAbyss,
-    secondaryContainer = Color(0xFF065F46),
-    onSecondaryContainer = Color.White,
-    tertiary = DriftAmber,
-    onTertiary = SlateAbyss,
-    background = SlateAbyss,
-    onBackground = Color.White,
-    surface = SlateSurface,
-    onSurface = Color.White,
-    surfaceVariant = Color(0xFF334155),
-    onSurfaceVariant = Color(0xFFCBD5E1),
-    error = ArcadeCrimson,
-    onError = Color.White
+    primary = LampAmber,
+    onPrimary = NightNavy,
+    primaryContainer = InkElevated,
+    onPrimaryContainer = TextPrimary,
+    secondary = HotPink,
+    onSecondary = TextPrimary,
+    secondaryContainer = InkElevated,
+    onSecondaryContainer = TextPrimary,
+    tertiary = BoostCyan,
+    onTertiary = NightNavy,
+    background = NightNavy,
+    onBackground = TextPrimary,
+    surface = InkSurface,
+    onSurface = TextPrimary,
+    surfaceVariant = InkElevated,
+    onSurfaceVariant = TextSecondary,
+    error = DangerCoral,
+    onError = NightNavy
 )
 
 @Composable
 fun MyApplicationTheme(
+    maxFontScale: Float = 1.30f,
     content: @Composable () -> Unit
 ) {
-    MaterialTheme(
-        colorScheme = DeskRacerColorScheme,
-        typography = Typography,
-        content = content
+    val curDensity = LocalDensity.current
+    val clampedDensity = Density(
+        density = curDensity.density,
+        fontScale = curDensity.fontScale.coerceIn(0.85f, maxFontScale)
     )
+    CompositionLocalProvider(LocalDensity provides clampedDensity) {
+        MaterialTheme(
+            colorScheme = DeskRacerColorScheme,
+            typography = Typography,
+            content = content
+        )
+    }
+}
+
+@Composable
+fun HudFontScaleScope(
+    content: @Composable () -> Unit
+) {
+    val curDensity = LocalDensity.current
+    val clampedHudDensity = Density(
+        density = curDensity.density,
+        fontScale = curDensity.fontScale.coerceIn(0.85f, 1.15f)
+    )
+    CompositionLocalProvider(LocalDensity provides clampedHudDensity) {
+        content()
+    }
 }

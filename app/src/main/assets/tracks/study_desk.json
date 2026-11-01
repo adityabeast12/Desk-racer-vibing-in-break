@@ -1,0 +1,594 @@
+{
+ "name": "STUDY DESK",
+ "slug": "study_desk",
+ "roadWidth": 12,
+ "lengthApprox": 875,
+ "controlPoints": [
+  [
+   0.0,
+   0.0,
+   90.0
+  ],
+  [
+   60.0,
+   0.0,
+   92.0
+  ],
+  [
+   110.0,
+   0.0,
+   80.0
+  ],
+  [
+   135.0,
+   0.0,
+   45.0
+  ],
+  [
+   128.0,
+   0.0,
+   5.0
+  ],
+  [
+   100.0,
+   0.0,
+   -15.0
+  ],
+  [
+   95.0,
+   0.0,
+   -50.0
+  ],
+  [
+   118.0,
+   0.0,
+   -85.0
+  ],
+  [
+   95.0,
+   0.0,
+   -118.0
+  ],
+  [
+   45.0,
+   0.0,
+   -120.0
+  ],
+  [
+   15.0,
+   0.0,
+   -95.0
+  ],
+  [
+   -20.0,
+   3.5,
+   -95.0
+  ],
+  [
+   -55.0,
+   3.5,
+   -100.0
+  ],
+  [
+   -95.0,
+   0.0,
+   -110.0
+  ],
+  [
+   -125.0,
+   0.0,
+   -80.0
+  ],
+  [
+   -120.0,
+   0.0,
+   -40.0
+  ],
+  [
+   -109.0,
+   0.0,
+   -20.0
+  ],
+  [
+   -118.0,
+   0.0,
+   15.0
+  ],
+  [
+   -120.0,
+   0.0,
+   55.0
+  ],
+  [
+   -90.0,
+   0.0,
+   85.0
+  ],
+  [
+   -45.0,
+   0.0,
+   92.0
+  ]
+ ],
+ "splineSubdivisionsPerSegment": 18,
+ "unitsPerMetre": 100.0,
+ "surfaceTexture": "textures/surfaces/wood_walnut.jpg",
+ "surfaceTextureTileUnits": 60,
+ "roadTexture": "textures/surfaces/paper_ruled.jpg",
+ "roadTextureTileUnits": 24,
+ "kerbTexture": "textures/surfaces/kerb_red_white.png",
+ "finishTexture": "textures/surfaces/checker_finish.png",
+ "backdropEquirect": "textures/backdrops/room_apartment.jpg",
+ "lightingPreset": "DUSK_LAMP",
+ "music": "audio/music/race_study_desk_loop.ogg",
+ "props": [
+  {
+   "model": "models/props/chess_pawn_w.drm",
+   "name": "chess_pawn_w",
+   "role": "pylon",
+   "x": -0.01,
+   "y": 0.0,
+   "z": 101.1,
+   "yawRad": 3.238,
+   "scale": 100.0,
+   "radius": 2.1,
+   "solid": true
+  },
+  {
+   "model": "models/props/chess_pawn_w.drm",
+   "name": "chess_pawn_w",
+   "role": "pylon",
+   "x": 26.97,
+   "y": 0.0,
+   "z": 80.31,
+   "yawRad": 1.353,
+   "scale": 100.0,
+   "radius": 2.1,
+   "solid": true
+  },
+  {
+   "model": "models/props/chess_pawn_w.drm",
+   "name": "chess_pawn_w",
+   "role": "pylon",
+   "x": 53.35,
+   "y": 0.0,
+   "z": 81.27,
+   "yawRad": 5.602,
+   "scale": 100.0,
+   "radius": 2.1,
+   "solid": true
+  },
+  {
+   "model": "models/props/chess_pawn_w.drm",
+   "name": "chess_pawn_w",
+   "role": "pylon",
+   "x": 76.67,
+   "y": 0.0,
+   "z": 78.91,
+   "yawRad": 5.434,
+   "scale": 100.0,
+   "radius": 2.1,
+   "solid": true
+  },
+  {
+   "model": "models/props/chess_pawn_w.drm",
+   "name": "chess_pawn_w",
+   "role": "pylon",
+   "x": 96.84,
+   "y": 0.0,
+   "z": 74.09,
+   "yawRad": 5.71,
+   "scale": 100.0,
+   "radius": 2.1,
+   "solid": true
+  },
+  {
+   "model": "models/props/chess_pawn_b.drm",
+   "name": "chess_pawn_b",
+   "role": "pylon",
+   "x": 113.07,
+   "y": 0.0,
+   "z": 62.85,
+   "yawRad": 6.188,
+   "scale": 100.0,
+   "radius": 2.1,
+   "solid": true
+  },
+  {
+   "model": "models/props/chess_pawn_w.drm",
+   "name": "chess_pawn_w",
+   "role": "pylon",
+   "x": 123.26,
+   "y": 0.0,
+   "z": 45.64,
+   "yawRad": 1.238,
+   "scale": 100.0,
+   "radius": 2.1,
+   "solid": true
+  },
+  {
+   "model": "models/props/chess_pawn_b.drm",
+   "name": "chess_pawn_b",
+   "role": "pylon",
+   "x": 124.27,
+   "y": 0.0,
+   "z": 28.2,
+   "yawRad": 2.825,
+   "scale": 100.0,
+   "radius": 2.1,
+   "solid": true
+  },
+  {
+   "model": "models/props/chess_pawn_w.drm",
+   "name": "chess_pawn_w",
+   "role": "pylon",
+   "x": 118.52,
+   "y": 0.0,
+   "z": 10.78,
+   "yawRad": 4.586,
+   "scale": 100.0,
+   "radius": 2.1,
+   "solid": true
+  },
+  {
+   "model": "models/props/chess_pawn_w.drm",
+   "name": "chess_pawn_w",
+   "role": "pylon",
+   "x": 113.62,
+   "y": 0.0,
+   "z": -17.77,
+   "yawRad": 2.781,
+   "scale": 100.0,
+   "radius": 2.1,
+   "solid": true
+  },
+  {
+   "model": "models/props/chess_pawn_w.drm",
+   "name": "chess_pawn_w",
+   "role": "pylon",
+   "x": 106.3,
+   "y": 0.0,
+   "z": -28.51,
+   "yawRad": 1.449,
+   "scale": 100.0,
+   "radius": 2.1,
+   "solid": true
+  },
+  {
+   "model": "models/props/chess_pawn_w.drm",
+   "name": "chess_pawn_w",
+   "role": "pylon",
+   "x": 105.69,
+   "y": 0.0,
+   "z": -46.99,
+   "yawRad": 2.457,
+   "scale": 100.0,
+   "radius": 2.1,
+   "solid": true
+  },
+  {
+   "model": "models/props/chess_pawn_b.drm",
+   "name": "chess_pawn_b",
+   "role": "pylon",
+   "x": 101.1,
+   "y": 0.0,
+   "z": -76.96,
+   "yawRad": 5.647,
+   "scale": 100.0,
+   "radius": 2.1,
+   "solid": true
+  },
+  {
+   "model": "models/props/chess_pawn_b.drm",
+   "name": "chess_pawn_b",
+   "role": "pylon",
+   "x": 106.0,
+   "y": 0.0,
+   "z": -89.45,
+   "yawRad": 5.89,
+   "scale": 100.0,
+   "radius": 2.1,
+   "solid": true
+  },
+  {
+   "model": "models/props/chess_pawn_w.drm",
+   "name": "chess_pawn_w",
+   "role": "pylon",
+   "x": 95.57,
+   "y": 0.0,
+   "z": -104.37,
+   "yawRad": 3.688,
+   "scale": 100.0,
+   "radius": 2.1,
+   "solid": true
+  },
+  {
+   "model": "models/props/chess_pawn_b.drm",
+   "name": "chess_pawn_b",
+   "role": "pylon",
+   "x": 78.25,
+   "y": 0.0,
+   "z": -110.94,
+   "yawRad": 5.546,
+   "scale": 100.0,
+   "radius": 2.1,
+   "solid": true
+  },
+  {
+   "model": "models/props/chess_pawn_b.drm",
+   "name": "chess_pawn_b",
+   "role": "pylon",
+   "x": 56.59,
+   "y": 0.0,
+   "z": -110.94,
+   "yawRad": 5.259,
+   "scale": 100.0,
+   "radius": 2.1,
+   "solid": true
+  },
+  {
+   "model": "models/props/chess_pawn_w.drm",
+   "name": "chess_pawn_w",
+   "role": "pylon",
+   "x": 41.54,
+   "y": 0.0,
+   "z": -104.87,
+   "yawRad": 3.799,
+   "scale": 100.0,
+   "radius": 2.1,
+   "solid": true
+  },
+  {
+   "model": "models/props/chess_pawn_b.drm",
+   "name": "chess_pawn_b",
+   "role": "pylon",
+   "x": 12.23,
+   "y": 0.0,
+   "z": -106.03,
+   "yawRad": 3.825,
+   "scale": 100.0,
+   "radius": 2.1,
+   "solid": true
+  },
+  {
+   "model": "models/props/chess_pawn_w.drm",
+   "name": "chess_pawn_w",
+   "role": "pylon",
+   "x": -90.54,
+   "y": 0.0,
+   "z": -99.52,
+   "yawRad": 0.493,
+   "scale": 100.0,
+   "radius": 2.1,
+   "solid": true
+  },
+  {
+   "model": "models/props/chess_pawn_b.drm",
+   "name": "chess_pawn_b",
+   "role": "pylon",
+   "x": -103.33,
+   "y": 0.0,
+   "z": -91.87,
+   "yawRad": 1.642,
+   "scale": 100.0,
+   "radius": 2.1,
+   "solid": true
+  },
+  {
+   "model": "models/props/chess_pawn_w.drm",
+   "name": "chess_pawn_w",
+   "role": "pylon",
+   "x": -114.51,
+   "y": 0.0,
+   "z": -76.35,
+   "yawRad": 5.824,
+   "scale": 100.0,
+   "radius": 2.1,
+   "solid": true
+  },
+  {
+   "model": "models/props/chess_pawn_b.drm",
+   "name": "chess_pawn_b",
+   "role": "pylon",
+   "x": -113.71,
+   "y": 0.0,
+   "z": -59.36,
+   "yawRad": 3.615,
+   "scale": 100.0,
+   "radius": 2.1,
+   "solid": true
+  },
+  {
+   "model": "models/props/chess_pawn_b.drm",
+   "name": "chess_pawn_b",
+   "role": "pylon",
+   "x": -108.24,
+   "y": 0.0,
+   "z": -40.51,
+   "yawRad": 3.286,
+   "scale": 100.0,
+   "radius": 2.1,
+   "solid": true
+  },
+  {
+   "model": "models/props/chess_pawn_w.drm",
+   "name": "chess_pawn_w",
+   "role": "pylon",
+   "x": -120.61,
+   "y": 0.0,
+   "z": -15.81,
+   "yawRad": 2.565,
+   "scale": 100.0,
+   "radius": 2.1,
+   "solid": true
+  },
+  {
+   "model": "models/props/chess_pawn_b.drm",
+   "name": "chess_pawn_b",
+   "role": "pylon",
+   "x": -108.61,
+   "y": 0.0,
+   "z": 25.78,
+   "yawRad": 3.159,
+   "scale": 100.0,
+   "radius": 2.1,
+   "solid": true
+  },
+  {
+   "model": "models/props/chess_pawn_w.drm",
+   "name": "chess_pawn_w",
+   "role": "pylon",
+   "x": -110.77,
+   "y": 0.0,
+   "z": 45.78,
+   "yawRad": 1.73,
+   "scale": 100.0,
+   "radius": 2.1,
+   "solid": true
+  },
+  {
+   "model": "models/props/chess_pawn_b.drm",
+   "name": "chess_pawn_b",
+   "role": "pylon",
+   "x": -104.31,
+   "y": 0.0,
+   "z": 59.59,
+   "yawRad": 0.495,
+   "scale": 100.0,
+   "radius": 2.1,
+   "solid": true
+  },
+  {
+   "model": "models/props/chess_pawn_w.drm",
+   "name": "chess_pawn_w",
+   "role": "pylon",
+   "x": -88.49,
+   "y": 0.0,
+   "z": 73.19,
+   "yawRad": 3.42,
+   "scale": 100.0,
+   "radius": 2.1,
+   "solid": true
+  },
+  {
+   "model": "models/props/chess_pawn_b.drm",
+   "name": "chess_pawn_b",
+   "role": "pylon",
+   "x": -69.55,
+   "y": 0.0,
+   "z": 79.18,
+   "yawRad": 4.209,
+   "scale": 100.0,
+   "radius": 2.1,
+   "solid": true
+  },
+  {
+   "model": "models/props/chess_pawn_w.drm",
+   "name": "chess_pawn_w",
+   "role": "pylon",
+   "x": -44.47,
+   "y": 0.0,
+   "z": 80.91,
+   "yawRad": 0.008,
+   "scale": 100.0,
+   "radius": 2.1,
+   "solid": true
+  },
+  {
+   "model": "models/props/chess_pawn_b.drm",
+   "name": "chess_pawn_b",
+   "role": "pylon",
+   "x": -20.09,
+   "y": 0.0,
+   "z": 102.17,
+   "yawRad": 4.176,
+   "scale": 100.0,
+   "radius": 2.1,
+   "solid": true
+  },
+  {
+   "model": "models/props/desk_lamp.drm",
+   "name": "desk_lamp",
+   "role": "landmark",
+   "x": -158.76,
+   "y": 0.0,
+   "z": -10.58,
+   "yawRad": 1.813,
+   "scale": 100.0,
+   "radius": 19.97,
+   "solid": true
+  },
+  {
+   "model": "models/props/teacup.drm",
+   "name": "teacup",
+   "role": "landmark",
+   "x": 21.3,
+   "y": 0.0,
+   "z": 61.73,
+   "yawRad": -0.07,
+   "scale": 100.0,
+   "radius": 7.64,
+   "solid": true
+  },
+  {
+   "model": "models/props/water_bottle.drm",
+   "name": "water_bottle",
+   "role": "landmark",
+   "x": 78.33,
+   "y": 0.0,
+   "z": -80.75,
+   "yawRad": 2.838,
+   "scale": 100.0,
+   "radius": 5.44,
+   "solid": true
+  },
+  {
+   "model": "models/props/vase_flowers.drm",
+   "name": "vase_flowers",
+   "role": "landmark",
+   "x": -85.84,
+   "y": 0.0,
+   "z": -63.5,
+   "yawRad": -2.99,
+   "scale": 100.0,
+   "radius": 16.04,
+   "solid": true
+  },
+  {
+   "model": "models/props/lantern.drm",
+   "name": "lantern",
+   "role": "landmark",
+   "x": -41.01,
+   "y": 0.0,
+   "z": 42.89,
+   "yawRad": -0.031,
+   "scale": 100.0,
+   "radius": 13.58,
+   "solid": true
+  },
+  {
+   "model": "models/props/chess_king_w.drm",
+   "name": "chess_king_w",
+   "role": "landmark",
+   "x": -32.03,
+   "y": 0.0,
+   "z": 110.1,
+   "yawRad": -3.093,
+   "scale": 100.0,
+   "radius": 2.8,
+   "solid": true
+  },
+  {
+   "model": "models/props/chess_queen_b.drm",
+   "name": "chess_queen_b",
+   "role": "landmark",
+   "x": 82.09,
+   "y": 0.0,
+   "z": 53.9,
+   "yawRad": 0.231,
+   "scale": 100.0,
+   "radius": 2.67,
+   "solid": true
+  }
+ ]
+}

@@ -4,12 +4,10 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -20,17 +18,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.union
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Flag
-import androidx.compose.material.icons.filled.HelpOutline
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material.icons.filled.ShoppingBag
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material.icons.filled.WifiTethering
@@ -47,7 +45,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -55,8 +52,10 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.data.ShopCatalog
 import com.example.data.UserProfileAndSettings
 import com.example.game.CcClass
 import com.example.game.CpuDifficulty
@@ -67,10 +66,12 @@ import com.example.game.Track
 import com.example.game.Tracks
 import com.example.ui.hud.formatRaceTime
 import com.example.ui.theme.ArcadeCrimson
+import com.example.ui.theme.DRColors
+import com.example.ui.theme.DRType
 import com.example.ui.theme.DriftAmber
 import com.example.ui.theme.HostEmerald
 import com.example.ui.theme.JoinBlue
-import com.example.ui.theme.OrbitronFontFamily
+import com.example.ui.theme.Poppins
 import com.example.ui.theme.RulerYellow
 import com.example.ui.theme.SkyCyan
 import com.example.ui.theme.SlateAbyss
@@ -96,6 +97,8 @@ fun MainMenuScreen(
     onHostRace: () -> Unit,
     onJoinRace: () -> Unit,
     onOpenGarage: () -> Unit,
+    onOpenShop: () -> Unit = {},
+    onOpenDeskPass: () -> Unit = {},
     onOpenSettings: () -> Unit,
     onOpenHowToConnect: () -> Unit
 ) {
@@ -103,6 +106,7 @@ fun MainMenuScreen(
     var activeSetupMode by remember { mutableStateOf(GameMode.QUICK_RACE) }
 
     val selectedTrack = Tracks.byId(profile.selectedTrackId)
+    val passTier = ((profile.deskPassXp / 200) + 1).coerceIn(1, 40)
 
     Box(
         modifier = Modifier
@@ -110,65 +114,67 @@ fun MainMenuScreen(
             .background(
                 brush = Brush.horizontalGradient(
                     colors = listOf(
-                        Color(0x88090D16),
-                        Color(0xCC0F172A),
-                        Color(0xF20F172A)
+                        Color(0x550B1020),
+                        Color(0xB80B1020),
+                        Color(0xF00B1020)
                     )
                 )
             )
             .windowInsetsPadding(WindowInsets.safeDrawing.union(WindowInsets.displayCutout))
-            .padding(horizontal = 22.dp, vertical = 12.dp)
+            .padding(horizontal = 20.dp, vertical = 10.dp)
             .testTag("main_menu_screen")
     ) {
         Row(
             modifier = Modifier.fillMaxSize(),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Left Half: Animated Title, Active Setup Summary Chip, Mode Pills, Profile & Hotspot Help
+            // Left Pane (48%): Title, Active Track & Mode Summary, 3D Showroom Window, Footer Bar with Coins/Gems/Pass Tier
             Column(
                 modifier = Modifier
-                    .weight(1.08f)
+                    .weight(0.48f)
                     .fillMaxHeight(),
                 verticalArrangement = Arrangement.SpaceBetween
             ) {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Text(
                             text = "DESK RACER",
-                            fontFamily = OrbitronFontFamily,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 32.sp,
+                            fontFamily = Poppins,
+                            fontWeight = FontWeight.Black,
+                            fontSize = 28.sp,
                             color = Color.White
                         )
                         Surface(
                             shape = RoundedCornerShape(8.dp),
-                            color = ArcadeCrimson
+                            color = RulerYellow
                         ) {
                             Text(
-                                text = "LAN v2",
-                                fontFamily = OrbitronFontFamily,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 14.sp,
-                                color = Color.White,
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                                text = "LAN v3",
+                                fontFamily = Poppins,
+                                fontWeight = FontWeight.ExtraBold,
+                                fontSize = 12.sp,
+                                color = SlateAbyss,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                             )
                         }
                     }
                     Text(
-                        text = "8-KART OFFLINE WI-FI HOTSPOT CHAMPIONSHIP • 8 TRACKS",
-                        fontFamily = OrbitronFontFamily,
+                        text = "REAL-WORLD 3D STATIONERY RACER • OFFLINE HOTSPOT",
+                        fontFamily = Poppins,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 11.sp,
-                        color = SkyCyan
+                        fontSize = 10.sp,
+                        color = SkyCyan,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
 
-                    // Mode Quick-Launch Row: Grand Prix, Time Trial, Battle, Setup
+                    // Mode Quick-Launch Row: Grand Prix, Time Trial, Battle
                     Row(
-                        modifier = Modifier.padding(top = 6.dp),
+                        modifier = Modifier.padding(top = 4.dp),
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         ModeChip(
@@ -199,13 +205,13 @@ fun MainMenuScreen(
                         )
                     }
 
-                    // Active Track & Rules Summary Pill (tappable to open Race Setup)
+                    // Active Track & Rules Summary Pill (opens two-pane Race Setup)
                     Surface(
                         shape = RoundedCornerShape(12.dp),
-                        color = Color(0xD91E293B),
+                        color = Color(0xD9141C33),
                         border = androidx.compose.foundation.BorderStroke(1.dp, SkyCyan.copy(alpha = 0.65f)),
                         modifier = Modifier
-                            .padding(top = 4.dp)
+                            .padding(top = 2.dp)
                             .clickable {
                                 activeSetupMode = GameMode.QUICK_RACE
                                 showRaceSetupModal = true
@@ -221,79 +227,123 @@ fun MainMenuScreen(
                             Column {
                                 Text(
                                     text = "${selectedTrack.name} • ${profile.selectedCcClass.label} • ${profile.selectedLaps} LAPS",
-                                    fontFamily = OrbitronFontFamily,
+                                    fontFamily = Poppins,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 11.sp,
-                                    color = Color.White
+                                    color = Color.White,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                                 val botsDesc = if (profile.raceWithBots) "${profile.botCount} Bots (${profile.cpuDifficulty.label})" else "Solo (0 Bots)"
                                 Text(
-                                    text = "$botsDesc • Items: ${profile.selectedItemMode.label} • Tap to customize",
+                                    text = "$botsDesc • Items: ${profile.selectedItemMode.label} • Tap to configure",
+                                    fontFamily = Poppins,
                                     fontSize = 10.sp,
-                                    color = RulerYellow
+                                    color = RulerYellow,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                             }
                         }
                     }
                 }
 
-                // Bottom-left Player Profile & "How to connect" link
+                // Bottom-left Footer Bar: Player Profile, Coins, Gems, Pass Tier & Hotspot Help
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = Color(0xCC1E293B),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(profile.kartColorHex))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        Surface(
+                            shape = RoundedCornerShape(999.dp),
+                            color = Color(0xD9141C33),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(profile.kartColorHex))
                         ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(16.dp)
-                                    .background(Color(profile.kartColorHex), RoundedCornerShape(8.dp))
-                            )
+                            Row(
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(10.dp)
+                                        .background(Color(profile.kartColorHex), RoundedCornerShape(5.dp))
+                                )
+                                Text(
+                                    text = "${profile.playerName} • ${profile.kartBody.title.uppercase()}",
+                                    fontFamily = Poppins,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 10.sp,
+                                    color = Color.White,
+                                    maxLines = 1
+                                )
+                            }
+                        }
+
+                        Surface(
+                            shape = RoundedCornerShape(999.dp),
+                            color = Color(0xD9141C33),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, RulerYellow.copy(alpha = 0.7f)),
+                            modifier = Modifier.clickable(onClick = onOpenShop)
+                        ) {
                             Text(
-                                text = "${profile.playerName} • ${profile.kartBody.title.uppercase()}",
-                                fontFamily = OrbitronFontFamily,
+                                text = "🪙 ${ShopCatalog.formatCount(profile.coinsBalance)}  💎 ${profile.gemsBalance}",
+                                style = DRType.TabularTimer,
+                                fontSize = 10.sp,
+                                color = RulerYellow,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                            )
+                        }
+
+                        Surface(
+                            shape = RoundedCornerShape(999.dp),
+                            color = Color(0xD9141C33),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, HostEmerald.copy(alpha = 0.7f)),
+                            modifier = Modifier.clickable(onClick = onOpenDeskPass)
+                        ) {
+                            Text(
+                                text = "PASS T$passTier",
+                                fontFamily = Poppins,
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 12.sp,
-                                color = Color.White
+                                fontSize = 10.sp,
+                                color = HostEmerald,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp)
                             )
                         }
                     }
 
                     Row(
                         modifier = Modifier
-                            .height(44.dp)
+                            .height(34.dp)
                             .clickable(onClick = onOpenHowToConnect)
-                            .padding(horizontal = 8.dp)
+                            .padding(horizontal = 4.dp)
                             .testTag("btn_how_to_connect"),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.HelpOutline,
+                            imageVector = Icons.AutoMirrored.Filled.HelpOutline,
                             contentDescription = null,
                             tint = RulerYellow,
-                            modifier = Modifier.size(18.dp)
+                            modifier = Modifier.size(16.dp)
                         )
                         Text(
-                            text = "How to connect over Wi-Fi Hotspot (Zero Internet)",
-                            fontFamily = OrbitronFontFamily,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 11.sp,
-                            color = RulerYellow
+                            text = "How to play & connect over Wi-Fi Hotspot (Zero Internet)",
+                            fontFamily = Poppins,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 10.sp,
+                            color = RulerYellow,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 }
             }
 
-            // Right Half: Vertical Stack of 5 Large Action Buttons
+            // Right Pane (52%): 3 Primary Mode Cards + 4 Compact Secondary Pills (GARAGE, SHOP, DESK PASS, SETTINGS)
             Column(
                 modifier = Modifier
-                    .weight(0.92f)
+                    .weight(0.52f)
                     .fillMaxHeight(),
                 verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
                 horizontalAlignment = Alignment.End
@@ -322,6 +372,8 @@ fun MainMenuScreen(
                     testTag = "btn_menu_join_race",
                     onClick = onJoinRace
                 )
+
+                // 2x2 Compact Secondary Row: GARAGE, SHOP, DESK PASS, SETTINGS
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -332,6 +384,27 @@ fun MainMenuScreen(
                         accentColor = DriftAmber,
                         testTag = "btn_menu_garage",
                         onClick = onOpenGarage,
+                        modifier = Modifier.weight(1f)
+                    )
+                    CompactMenuButton(
+                        title = "SHOP",
+                        icon = Icons.Default.ShoppingBag,
+                        accentColor = RulerYellow,
+                        testTag = "btn_menu_shop",
+                        onClick = onOpenShop,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    CompactMenuButton(
+                        title = "DESK PASS",
+                        icon = Icons.Default.EmojiEvents,
+                        accentColor = HostEmerald,
+                        testTag = "btn_menu_desk_pass",
+                        onClick = onOpenDeskPass,
                         modifier = Modifier.weight(1f)
                     )
                     CompactMenuButton(
@@ -346,7 +419,7 @@ fun MainMenuScreen(
             }
         }
 
-        // Race Setup & Track Picker Modal (Part C1 & C2)
+        // Two-Pane Race Setup & Track Picker Modal (Part G3)
         if (showRaceSetupModal) {
             RaceSetupDialog(
                 profile = profile,
@@ -374,7 +447,7 @@ private fun ModeChip(
         color = SlateSurface,
         border = androidx.compose.foundation.BorderStroke(1.2.dp, accent),
         modifier = Modifier
-            .height(38.dp)
+            .height(36.dp)
             .clickable(onClick = onClick)
             .testTag(testTag)
     ) {
@@ -384,10 +457,11 @@ private fun ModeChip(
         ) {
             Text(
                 text = label,
-                fontFamily = OrbitronFontFamily,
+                fontFamily = Poppins,
                 fontWeight = FontWeight.Bold,
                 fontSize = 10.sp,
-                color = Color.White
+                color = Color.White,
+                maxLines = 1
             )
         }
     }
@@ -428,7 +502,7 @@ private fun RaceSetupDialog(
         contentAlignment = Alignment.Center,
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xE6090D16))
+            .background(Color(0xEB0B1020))
             .testTag("race_setup_dialog")
     ) {
         Surface(
@@ -462,7 +536,7 @@ private fun RaceSetupDialog(
                                 Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 10.dp)) {
                                     Text(
                                         text = m.title,
-                                        fontFamily = OrbitronFontFamily,
+                                        fontFamily = Poppins,
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 10.sp,
                                         color = if (active) SlateAbyss else Color.White
@@ -478,262 +552,312 @@ private fun RaceSetupDialog(
                         shape = RoundedCornerShape(8.dp),
                         modifier = Modifier.height(36.dp)
                     ) {
-                        Text("CLOSE", fontFamily = OrbitronFontFamily, fontWeight = FontWeight.Bold, fontSize = 10.sp)
+                        Text("CLOSE", fontFamily = Poppins, fontWeight = FontWeight.Bold, fontSize = 10.sp)
                     }
                 }
 
-                // Track or Cup Picker Row
-                if (mode == GameMode.GRAND_PRIX) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        CupType.entries.forEach { c ->
-                            val selected = cup == c
-                            Surface(
-                                shape = RoundedCornerShape(12.dp),
-                                color = if (selected) RulerYellow.copy(alpha = 0.22f) else SlateSurface,
-                                border = androidx.compose.foundation.BorderStroke(
-                                    if (selected) 2.dp else 1.dp,
-                                    if (selected) RulerYellow else SlateBorder
-                                ),
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(92.dp)
-                                    .clickable {
-                                        cup = c
-                                        trackId = c.trackIds.first()
-                                        pushChanges()
-                                    }
-                            ) {
-                                Column(
-                                    modifier = Modifier.padding(12.dp),
-                                    verticalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Text(
-                                        text = "🏆 ${c.title}",
-                                        fontFamily = OrbitronFontFamily,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 15.sp,
-                                        color = RulerYellow
-                                    )
-                                    Text(
-                                        text = c.subtitle,
-                                        fontSize = 11.sp,
-                                        color = Color.White
-                                    )
-                                }
-                            }
-                        }
-                    }
-                } else {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Tracks.all.forEach { t ->
-                            val selected = trackId == t.id
-                            val bestMs = profile.bestLapMsByTrack[t.id] ?: 0L
-                            TrackCardMini(
-                                track = t,
-                                selected = selected,
-                                bestLapMs = bestMs,
-                                onClick = {
-                                    trackId = t.id
-                                    pushChanges()
-                                }
-                            )
-                        }
-                    }
-                }
-
-                // Race Rules Controls (Bots, Difficulty, Laps, Items, CC)
+                // Two-Pane Body (Left: Track or Cup List, Right: Selected Track Preview + Rules)
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    if (mode != GameMode.TIME_TRIAL) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Text(
-                                text = "BOTS:",
-                                fontFamily = OrbitronFontFamily,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 10.sp,
-                                color = SkyCyan
-                            )
-                            Switch(
-                                checked = raceWithBots,
-                                onCheckedChange = {
-                                    raceWithBots = it
-                                    pushChanges()
-                                }
-                            )
-                            if (raceWithBots) {
-                                listOf(3, 5, 7).forEach { count ->
-                                    val active = botCount == count
+                    // Left Pane: Track or Cup List
+                    Box(modifier = Modifier.weight(1.05f).fillMaxHeight()) {
+                        if (mode == GameMode.GRAND_PRIX) {
+                            Column(
+                                modifier = Modifier.fillMaxSize(),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                CupType.entries.forEach { c ->
+                                    val selected = cup == c
                                     Surface(
-                                        shape = RoundedCornerShape(6.dp),
-                                        color = if (active) HostEmerald else SlateSurface,
+                                        shape = RoundedCornerShape(12.dp),
+                                        color = if (selected) RulerYellow.copy(alpha = 0.22f) else SlateSurface,
+                                        border = androidx.compose.foundation.BorderStroke(
+                                            if (selected) 2.dp else 1.dp,
+                                            if (selected) RulerYellow else SlateBorder
+                                        ),
                                         modifier = Modifier
-                                            .height(32.dp)
+                                            .fillMaxWidth()
+                                            .weight(1f)
                                             .clickable {
-                                                botCount = count
+                                                cup = c
+                                                trackId = c.trackIds.first()
                                                 pushChanges()
                                             }
                                     ) {
-                                        Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 8.dp)) {
+                                        Column(
+                                            modifier = Modifier.padding(12.dp),
+                                            verticalArrangement = Arrangement.SpaceBetween
+                                        ) {
                                             Text(
-                                                text = "$count BOTS",
-                                                fontFamily = OrbitronFontFamily,
+                                                text = "🏆 ${c.title}",
+                                                fontFamily = Poppins,
                                                 fontWeight = FontWeight.Bold,
-                                                fontSize = 9.sp,
-                                                color = if (active) SlateAbyss else Color.White
+                                                fontSize = 14.sp,
+                                                color = RulerYellow
+                                            )
+                                            Text(
+                                                text = c.subtitle,
+                                                fontFamily = Poppins,
+                                                fontSize = 11.sp,
+                                                color = Color.White
                                             )
                                         }
                                     }
                                 }
                             }
-                        }
-
-                        // Bot Difficulty
-                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                            CpuDifficulty.entries.forEach { d ->
-                                val active = difficulty == d
-                                Surface(
-                                    shape = RoundedCornerShape(6.dp),
-                                    color = if (active) DriftAmber else SlateSurface,
-                                    modifier = Modifier
-                                        .height(32.dp)
-                                        .clickable {
-                                            difficulty = d
+                        } else {
+                            LazyColumn(
+                                modifier = Modifier.fillMaxSize(),
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                items(Tracks.all) { t ->
+                                    val selected = trackId == t.id
+                                    val bestMs = profile.bestLapMsByTrack[t.id] ?: 0L
+                                    TrackCardMini(
+                                        track = t,
+                                        selected = selected,
+                                        bestLapMs = bestMs,
+                                        onClick = {
+                                            trackId = t.id
                                             pushChanges()
                                         }
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // Right Pane: Rules & Launch Button
+                    Surface(
+                        modifier = Modifier.weight(0.95f).fillMaxHeight(),
+                        shape = RoundedCornerShape(14.dp),
+                        color = DRColors.SlateCard,
+                        border = androidx.compose.foundation.BorderStroke(1.dp, SlateBorder)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(12.dp),
+                            verticalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            val activeTrack = Tracks.byId(trackId)
+                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                Text(
+                                    text = activeTrack.name.uppercase(),
+                                    fontFamily = Poppins,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 14.sp,
+                                    color = RulerYellow
+                                )
+                                Text(
+                                    text = "${activeTrack.subtitle} • Surface: ${activeTrack.surfaceTexture.substringAfterLast('/').substringBeforeLast('.').uppercase()}",
+                                    fontFamily = Poppins,
+                                    fontSize = 10.sp,
+                                    color = SkyCyan,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+
+                            if (mode != GameMode.TIME_TRIAL) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
-                                    Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 8.dp)) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
                                         Text(
-                                            text = d.label.uppercase(),
-                                            fontFamily = OrbitronFontFamily,
+                                            text = "BOTS",
+                                            fontFamily = Poppins,
                                             fontWeight = FontWeight.Bold,
-                                            fontSize = 9.sp,
-                                            color = if (active) SlateAbyss else Color.White
+                                            fontSize = 10.sp,
+                                            color = SkyCyan
+                                        )
+                                        Switch(
+                                            checked = raceWithBots,
+                                            onCheckedChange = {
+                                                raceWithBots = it
+                                                pushChanges()
+                                            }
                                         )
                                     }
-                                }
-                            }
-                        }
-                    } else {
-                        Text(
-                            text = "TIME TRIAL: SOLO 3 LAPS • RACE AGAINST YOUR 20 HZ GHOST",
-                            fontFamily = OrbitronFontFamily,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 11.sp,
-                            color = RulerYellow
-                        )
-                    }
-                }
-
-                // Bottom Row: Laps, Item Mode, CC Class, and START RACE button
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        listOf(1, 3, 5).forEach { l ->
-                            val active = laps == l
-                            Surface(
-                                shape = RoundedCornerShape(8.dp),
-                                color = if (active) SkyCyan else SlateSurface,
-                                modifier = Modifier
-                                    .height(36.dp)
-                                    .clickable {
-                                        laps = l
-                                        pushChanges()
+                                    if (raceWithBots) {
+                                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                            listOf(3, 5, 7).forEach { count ->
+                                                val active = botCount == count
+                                                Surface(
+                                                    shape = RoundedCornerShape(6.dp),
+                                                    color = if (active) HostEmerald else SlateSurface,
+                                                    modifier = Modifier
+                                                        .height(30.dp)
+                                                        .clickable {
+                                                            botCount = count
+                                                            pushChanges()
+                                                        }
+                                                ) {
+                                                    Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 8.dp)) {
+                                                        Text(
+                                                            text = "$count",
+                                                            fontFamily = Poppins,
+                                                            fontWeight = FontWeight.Bold,
+                                                            fontSize = 10.sp,
+                                                            color = if (active) SlateAbyss else Color.White
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        }
                                     }
-                            ) {
-                                Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 10.dp)) {
-                                    Text(
-                                        text = "$l LAPS",
-                                        fontFamily = OrbitronFontFamily,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 10.sp,
-                                        color = if (active) SlateAbyss else Color.White
-                                    )
                                 }
-                            }
-                        }
 
-                        CcClass.entries.forEach { cc ->
-                            val active = ccClass == cc
-                            Surface(
-                                shape = RoundedCornerShape(8.dp),
-                                color = if (active) RulerYellow else SlateSurface,
-                                modifier = Modifier
-                                    .height(36.dp)
-                                    .clickable {
-                                        ccClass = cc
-                                        pushChanges()
+                                // Bot Difficulty + Items
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                        CpuDifficulty.entries.forEach { d ->
+                                            val active = difficulty == d
+                                            Surface(
+                                                shape = RoundedCornerShape(6.dp),
+                                                color = if (active) DriftAmber else SlateSurface,
+                                                modifier = Modifier
+                                                    .height(30.dp)
+                                                    .clickable {
+                                                        difficulty = d
+                                                        pushChanges()
+                                                    }
+                                            ) {
+                                                Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 7.dp)) {
+                                                    Text(
+                                                        text = d.label.uppercase(),
+                                                        fontFamily = Poppins,
+                                                        fontWeight = FontWeight.Bold,
+                                                        fontSize = 9.sp,
+                                                        color = if (active) SlateAbyss else Color.White
+                                                    )
+                                                }
+                                            }
+                                        }
                                     }
-                            ) {
-                                Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 10.dp)) {
-                                    Text(
-                                        text = cc.label,
-                                        fontFamily = OrbitronFontFamily,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 10.sp,
-                                        color = if (active) SlateAbyss else Color.White
-                                    )
-                                }
-                            }
-                        }
 
-                        if (mode != GameMode.TIME_TRIAL) {
-                            Surface(
-                                shape = RoundedCornerShape(8.dp),
-                                color = SlateSurface,
-                                border = androidx.compose.foundation.BorderStroke(1.dp, HostEmerald),
-                                modifier = Modifier
-                                    .height(36.dp)
-                                    .clickable {
-                                        val entries = ItemMode.entries
-                                        itemMode = entries[(itemMode.ordinal + 1) % entries.size]
-                                        pushChanges()
+                                    Surface(
+                                        shape = RoundedCornerShape(6.dp),
+                                        color = SlateSurface,
+                                        border = androidx.compose.foundation.BorderStroke(1.dp, HostEmerald),
+                                        modifier = Modifier
+                                            .height(30.dp)
+                                            .clickable {
+                                                val entries = ItemMode.entries
+                                                itemMode = entries[(itemMode.ordinal + 1) % entries.size]
+                                                pushChanges()
+                                            }
+                                    ) {
+                                        Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 8.dp)) {
+                                            Text(
+                                                text = "ITEMS: ${itemMode.label.uppercase()}",
+                                                fontFamily = Poppins,
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 9.sp,
+                                                color = HostEmerald
+                                            )
+                                        }
                                     }
+                                }
+                            } else {
+                                Text(
+                                    text = "SOLO 3 LAPS • RACE YOUR 20 HZ PERSONAL GHOST",
+                                    fontFamily = Poppins,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 10.sp,
+                                    color = RulerYellow
+                                )
+                            }
+
+                            // Laps + CC Class
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
                             ) {
-                                Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 10.dp)) {
-                                    Text(
-                                        text = "ITEMS: ${itemMode.label.uppercase()}",
-                                        fontFamily = OrbitronFontFamily,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 10.sp,
-                                        color = HostEmerald
-                                    )
+                                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    listOf(1, 3, 5).forEach { l ->
+                                        val active = laps == l
+                                        Surface(
+                                            shape = RoundedCornerShape(6.dp),
+                                            color = if (active) SkyCyan else SlateSurface,
+                                            modifier = Modifier
+                                                .height(32.dp)
+                                                .clickable {
+                                                    laps = l
+                                                    pushChanges()
+                                                }
+                                        ) {
+                                            Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 8.dp)) {
+                                                Text(
+                                                    text = "${l}L",
+                                                    fontFamily = Poppins,
+                                                    fontWeight = FontWeight.Bold,
+                                                    fontSize = 10.sp,
+                                                    color = if (active) SlateAbyss else Color.White
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+
+                                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    CcClass.entries.forEach { cc ->
+                                        val active = ccClass == cc
+                                        Surface(
+                                            shape = RoundedCornerShape(6.dp),
+                                            color = if (active) RulerYellow else SlateSurface,
+                                            modifier = Modifier
+                                                .height(32.dp)
+                                                .clickable {
+                                                    ccClass = cc
+                                                    pushChanges()
+                                                }
+                                        ) {
+                                            Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 8.dp)) {
+                                                Text(
+                                                    text = cc.label,
+                                                    fontFamily = Poppins,
+                                                    fontWeight = FontWeight.Bold,
+                                                    fontSize = 10.sp,
+                                                    color = if (active) SlateAbyss else Color.White
+                                                )
+                                            }
+                                        }
+                                    }
                                 }
                             }
-                        }
-                    }
 
-                    Button(
-                        onClick = { onStart(mode, cup, trackId) },
-                        colors = ButtonDefaults.buttonColors(containerColor = ArcadeCrimson),
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier
-                            .height(44.dp)
-                            .testTag("btn_race_setup_start")
-                    ) {
-                        Text(
-                            text = "LAUNCH RACE ▶",
-                            fontFamily = OrbitronFontFamily,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 13.sp,
-                            color = Color.White
-                        )
+                            Button(
+                                onClick = { onStart(mode, cup, trackId) },
+                                colors = ButtonDefaults.buttonColors(containerColor = RulerYellow),
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(44.dp)
+                                    .testTag("btn_race_setup_start")
+                            ) {
+                                Text(
+                                    text = "START RACE ▶",
+                                    fontFamily = Poppins,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    fontSize = 13.sp,
+                                    color = SlateAbyss
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -756,20 +880,20 @@ private fun TrackCardMini(
             color = if (selected) SkyCyan else SlateBorder
         ),
         modifier = Modifier
-            .width(156.dp)
-            .height(98.dp)
+            .fillMaxWidth()
+            .height(58.dp)
             .clickable(onClick = onClick)
             .testTag("setup_track_${track.id}")
     ) {
         Row(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                .padding(horizontal = 10.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Mini Spline Preview
-            Canvas(modifier = Modifier.size(46.dp)) {
+            Canvas(modifier = Modifier.size(42.dp)) {
                 val w = size.width
                 val h = size.height
                 val scaleX = (w - 8f) / (track.deskHalfExtentX * 1.7f)
@@ -793,24 +917,29 @@ private fun TrackCardMini(
             ) {
                 Text(
                     text = track.name,
-                    fontFamily = OrbitronFontFamily,
+                    fontFamily = Poppins,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 10.sp,
+                    fontSize = 11.sp,
                     color = Color.White,
-                    maxLines = 1
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = "${"★".repeat(track.difficultyStars)} • ${track.totalLength.roundToInt()}u",
+                    text = "${"★".repeat(track.difficultyStars)} • ${track.totalLength.roundToInt()}u • ${track.surfaceTexture.substringAfterLast('/').substringBeforeLast('.')}",
+                    fontFamily = Poppins,
                     fontSize = 9.sp,
-                    color = RulerYellow
-                )
-                Text(
-                    text = if (bestLapMs > 0L) "BEST ${formatRaceTime(bestLapMs)}" else "GOLD ${formatRaceTime(track.goldTimeMs)}",
-                    fontSize = 8.sp,
-                    color = SkyCyan,
+                    color = RulerYellow,
                     maxLines = 1
                 )
             }
+
+            Text(
+                text = if (bestLapMs > 0L) formatRaceTime(bestLapMs) else formatRaceTime(track.goldTimeMs),
+                style = DRType.TabularTimer,
+                fontSize = 10.sp,
+                color = SkyCyan,
+                maxLines = 1
+            )
         }
     }
 }
@@ -830,7 +959,7 @@ private fun MenuActionButton(
         colors = ButtonDefaults.buttonColors(containerColor = SlateSurface),
         modifier = Modifier
             .fillMaxWidth()
-            .height(58.dp)
+            .height(54.dp)
             .border(1.5.dp, accentColor.copy(alpha = 0.75f), RoundedCornerShape(14.dp))
             .testTag(testTag)
     ) {
@@ -841,12 +970,13 @@ private fun MenuActionButton(
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.weight(1f)
             ) {
                 Box(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier
-                        .size(36.dp)
+                        .size(34.dp)
                         .background(accentColor.copy(alpha = 0.22f), RoundedCornerShape(10.dp))
                 ) {
                     Icon(imageVector = icon, contentDescription = null, tint = accentColor)
@@ -854,21 +984,26 @@ private fun MenuActionButton(
                 Column {
                     Text(
                         text = title,
-                        fontFamily = OrbitronFontFamily,
+                        fontFamily = Poppins,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 15.sp,
-                        color = Color.White
+                        fontSize = 14.sp,
+                        color = Color.White,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                     Text(
                         text = subtitle,
-                        fontSize = 11.sp,
-                        color = Color(0xFF94A3B8)
+                        fontFamily = Poppins,
+                        fontSize = 10.sp,
+                        color = Color(0xFF94A3B8),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }
             Text(
                 text = "▶",
-                fontFamily = OrbitronFontFamily,
+                fontFamily = Poppins,
                 fontWeight = FontWeight.Bold,
                 fontSize = 14.sp,
                 color = accentColor
@@ -888,24 +1023,25 @@ private fun CompactMenuButton(
 ) {
     Button(
         onClick = onClick,
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(12.dp),
         colors = ButtonDefaults.buttonColors(containerColor = SlateSurface),
         modifier = modifier
-            .height(56.dp)
-            .border(1.5.dp, accentColor.copy(alpha = 0.65f), RoundedCornerShape(14.dp))
+            .height(44.dp)
+            .border(1.2.dp, accentColor.copy(alpha = 0.65f), RoundedCornerShape(12.dp))
             .testTag(testTag)
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            Icon(imageVector = icon, contentDescription = null, tint = accentColor, modifier = Modifier.size(20.dp))
+            Icon(imageVector = icon, contentDescription = null, tint = accentColor, modifier = Modifier.size(18.dp))
             Text(
                 text = title,
-                fontFamily = OrbitronFontFamily,
+                fontFamily = Poppins,
                 fontWeight = FontWeight.Bold,
-                fontSize = 13.sp,
-                color = Color.White
+                fontSize = 11.sp,
+                color = Color.White,
+                maxLines = 1
             )
         }
     }

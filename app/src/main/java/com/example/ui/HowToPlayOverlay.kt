@@ -2,12 +2,11 @@ package com.example.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
@@ -34,17 +33,19 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.game.ControlSchemeType
 import com.example.ui.theme.DriftAmber
 import com.example.ui.theme.HostEmerald
-import com.example.ui.theme.OrbitronFontFamily
+import com.example.ui.theme.Poppins
 import com.example.ui.theme.RulerYellow
 import com.example.ui.theme.SkyCyan
 import com.example.ui.theme.SlateAbyss
-import com.example.ui.theme.SlateBorder
 import com.example.ui.theme.SlateSurface
 
 @Composable
 fun HowToPlayOverlay(
+    selectedScheme: ControlSchemeType = ControlSchemeType.SMART,
+    onSelectScheme: (ControlSchemeType) -> Unit = {},
     onDismiss: () -> Unit
 ) {
     BackHandler(onBack = onDismiss)
@@ -53,9 +54,9 @@ fun HowToPlayOverlay(
         contentAlignment = Alignment.Center,
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xD9090D16))
+            .background(Color(0xE60B1020))
             .windowInsetsPadding(WindowInsets.safeDrawing.union(WindowInsets.displayCutout))
-            .padding(24.dp)
+            .padding(20.dp)
             .testTag("how_to_play_overlay")
     ) {
         Surface(
@@ -67,7 +68,7 @@ fun HowToPlayOverlay(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(20.dp),
+                    .padding(18.dp),
                 verticalArrangement = Arrangement.SpaceBetween
             ) {
                 Row(
@@ -77,15 +78,16 @@ fun HowToPlayOverlay(
                 ) {
                     Column {
                         Text(
-                            text = "HOW TO RACE OVER OFFLINE WI-FI HOTSPOT",
-                            fontFamily = OrbitronFontFamily,
+                            text = "CHOOSE YOUR DRIVING STYLE & HOTSPOT SETUP",
+                            fontFamily = Poppins,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 18.sp,
+                            fontSize = 17.sp,
                             color = SkyCyan
                         )
                         Text(
-                            text = "Zero internet or mobile data needed • Up to 6 phones",
-                            fontSize = 12.sp,
+                            text = "Tap any control card below to activate it • 100% Offline Wi-Fi Hotspot",
+                            fontFamily = Poppins,
+                            fontSize = 11.sp,
                             color = Color(0xFF94A3B8)
                         )
                     }
@@ -100,29 +102,36 @@ fun HowToPlayOverlay(
                     }
                 }
 
+                // 3 Interactive Control Cards (Smart / Pro / Tilt) + Hotspot Summary
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     StepCard(
                         stepNum = "1",
-                        title = "TURN ON HOTSPOT",
-                        desc = "One friend turns ON their phone's Wi-Fi Hotspot (mobile data can be OFF). Everyone else connects to that Wi-Fi.",
+                        title = "SMART (DEFAULT)",
+                        desc = "Auto-gas + floating thumb steer. Hold DRIFT around corners to charge Blue, Orange & Purple Mini-Turbos!",
                         accent = RulerYellow,
+                        selected = selectedScheme == ControlSchemeType.SMART,
+                        onClick = { onSelectScheme(ControlSchemeType.SMART) },
                         modifier = Modifier.weight(1f)
                     )
                     StepCard(
                         stepNum = "2",
-                        title = "HOST & AUTO-JOIN",
-                        desc = "The Host taps HOST RACE. Friends tap JOIN RACE—the room appears automatically via UDP 47777 (or type the shown Host IP).",
+                        title = "PRO MANUAL",
+                        desc = "Manual GAS + BRAKE/DRIFT pedals + floating steering pad. Full throttle control for hairpins and shortcuts.",
                         accent = HostEmerald,
+                        selected = selectedScheme == ControlSchemeType.PRO,
+                        onClick = { onSelectScheme(ControlSchemeType.PRO) },
                         modifier = Modifier.weight(1f)
                     )
                     StepCard(
                         stepNum = "3",
-                        title = "DRIFT & FIRE ITEMS",
-                        desc = "Drag your left thumb to steer. Hold DRIFT around corners for Blue, Orange & Purple Mini-Turbo sparks!",
+                        title = "TILT & HOTSPOT LAN",
+                        desc = "Steer by tilting your phone! For 2–8 player LAN: one friend turns ON Wi-Fi Hotspot, others join & tap JOIN RACE.",
                         accent = DriftAmber,
+                        selected = selectedScheme == ControlSchemeType.TILT,
+                        onClick = { onSelectScheme(ControlSchemeType.TILT) },
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -137,43 +146,54 @@ private fun StepCard(
     title: String,
     desc: String,
     accent: Color,
+    selected: Boolean,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Surface(
-        modifier = modifier,
+        modifier = modifier.clickable(onClick = onClick),
         shape = RoundedCornerShape(14.dp),
-        color = SlateSurface,
-        border = androidx.compose.foundation.BorderStroke(1.dp, accent.copy(alpha = 0.65f))
+        color = if (selected) accent.copy(alpha = 0.16f) else SlateSurface,
+        border = androidx.compose.foundation.BorderStroke(
+            width = if (selected) 2.dp else 1.dp,
+            color = if (selected) accent else accent.copy(alpha = 0.55f)
+        )
     ) {
         Column(
-            modifier = Modifier.padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .size(32.dp)
-                    .background(accent, CircleShape)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .size(28.dp)
+                        .background(accent, CircleShape)
+                ) {
+                    Text(
+                        text = stepNum,
+                        fontFamily = Poppins,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.sp,
+                        color = SlateAbyss
+                    )
+                }
                 Text(
-                    text = stepNum,
-                    fontFamily = OrbitronFontFamily,
+                    text = if (selected) "$title ✓" else title,
+                    fontFamily = Poppins,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 15.sp,
-                    color = SlateAbyss
+                    fontSize = 12.sp,
+                    color = Color.White
                 )
             }
             Text(
-                text = title,
-                fontFamily = OrbitronFontFamily,
-                fontWeight = FontWeight.Bold,
-                fontSize = 13.sp,
-                color = Color.White
-            )
-            Text(
                 text = desc,
-                fontSize = 12.sp,
-                lineHeight = 16.sp,
+                fontFamily = Poppins,
+                fontSize = 11.sp,
+                lineHeight = 15.sp,
                 color = Color(0xFFCBD5E1)
             )
         }

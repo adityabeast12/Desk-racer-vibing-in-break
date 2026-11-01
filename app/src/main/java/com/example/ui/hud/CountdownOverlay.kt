@@ -21,7 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ui.theme.ArcadeCrimson
 import com.example.ui.theme.GasGreen
-import com.example.ui.theme.OrbitronFontFamily
+import com.example.ui.theme.Poppins
 import com.example.ui.theme.RulerYellow
 import com.example.ui.theme.SkyCyan
 import java.util.Locale
@@ -56,7 +56,7 @@ fun CountdownOverlay(
             ) {
                 Text(
                     text = String.format(Locale.US, "RACE ENDS IN 0:%02d", dnfCountdownSec.coerceAtLeast(0)),
-                    fontFamily = OrbitronFontFamily,
+                    fontFamily = Poppins,
                     fontWeight = FontWeight.Bold,
                     fontSize = 13.sp,
                     color = RulerYellow
@@ -87,7 +87,7 @@ fun CountdownOverlay(
                 ) {
                     Text(
                         text = label,
-                        fontFamily = OrbitronFontFamily,
+                        fontFamily = Poppins,
                         fontWeight = FontWeight.Bold,
                         fontSize = 44.sp,
                         color = color
@@ -96,7 +96,7 @@ fun CountdownOverlay(
                 if (showRocketStartTip && countdownNumber in 1..3) {
                     Text(
                         text = "TIP: Tap GAS in the 0.35s window right as '2' fades for a ROCKET START!",
-                        fontFamily = OrbitronFontFamily,
+                        fontFamily = Poppins,
                         fontWeight = FontWeight.Bold,
                         fontSize = 11.sp,
                         color = RulerYellow,
@@ -124,7 +124,7 @@ fun CountdownOverlay(
             ) {
                 Text(
                     text = "⚠ WRONG WAY!",
-                    fontFamily = OrbitronFontFamily,
+                    fontFamily = Poppins,
                     fontWeight = FontWeight.Bold,
                     fontSize = 20.sp,
                     color = Color.White
@@ -147,7 +147,7 @@ fun CountdownOverlay(
             ) {
                 Text(
                     text = bannerText.orEmpty(),
-                    fontFamily = OrbitronFontFamily,
+                    fontFamily = Poppins,
                     fontWeight = FontWeight.Bold,
                     fontSize = 18.sp,
                     color = RulerYellow

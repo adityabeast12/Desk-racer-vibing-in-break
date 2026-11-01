@@ -56,7 +56,7 @@ import com.example.net.LobbySlotInfo
 import com.example.ui.theme.DriftAmber
 import com.example.ui.theme.HostEmerald
 import com.example.ui.theme.JoinBlue
-import com.example.ui.theme.OrbitronFontFamily
+import com.example.ui.theme.Poppins
 import com.example.ui.theme.RulerYellow
 import com.example.ui.theme.SkyCyan
 import com.example.ui.theme.SlateAbyss
@@ -124,7 +124,7 @@ fun JoinScreen(
                         Column {
                             Text(
                                 text = "AUTO-DISCOVERED ROOMS (UDP 47777)",
-                                fontFamily = OrbitronFontFamily,
+                                fontFamily = Poppins,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 14.sp,
                                 color = SkyCyan
@@ -156,7 +156,7 @@ fun JoinScreen(
                                 Spacer(modifier = Modifier.height(6.dp))
                                 Text(
                                     text = "Scanning local Wi-Fi / Hotspot subnet...",
-                                    fontFamily = OrbitronFontFamily,
+                                    fontFamily = Poppins,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 12.sp,
                                     color = Color.White
@@ -192,7 +192,7 @@ fun JoinScreen(
                                         Column {
                                             Text(
                                                 text = "ROOM ${room.roomCode} • ${room.hostName}",
-                                                fontFamily = OrbitronFontFamily,
+                                                fontFamily = Poppins,
                                                 fontWeight = FontWeight.Bold,
                                                 fontSize = 13.sp,
                                                 color = RulerYellow
@@ -205,7 +205,7 @@ fun JoinScreen(
                                         }
                                         Text(
                                             text = "${room.playerCount}/${room.maxPlayers} • TAP TO JOIN",
-                                            fontFamily = OrbitronFontFamily,
+                                            fontFamily = Poppins,
                                             fontWeight = FontWeight.Bold,
                                             fontSize = 11.sp,
                                             color = HostEmerald
@@ -237,7 +237,7 @@ fun JoinScreen(
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text(
                                 text = "DIRECT HOST IP CONNECT",
-                                fontFamily = OrbitronFontFamily,
+                                fontFamily = Poppins,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 14.sp,
                                 color = SkyCyan
@@ -279,7 +279,7 @@ fun JoinScreen(
                         ) {
                             Text(
                                 text = "JOIN HOST ($ipInput)",
-                                fontFamily = OrbitronFontFamily,
+                                fontFamily = Poppins,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 14.sp,
                                 color = Color.White
@@ -297,14 +297,14 @@ fun JoinScreen(
                         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text(
                                 text = "LOBBY ROOM $roomCode",
-                                fontFamily = OrbitronFontFamily,
+                                fontFamily = Poppins,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 16.sp,
                                 color = RulerYellow
                             )
                             Text(
                                 text = "${track.name} • $laps LAPS • Waiting for Host...",
-                                fontFamily = OrbitronFontFamily,
+                                fontFamily = Poppins,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 11.sp,
                                 color = SkyCyan
@@ -320,14 +320,14 @@ fun JoinScreen(
                                 ) {
                                     Text(
                                         text = s.playerName,
-                                        fontFamily = OrbitronFontFamily,
+                                        fontFamily = Poppins,
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 11.sp,
                                         color = Color.White
                                     )
                                     Text(
                                         text = if (s.isReady) "READY ✓" else "NOT READY",
-                                        fontFamily = OrbitronFontFamily,
+                                        fontFamily = Poppins,
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 11.sp,
                                         color = if (s.isReady) HostEmerald else DriftAmber
@@ -351,7 +351,7 @@ fun JoinScreen(
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = if (isClientReady) "READY! (TAP TO UNREADY)" else "TAP WHEN READY",
-                                fontFamily = OrbitronFontFamily,
+                                fontFamily = Poppins,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 13.sp,
                                 color = SlateAbyss

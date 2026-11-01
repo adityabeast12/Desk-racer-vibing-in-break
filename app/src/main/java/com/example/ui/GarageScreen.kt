@@ -28,6 +28,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -39,13 +40,15 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.UserProfileAndSettings
 import com.example.game.GameConstants
 import com.example.game.KartBodyType
+import com.example.ui.theme.DRColors
 import com.example.ui.theme.HostEmerald
-import com.example.ui.theme.OrbitronFontFamily
+import com.example.ui.theme.Poppins
 import com.example.ui.theme.RulerYellow
 import com.example.ui.theme.SkyCyan
 import com.example.ui.theme.SlateAbyss
@@ -58,6 +61,7 @@ fun GarageScreen(
     onNameChanged: (String) -> Unit,
     onColorSelected: (Int) -> Unit,
     onBodySelected: (KartBodyType) -> Unit,
+    onLiverySelected: (Int) -> Unit = {},
     onBack: () -> Unit
 ) {
     BackHandler(onBack = onBack)
@@ -66,14 +70,14 @@ fun GarageScreen(
         modifier = Modifier
             .fillMaxSize()
             .windowInsetsPadding(WindowInsets.safeDrawing.union(WindowInsets.displayCutout))
-            .padding(horizontal = 20.dp, vertical = 12.dp)
+            .padding(horizontal = 20.dp, vertical = 10.dp)
             .testTag("garage_screen")
     ) {
         Row(
             modifier = Modifier.fillMaxSize(),
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            // Left Half: Live 3D Rotating Kart Preview Window + Stat Bars
+            // Left Half: Live 3D Rotating Kart Turntable + 4 Stat Bars (Speed, Accel, Handling, Weight)
             Column(
                 modifier = Modifier
                     .weight(0.92f)
@@ -101,55 +105,71 @@ fun GarageScreen(
                     Column {
                         Text(
                             text = "KART GARAGE",
-                            fontFamily = OrbitronFontFamily,
+                            fontFamily = Poppins,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 22.sp,
+                            fontSize = 20.sp,
                             color = Color.White
                         )
                         Text(
-                            text = "5 HIGH-DETAIL 3D CHASSIS • LIVE TURNTABLE",
-                            fontFamily = OrbitronFontFamily,
-                            fontWeight = FontWeight.Bold,
+                            text = "6 HIGH-DETAIL 3D CHASSIS • 3 LIVERIES EACH",
+                            fontFamily = Poppins,
+                            fontWeight = FontWeight.SemiBold,
                             fontSize = 10.sp,
                             color = SkyCyan
                         )
                     }
                 }
 
+                // Bottom-left Stat Bars Card (Speed, Accel, Handling, Weight)
                 Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = Color(0xD90F172A),
+                    shape = RoundedCornerShape(14.dp),
+                    color = Color(0xE6141C33),
                     border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x38FFFFFF))
                 ) {
                     Column(
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 14.dp, vertical = 10.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        Text(
-                            text = "${profile.kartBody.title} • ${profile.kartBody.subtitle}",
-                            fontFamily = OrbitronFontFamily,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 11.sp,
-                            color = RulerYellow
-                        )
-                        Text(
-                            text = "SPEED ${(profile.kartBody.topSpeedFactor * 100).toInt()}%  •  ACCEL ${(profile.kartBody.accelFactor * 100).toInt()}%  •  HANDLING ${(profile.kartBody.handlingFactor * 100).toInt()}%  •  MASS ${(profile.kartBody.mass * 100).toInt()}%",
-                            fontFamily = OrbitronFontFamily,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 9.sp,
-                            color = SkyCyan
-                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "${profile.kartBody.title.uppercase()} • ${profile.kartBody.subtitle}",
+                                fontFamily = Poppins,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 11.sp,
+                                color = RulerYellow,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Text(
+                                text = "LIVERY #${profile.kartLiveryIndex + 1}",
+                                fontFamily = Poppins,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 10.sp,
+                                color = SkyCyan
+                            )
+                        }
+
+                        GarageStatBar("SPEED", (profile.kartBody.topSpeedFactor - 0.8f) / 0.3f, DRColors.KartGold)
+                        GarageStatBar("ACCEL", (profile.kartBody.accelFactor - 0.8f) / 0.3f, DRColors.MintFinish)
+                        GarageStatBar("HANDLING", (profile.kartBody.handlingFactor - 0.8f) / 0.3f, DRColors.ElectricBlue)
+                        GarageStatBar("WEIGHT", (profile.kartBody.mass - 0.7f) / 0.65f, DRColors.DriftOrange)
                     }
                 }
             }
 
-            // Right Half: Name Input (max 10 chars), 8 Colour Swatches, 5 Kart Bodies
+            // Right Half: Name Input (max 10 chars), 8 Colour Swatches, 3 Livery Chips, 6 Kart Bodies (2x3 grid)
             Surface(
                 modifier = Modifier
                     .weight(1.08f)
                     .fillMaxHeight(),
                 shape = RoundedCornerShape(18.dp),
-                color = Color(0xE60F172A),
+                color = Color(0xEB141C33),
                 border = androidx.compose.foundation.BorderStroke(1.dp, SlateBorder)
             ) {
                 Column(
@@ -158,41 +178,87 @@ fun GarageScreen(
                         .padding(14.dp),
                     verticalArrangement = Arrangement.SpaceBetween
                 ) {
-                    // 1. Player Name Input
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(
-                            text = "DRIVER NAME (MAX 10 CHARS)",
-                            fontFamily = OrbitronFontFamily,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 10.sp,
-                            color = SkyCyan
-                        )
-                        BasicTextField(
-                            value = profile.playerName,
-                            onValueChange = { onNameChanged(it.take(10).uppercase()) },
-                            singleLine = true,
-                            textStyle = TextStyle(
-                                fontFamily = OrbitronFontFamily,
+                    // 1. Player Name Input + Livery Picker
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.Bottom
+                    ) {
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(3.dp)
+                        ) {
+                            Text(
+                                text = "DRIVER NAME (MAX 10)",
+                                fontFamily = Poppins,
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 15.sp,
-                                color = Color.White
-                            ),
-                            cursorBrush = SolidColor(SkyCyan),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(44.dp)
-                                .background(SlateSurface, RoundedCornerShape(10.dp))
-                                .border(1.dp, SlateBorder, RoundedCornerShape(10.dp))
-                                .padding(horizontal = 14.dp, vertical = 10.dp)
-                                .testTag("garage_name_input")
-                        )
+                                fontSize = 10.sp,
+                                color = SkyCyan
+                            )
+                            BasicTextField(
+                                value = profile.playerName,
+                                onValueChange = { onNameChanged(it.take(10).uppercase()) },
+                                singleLine = true,
+                                textStyle = TextStyle(
+                                    fontFamily = Poppins,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 14.sp,
+                                    color = Color.White
+                                ),
+                                cursorBrush = SolidColor(SkyCyan),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(40.dp)
+                                    .background(SlateSurface, RoundedCornerShape(10.dp))
+                                    .border(1.dp, SlateBorder, RoundedCornerShape(10.dp))
+                                    .padding(horizontal = 12.dp, vertical = 8.dp)
+                                    .testTag("garage_name_input")
+                            )
+                        }
+
+                        // 3 Livery Variant Buttons
+                        Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                            Text(
+                                text = "LIVERY TRIM",
+                                fontFamily = Poppins,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 10.sp,
+                                color = RulerYellow
+                            )
+                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                listOf("STOCK", "CYBER", "PRO").forEachIndexed { idx, label ->
+                                    val selected = profile.kartLiveryIndex == idx
+                                    Surface(
+                                        shape = RoundedCornerShape(8.dp),
+                                        color = if (selected) RulerYellow else SlateSurface,
+                                        modifier = Modifier
+                                            .height(40.dp)
+                                            .clickable { onLiverySelected(idx) }
+                                            .testTag("garage_livery_$idx")
+                                    ) {
+                                        Box(
+                                            contentAlignment = Alignment.Center,
+                                            modifier = Modifier.padding(horizontal = 10.dp)
+                                        ) {
+                                            Text(
+                                                text = label,
+                                                fontFamily = Poppins,
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 10.sp,
+                                                color = if (selected) SlateAbyss else Color.White
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
 
                     // 2. 8 Kart Paint Swatches
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text(
                             text = "KART PAINT COLOUR",
-                            fontFamily = OrbitronFontFamily,
+                            fontFamily = Poppins,
                             fontWeight = FontWeight.Bold,
                             fontSize = 10.sp,
                             color = SkyCyan
@@ -205,7 +271,7 @@ fun GarageScreen(
                                 val selected = profile.kartColorIndex == idx
                                 Box(
                                     modifier = Modifier
-                                        .size(36.dp)
+                                        .size(34.dp)
                                         .clip(CircleShape)
                                         .background(Color(hex))
                                         .border(
@@ -220,11 +286,11 @@ fun GarageScreen(
                         }
                     }
 
-                    // 3. 5 Kart Bodies (2 rows: 3 + 2)
+                    // 3. 6 Kart Bodies (2 rows of 3: Roadster, Pencil, Monster + Origami, Tank, Classic Toy)
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text(
-                            text = "3D CHASSIS BODY (5 MODELS)",
-                            fontFamily = OrbitronFontFamily,
+                            text = "3D CHASSIS BODY (6 MODELS)",
+                            fontFamily = Poppins,
                             fontWeight = FontWeight.Bold,
                             fontSize = 10.sp,
                             color = SkyCyan
@@ -244,16 +310,17 @@ fun GarageScreen(
                                     ),
                                     modifier = Modifier
                                         .weight(1f)
-                                        .height(44.dp)
+                                        .height(42.dp)
                                         .testTag("garage_body_${body.id}")
                                 ) {
                                     Text(
                                         text = body.title.uppercase(),
-                                        fontFamily = OrbitronFontFamily,
+                                        fontFamily = Poppins,
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 9.sp,
                                         color = if (selected) SlateAbyss else Color.White,
-                                        maxLines = 1
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
                                     )
                                 }
                             }
@@ -272,16 +339,17 @@ fun GarageScreen(
                                     ),
                                     modifier = Modifier
                                         .weight(1f)
-                                        .height(44.dp)
+                                        .height(42.dp)
                                         .testTag("garage_body_${body.id}")
                                 ) {
                                     Text(
                                         text = body.title.uppercase(),
-                                        fontFamily = OrbitronFontFamily,
+                                        fontFamily = Poppins,
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 9.sp,
                                         color = if (selected) SlateAbyss else Color.White,
-                                        maxLines = 1
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
                                     )
                                 }
                             }
@@ -290,5 +358,36 @@ fun GarageScreen(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun GarageStatBar(
+    label: String,
+    fraction: Float,
+    color: Color
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(
+            text = label,
+            fontFamily = Poppins,
+            fontWeight = FontWeight.Bold,
+            fontSize = 9.sp,
+            color = DRColors.MutedSlate,
+            modifier = Modifier.weight(0.28f)
+        )
+        LinearProgressIndicator(
+            progress = { fraction.coerceIn(0.18f, 1f) },
+            color = color,
+            trackColor = Color(0xFF1E293B),
+            modifier = Modifier
+                .weight(0.72f)
+                .height(6.dp)
+                .clip(RoundedCornerShape(4.dp))
+        )
     }
 }

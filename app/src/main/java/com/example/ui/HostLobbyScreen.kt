@@ -56,7 +56,7 @@ import com.example.ui.theme.ArcadeCrimson
 import com.example.ui.theme.DriftAmber
 import com.example.ui.theme.HostEmerald
 import com.example.ui.theme.JoinBlue
-import com.example.ui.theme.OrbitronFontFamily
+import com.example.ui.theme.Poppins
 import com.example.ui.theme.RulerYellow
 import com.example.ui.theme.SkyCyan
 import com.example.ui.theme.SlateAbyss
@@ -128,7 +128,7 @@ fun HostLobbyScreen(
                         Column {
                             Text(
                                 text = "CONNECT YOUR FRIENDS",
-                                fontFamily = OrbitronFontFamily,
+                                fontFamily = Poppins,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 15.sp,
                                 color = SkyCyan
@@ -153,7 +153,7 @@ fun HostLobbyScreen(
                         ) {
                             Text(
                                 text = "STEP 1: TURN ON WI-FI HOTSPOT",
-                                fontFamily = OrbitronFontFamily,
+                                fontFamily = Poppins,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 11.sp,
                                 color = RulerYellow
@@ -183,7 +183,7 @@ fun HostLobbyScreen(
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
                                     text = "OPEN HOTSPOT SETTINGS",
-                                    fontFamily = OrbitronFontFamily,
+                                    fontFamily = Poppins,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 11.sp
                                 )
@@ -204,7 +204,7 @@ fun HostLobbyScreen(
                         ) {
                             Text(
                                 text = "STEP 2: FRIENDS TAP 'JOIN RACE'",
-                                fontFamily = OrbitronFontFamily,
+                                fontFamily = Poppins,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 11.sp,
                                 color = HostEmerald
@@ -218,7 +218,7 @@ fun HostLobbyScreen(
                                     Text(text = "ROOM CODE", fontSize = 10.sp, color = Color(0xFF94A3B8))
                                     Text(
                                         text = roomCode,
-                                        fontFamily = OrbitronFontFamily,
+                                        fontFamily = Poppins,
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 24.sp,
                                         color = RulerYellow,
@@ -287,7 +287,7 @@ fun HostLobbyScreen(
                                     ) {
                                         Text(
                                             text = t.name,
-                                            fontFamily = OrbitronFontFamily,
+                                            fontFamily = Poppins,
                                             fontWeight = FontWeight.Bold,
                                             fontSize = 9.sp,
                                             color = Color.White,
@@ -325,7 +325,7 @@ fun HostLobbyScreen(
                                     ) {
                                         Text(
                                             text = "$l LAPS",
-                                            fontFamily = OrbitronFontFamily,
+                                            fontFamily = Poppins,
                                             fontWeight = FontWeight.Bold,
                                             fontSize = 10.sp,
                                             color = if (active) SlateAbyss else Color.White
@@ -352,7 +352,7 @@ fun HostLobbyScreen(
                                 ) {
                                     Text(
                                         text = if (cpuFillEnabled) "CPU FILL: ON" else "CPU FILL: OFF",
-                                        fontFamily = OrbitronFontFamily,
+                                        fontFamily = Poppins,
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 10.sp,
                                         color = Color.White
@@ -375,7 +375,7 @@ fun HostLobbyScreen(
                                 ) {
                                     Text(
                                         text = "ITEMS: ${itemMode.label.uppercase()}",
-                                        fontFamily = OrbitronFontFamily,
+                                        fontFamily = Poppins,
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 10.sp,
                                         color = SkyCyan
@@ -421,7 +421,7 @@ fun HostLobbyScreen(
                     ) {
                         Text(
                             text = if (allHumansReady) "START RACE" else "FORCE START RACE",
-                            fontFamily = OrbitronFontFamily,
+                            fontFamily = Poppins,
                             fontWeight = FontWeight.Bold,
                             fontSize = 15.sp,
                             color = Color.White
@@ -474,7 +474,7 @@ private fun LobbySlotBadge(
                 )
                 Text(
                     text = info?.playerName ?: if (cpuFill) "CPU BOT ${slotIdx + 1}" else "OPEN SLOT",
-                    fontFamily = OrbitronFontFamily,
+                    fontFamily = Poppins,
                     fontWeight = FontWeight.Bold,
                     fontSize = 9.sp,
                     color = if (info != null) Color.White else Color(0xFF94A3B8)

@@ -26,11 +26,14 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -38,10 +41,11 @@ import com.example.game.GameMode
 import com.example.game.RacerStanding
 import com.example.ui.hud.formatRaceTime
 import com.example.ui.theme.ArcadeCrimson
+import com.example.ui.theme.DRType
 import com.example.ui.theme.DriftAmber
 import com.example.ui.theme.HostEmerald
 import com.example.ui.theme.JoinBlue
-import com.example.ui.theme.OrbitronFontFamily
+import com.example.ui.theme.Poppins
 import com.example.ui.theme.RulerYellow
 import com.example.ui.theme.SkyCyan
 import com.example.ui.theme.SlateAbyss
@@ -56,6 +60,9 @@ fun ResultsScreen(
     isHost: Boolean,
     gameMode: GameMode = GameMode.QUICK_RACE,
     cupRaceIndex: Int = 0,
+    coinsEarnedThisRace: Int = 60,
+    xpEarnedThisRace: Int = 100,
+    onWatchAdDoubleCoins: (() -> Unit)? = null,
     onRematch: () -> Unit,
     onNextRace: () -> Unit = onRematch,
     onBackToLobby: () -> Unit,
@@ -63,11 +70,12 @@ fun ResultsScreen(
 ) {
     val isGrandPrix = gameMode == GameMode.GRAND_PRIX
     val isCupFinale = isGrandPrix && cupRaceIndex >= 3
+    var doubledCoinsClaimed by remember { mutableStateOf(false) }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xCC090D16))
+            .background(Color(0xD90B1020))
             .windowInsetsPadding(WindowInsets.safeDrawing.union(WindowInsets.displayCutout))
             .padding(horizontal = 20.dp, vertical = 12.dp)
             .testTag("results_screen")
@@ -76,28 +84,51 @@ fun ResultsScreen(
             modifier = Modifier.fillMaxSize(),
             horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            // Left Column: Podium 1st / 2nd / 3rd + Action Buttons
+            // Left Column: Podium 1st / 2nd / 3rd + Coins/XP Summary + Action Buttons
             Column(
                 modifier = Modifier
                     .weight(0.95f)
                     .fillMaxHeight(),
                 verticalArrangement = Arrangement.SpaceBetween
             ) {
-                Column {
-                    Text(
-                        text = if (isCupFinale) "🏆 CUP TROPHY CEREMONY" else "RACE RESULTS",
-                        fontFamily = OrbitronFontFamily,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 22.sp,
-                        color = RulerYellow
-                    )
-                    Text(
-                        text = if (isGrandPrix) "$trackName • RACE ${cupRaceIndex + 1}/4" else trackName,
-                        fontFamily = OrbitronFontFamily,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 12.sp,
-                        color = SkyCyan
-                    )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = if (isCupFinale) "🏆 CUP TROPHY CEREMONY" else "RACE RESULTS",
+                            fontFamily = Poppins,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 20.sp,
+                            color = RulerYellow
+                        )
+                        Text(
+                            text = if (isGrandPrix) "$trackName • RACE ${cupRaceIndex + 1}/4" else trackName,
+                            fontFamily = Poppins,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp,
+                            color = SkyCyan
+                        )
+                    }
+
+                    // Coins & Desk Pass XP Pill
+                    Surface(
+                        shape = RoundedCornerShape(999.dp),
+                        color = SlateSurface,
+                        border = androidx.compose.foundation.BorderStroke(1.dp, RulerYellow)
+                    ) {
+                        val effectiveCoins = if (doubledCoinsClaimed) coinsEarnedThisRace * 2 else coinsEarnedThisRace
+                        Text(
+                            text = "+$effectiveCoins COINS  •  +$xpEarnedThisRace XP",
+                            fontFamily = Poppins,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 10.sp,
+                            color = RulerYellow,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                        )
+                    }
                 }
 
                 // Visual 3-Step Podium (2nd, 1st, 3rd)
@@ -113,28 +144,51 @@ fun ResultsScreen(
                     PodiumStep(
                         place = "2ND",
                         racer = second,
-                        stepHeight = 82.dp,
+                        stepHeight = 76.dp,
                         medalColor = Color(0xFFE2E8F0),
                         modifier = Modifier.weight(1f)
                     )
                     PodiumStep(
                         place = "1ST",
                         racer = first,
-                        stepHeight = 110.dp,
+                        stepHeight = 102.dp,
                         medalColor = RulerYellow,
                         modifier = Modifier.weight(1f)
                     )
                     PodiumStep(
                         place = "3RD",
                         racer = third,
-                        stepHeight = 66.dp,
+                        stepHeight = 62.dp,
                         medalColor = DriftAmber,
                         modifier = Modifier.weight(1f)
                     )
                 }
 
-                // Bottom Action Buttons
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                // Bottom Action Buttons + Solo Opt-In 2× Coins Rewarded Button (Part J4)
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    if (!isMultiplayer && onWatchAdDoubleCoins != null && !doubledCoinsClaimed) {
+                        Button(
+                            onClick = {
+                                doubledCoinsClaimed = true
+                                onWatchAdDoubleCoins()
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = RulerYellow),
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(38.dp)
+                                .testTag("btn_results_double_coins")
+                        ) {
+                            Text(
+                                text = "🎬 WATCH CLIP FOR 2× COINS (+$coinsEarnedThisRace BONUS)",
+                                fontFamily = Poppins,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 11.sp,
+                                color = SlateAbyss
+                            )
+                        }
+                    }
+
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -145,12 +199,12 @@ fun ResultsScreen(
                             shape = RoundedCornerShape(12.dp),
                             modifier = Modifier
                                 .weight(1f)
-                                .height(46.dp)
+                                .height(44.dp)
                                 .testTag("btn_results_rematch")
                         ) {
                             Text(
                                 text = if (!isMultiplayer || isHost) "RACE AGAIN" else "READY",
-                                fontFamily = OrbitronFontFamily,
+                                fontFamily = Poppins,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 11.sp
                             )
@@ -162,12 +216,12 @@ fun ResultsScreen(
                                 shape = RoundedCornerShape(12.dp),
                                 modifier = Modifier
                                     .weight(1f)
-                                    .height(46.dp)
+                                    .height(44.dp)
                                     .testTag("btn_results_next_race")
                             ) {
                                 Text(
                                     text = if (isGrandPrix && !isCupFinale) "NEXT CUP RACE ▶" else "NEXT TRACK ▶",
-                                    fontFamily = OrbitronFontFamily,
+                                    fontFamily = Poppins,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 11.sp,
                                     color = SlateAbyss
@@ -186,10 +240,10 @@ fun ResultsScreen(
                                 shape = RoundedCornerShape(12.dp),
                                 modifier = Modifier
                                     .weight(1f)
-                                    .height(44.dp)
+                                    .height(42.dp)
                                     .testTag("btn_results_lobby")
                             ) {
-                                Text("LOBBY", fontFamily = OrbitronFontFamily, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                                Text("LOBBY", fontFamily = Poppins, fontWeight = FontWeight.Bold, fontSize = 11.sp)
                             }
                         }
                         Button(
@@ -198,17 +252,17 @@ fun ResultsScreen(
                             shape = RoundedCornerShape(12.dp),
                             modifier = Modifier
                                 .weight(1f)
-                                .height(44.dp)
+                                .height(42.dp)
                                 .border(1.dp, SlateBorder, RoundedCornerShape(12.dp))
                                 .testTag("btn_results_menu")
                         ) {
-                            Text("MAIN MENU", fontFamily = OrbitronFontFamily, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                            Text("MAIN MENU", fontFamily = Poppins, fontWeight = FontWeight.Bold, fontSize = 11.sp)
                         }
                     }
                 }
             }
 
-            // Right Column: Full 8-Racer Standings Table (Position, Name, DNF / Time, Best Lap, Coins, Cup Points)
+            // Right Column: Full 8-Racer Standings Table (Tabular Poppins tnum)
             Surface(
                 modifier = Modifier
                     .weight(1.05f)
@@ -246,9 +300,7 @@ fun ResultsScreen(
                                 ) {
                                     Text(
                                         text = "#${r.position}",
-                                        fontFamily = OrbitronFontFamily,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 13.sp,
+                                        style = DRType.TabularTimer,
                                         color = if (r.position == 1) RulerYellow else Color.White
                                     )
                                     Box(
@@ -258,7 +310,7 @@ fun ResultsScreen(
                                     )
                                     Text(
                                         text = r.name,
-                                        fontFamily = OrbitronFontFamily,
+                                        fontFamily = Poppins,
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 12.sp,
                                         color = Color.White
@@ -270,7 +322,7 @@ fun ResultsScreen(
                                         ) {
                                             Text(
                                                 text = "NEW BEST!",
-                                                fontFamily = OrbitronFontFamily,
+                                                fontFamily = Poppins,
                                                 fontWeight = FontWeight.Bold,
                                                 fontSize = 8.sp,
                                                 color = SlateAbyss,
@@ -285,7 +337,7 @@ fun ResultsScreen(
                                         ) {
                                             Text(
                                                 text = "DNF",
-                                                fontFamily = OrbitronFontFamily,
+                                                fontFamily = Poppins,
                                                 fontWeight = FontWeight.Bold,
                                                 fontSize = 8.sp,
                                                 color = Color.White,
@@ -298,9 +350,8 @@ fun ResultsScreen(
                                 Column(horizontalAlignment = Alignment.End) {
                                     Text(
                                         text = if (r.isDnf) "DNF" else formatRaceTime(r.totalTimeMs),
-                                        fontFamily = FontFamily.Monospace,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 11.sp,
+                                        style = DRType.TabularTimer,
+                                        fontSize = 12.sp,
                                         color = if (r.isDnf) ArcadeCrimson else Color.White
                                     )
                                     val subText = when {
@@ -310,8 +361,7 @@ fun ResultsScreen(
                                     }
                                     Text(
                                         text = subText,
-                                        fontFamily = FontFamily.Monospace,
-                                        fontSize = 9.sp,
+                                        style = DRType.MicroTag,
                                         color = if (isGrandPrix) RulerYellow else SkyCyan
                                     )
                                 }
@@ -346,7 +396,7 @@ private fun PodiumStep(
             )
             Text(
                 text = racer.name,
-                fontFamily = OrbitronFontFamily,
+                fontFamily = Poppins,
                 fontWeight = FontWeight.Bold,
                 fontSize = 11.sp,
                 color = Color.White,
@@ -364,7 +414,7 @@ private fun PodiumStep(
             Box(contentAlignment = Alignment.Center) {
                 Text(
                     text = place,
-                    fontFamily = OrbitronFontFamily,
+                    fontFamily = Poppins,
                     fontWeight = FontWeight.Bold,
                     fontSize = 18.sp,
                     color = medalColor

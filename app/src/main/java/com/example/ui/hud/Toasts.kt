@@ -13,7 +13,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.ui.theme.OrbitronFontFamily
+import com.example.ui.theme.Poppins
 import com.example.ui.theme.SkyCyan
 
 @Composable
@@ -30,7 +30,7 @@ fun Toasts(
     ) {
         Text(
             text = message,
-            fontFamily = OrbitronFontFamily,
+            fontFamily = Poppins,
             fontWeight = FontWeight.Bold,
             fontSize = 13.sp,
             color = Color.White

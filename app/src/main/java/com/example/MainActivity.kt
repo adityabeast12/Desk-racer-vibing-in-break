@@ -9,6 +9,9 @@ import android.hardware.SensorManager
 import android.opengl.GLSurfaceView
 import android.os.Build
 import android.os.Bundle
+import android.view.InputDevice
+import android.view.KeyEvent
+import android.view.MotionEvent
 import android.view.Surface
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
@@ -49,6 +52,8 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import com.example.audio.SynthAudio
+import com.example.data.FakeAdGateway
+import com.example.data.FakeBillingGateway
 import com.example.data.Prefs
 import com.example.game.CcClass
 import com.example.game.ControlSchemeType
@@ -70,7 +75,9 @@ import com.example.net.LanHost
 import com.example.net.LobbySlotInfo
 import com.example.net.NetUtils
 import com.example.net.UdpKartStatePacket
+import com.example.render.AssetRepository
 import com.example.render.GameRenderer
+import com.example.ui.DeskPassScreen
 import com.example.ui.GarageScreen
 import com.example.ui.HostLobbyScreen
 import com.example.ui.HowToPlayOverlay
@@ -79,18 +86,22 @@ import com.example.ui.MainMenuScreen
 import com.example.ui.RaceScreen
 import com.example.ui.ResultsScreen
 import com.example.ui.SettingsScreen
+import com.example.ui.ShopScreen
 import com.example.ui.hud.Toasts
 import com.example.ui.theme.DriftAmber
 import com.example.ui.theme.MyApplicationTheme
-import com.example.ui.theme.OrbitronFontFamily
+import com.example.ui.theme.Poppins
 import com.example.ui.theme.RulerYellow
 import com.example.ui.theme.SlateAbyss
 import kotlinx.coroutines.delay
+import kotlin.math.abs
 
 sealed interface Screen {
     data object Splash : Screen
     data object MainMenu : Screen
     data object Garage : Screen
+    data object Shop : Screen
+    data object DeskPass : Screen
     data object HostLobby : Screen
     data object Join : Screen
     data object Race : Screen
@@ -108,10 +119,16 @@ class MainActivity : ComponentActivity(), SensorEventListener {
     private lateinit var lanDiscovery: LanDiscovery
     private lateinit var lanHost: LanHost
     private lateinit var lanClient: LanClient
+    private val billingGateway = FakeBillingGateway()
+    private val adGateway = FakeAdGateway()
 
     private var sensorManager: SensorManager? = null
+    private var gameRotationSensor: Sensor? = null
     private var accelerometer: Sensor? = null
     private var glSurfaceViewRef: GLSurfaceView? = null
+    private val rotationMatrix = FloatArray(9)
+    private val orientationAngles = FloatArray(3)
+    private var filteredTiltSteer = 0f
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -127,7 +144,9 @@ class MainActivity : ComponentActivity(), SensorEventListener {
         }
         applyImmersiveStickyBars()
 
-        // 2. Initialize Core Systems (100% offline)
+        // 2. Initialize Core Systems & Asset Pack Index (100% offline)
+        AssetRepository(applicationContext).manifest
+
         prefs = Prefs(applicationContext)
         val initialProfile = prefs.state.value
 
@@ -161,7 +180,8 @@ class MainActivity : ComponentActivity(), SensorEventListener {
             playerName = initialProfile.playerName,
             colorHex = GameConstants.KART_COLORS[initialProfile.kartColorIndex],
             bodyType = initialProfile.kartBody,
-            trackId = initialProfile.selectedTrackId
+            trackId = initialProfile.selectedTrackId,
+            liveryIndex = initialProfile.kartLiveryIndex
         )
 
         lanHost = LanHost(
@@ -240,6 +260,7 @@ class MainActivity : ComponentActivity(), SensorEventListener {
         }
 
         sensorManager = getSystemService(Context.SENSOR_SERVICE) as? SensorManager
+        gameRotationSensor = sensorManager?.getDefaultSensor(Sensor.TYPE_GAME_ROTATION_VECTOR)
         accelerometer = sensorManager?.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
 
         setContent {
@@ -253,6 +274,8 @@ class MainActivity : ComponentActivity(), SensorEventListener {
                     lanDiscovery = lanDiscovery,
                     lanHost = lanHost,
                     lanClient = lanClient,
+                    billingGateway = billingGateway,
+                    adGateway = adGateway,
                     onGlSurfaceViewCreated = { glSurfaceViewRef = it }
                 )
             }
@@ -277,7 +300,8 @@ class MainActivity : ComponentActivity(), SensorEventListener {
         super.onResume()
         applyImmersiveStickyBars()
         glSurfaceViewRef?.onResume()
-        accelerometer?.let {
+        val sensorToUse = gameRotationSensor ?: accelerometer
+        sensorToUse?.let {
             sensorManager?.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME)
         }
         gameLoop.start()
@@ -299,23 +323,99 @@ class MainActivity : ComponentActivity(), SensorEventListener {
         super.onDestroy()
     }
 
+    // Part F3: Rotation-vector tilt steering with 3° deadzone, 28° full lock, and 8 Hz low-pass filter
     override fun onSensorChanged(event: SensorEvent?) {
-        if (event?.sensor?.type != Sensor.TYPE_ACCELEROMETER) return
+        if (event == null) return
         val profile = prefs.state.value
         if (profile.controlScheme != ControlSchemeType.TILT_STEER) return
         if (raceSession.phase != RacePhase.RACING && raceSession.phase != RacePhase.COUNTDOWN) return
 
         @Suppress("DEPRECATION")
         val rotation = windowManager.defaultDisplay.rotation
-        val rawTilt = when (rotation) {
-            Surface.ROTATION_270 -> -event.values[1]
-            else -> event.values[1]
+        val sign = if (rotation == Surface.ROTATION_270) -1f else 1f
+
+        val tiltDeg = if (event.sensor.type == Sensor.TYPE_GAME_ROTATION_VECTOR) {
+            SensorManager.getRotationMatrixFromVector(rotationMatrix, event.values)
+            SensorManager.getOrientation(rotationMatrix, orientationAngles)
+            Math.toDegrees(orientationAngles[1].toDouble()).toFloat() * -sign
+        } else if (event.sensor.type == Sensor.TYPE_ACCELEROMETER) {
+            (event.values[1] * sign) * 6.0f
+        } else {
+            return
         }
-        val normalizedSteer = ((rawTilt / 4.8f) * profile.steerSensitivity).coerceIn(-1f, 1f)
-        inputState.updateSteer(normalizedSteer)
+
+        val absDeg = abs(tiltDeg)
+        val rawTarget = if (absDeg <= 3f) {
+            0f
+        } else {
+            val mapped = ((absDeg - 3f) / (28f - 3f)).coerceIn(0f, 1f)
+            (if (tiltDeg < 0f) -mapped else mapped) * profile.steerSensitivity
+        }.coerceIn(-1f, 1f)
+
+        // 8 Hz low-pass smoothing at ~60 Hz sensor rate
+        filteredTiltSteer += (rawTarget - filteredTiltSteer) * 0.25f
+        inputState.updateSteer(filteredTiltSteer.coerceIn(-1f, 1f))
     }
 
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) = Unit
+
+    // Part F5: Bluetooth & USB Gamepad support (left stick steer, RT gas, LT/RB drift, A/X item)
+    override fun onGenericMotionEvent(event: MotionEvent): Boolean {
+        if ((event.source and InputDevice.SOURCE_JOYSTICK) == InputDevice.SOURCE_JOYSTICK &&
+            event.action == MotionEvent.ACTION_MOVE
+        ) {
+            val steerX = event.getAxisValue(MotionEvent.AXIS_X)
+            val steerVal = if (abs(steerX) > 0.12f) steerX.coerceIn(-1f, 1f) else 0f
+            inputState.updateSteer(steerVal)
+
+            val rt = event.getAxisValue(MotionEvent.AXIS_RTRIGGER)
+                .coerceAtLeast(event.getAxisValue(MotionEvent.AXIS_GAS))
+            val lt = event.getAxisValue(MotionEvent.AXIS_LTRIGGER)
+                .coerceAtLeast(event.getAxisValue(MotionEvent.AXIS_BRAKE))
+            if (rt > 0.2f || lt > 0.2f) {
+                inputState.gasPressed = (rt > 0.25f)
+                inputState.updateDrift(lt > 0.25f)
+            }
+            return true
+        }
+        return super.onGenericMotionEvent(event)
+    }
+
+    override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
+        when (keyCode) {
+            KeyEvent.KEYCODE_BUTTON_R1, KeyEvent.KEYCODE_BUTTON_B -> {
+                inputState.updateDrift(true)
+                return true
+            }
+            KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_BUTTON_X, KeyEvent.KEYCODE_BUTTON_L1 -> {
+                inputState.triggerItem(false)
+                return true
+            }
+            KeyEvent.KEYCODE_DPAD_LEFT -> {
+                inputState.updateSteer(-1f)
+                return true
+            }
+            KeyEvent.KEYCODE_DPAD_RIGHT -> {
+                inputState.updateSteer(1f)
+                return true
+            }
+        }
+        return super.onKeyDown(keyCode, event)
+    }
+
+    override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean {
+        when (keyCode) {
+            KeyEvent.KEYCODE_BUTTON_R1, KeyEvent.KEYCODE_BUTTON_B -> {
+                inputState.updateDrift(false)
+                return true
+            }
+            KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_RIGHT -> {
+                inputState.updateSteer(0f)
+                return true
+            }
+        }
+        return super.onKeyUp(keyCode, event)
+    }
 }
 
 @Composable
@@ -328,6 +428,8 @@ private fun DeskRacerAppRoot(
     lanDiscovery: LanDiscovery,
     lanHost: LanHost,
     lanClient: LanClient,
+    billingGateway: FakeBillingGateway,
+    adGateway: FakeAdGateway,
     onGlSurfaceViewCreated: (GLSurfaceView) -> Unit
 ) {
     val context = LocalContext.current
@@ -339,6 +441,8 @@ private fun DeskRacerAppRoot(
     var selectedSoloTrackId by remember { mutableIntStateOf(profile.selectedTrackId) }
     var lobbyOpenedAtMs by remember { mutableLongStateOf(0L) }
     var canForceStartHost by remember { mutableStateOf(false) }
+    var lastEarnedRaceCoins by remember { mutableIntStateOf(60) }
+    var lastEarnedRaceXp by remember { mutableIntStateOf(100) }
 
     // Keep audio & haptics synced with profile
     LaunchedEffect(profile.soundEnabled, profile.hapticsEnabled) {
@@ -357,11 +461,29 @@ private fun DeskRacerAppRoot(
         }
     }
 
-    // Automatically navigate from Race -> Results when RacePhase reaches RESULTS
+    // Automatically navigate from Race -> Results when RacePhase reaches RESULTS + Award Coins & Desk Pass XP
     LaunchedEffect(hudState.phase, currentScreen) {
         if (currentScreen == Screen.Race && hudState.phase == RacePhase.RESULTS) {
+            val localStanding = hudState.standings.firstOrNull { it.isLocal }
+            val localRank = localStanding?.position ?: 8
+            val coinsWon = when (localRank) {
+                1 -> 120
+                2 -> 90
+                3 -> 75
+                else -> 50
+            } + (hudState.coinsHeld * 3)
+            val xpWon = when (localRank) {
+                1 -> 160
+                2 -> 130
+                3 -> 110
+                else -> 80
+            }
+            lastEarnedRaceCoins = coinsWon
+            lastEarnedRaceXp = xpWon
+            prefs.addCoins(coinsWon)
+            prefs.addDeskPassXp(xpWon)
+
             if (raceSession.gameMode == GameMode.GRAND_PRIX && raceSession.grandPrixRaceIndex >= 3) {
-                val localRank = hudState.standings.firstOrNull { it.isLocal }?.position ?: 8
                 if (localRank in 1..3) {
                     prefs.recordCupTrophy(raceSession.activeCup.id, localRank)
                 }
@@ -403,7 +525,8 @@ private fun DeskRacerAppRoot(
                     playerName = prefs.state.value.playerName,
                     colorHex = GameConstants.KART_COLORS[prefs.state.value.kartColorIndex],
                     bodyType = prefs.state.value.kartBody,
-                    trackId = selectedSoloTrackId
+                    trackId = selectedSoloTrackId,
+                    liveryIndex = prefs.state.value.kartLiveryIndex
                 )
                 gameLoop.forceHudRefresh()
                 currentScreen = Screen.MainMenu
@@ -429,6 +552,7 @@ private fun DeskRacerAppRoot(
             playerName = currentProfile.playerName,
             colorIndex = currentProfile.kartColorIndex,
             bodyType = currentProfile.kartBody,
+            liveryIndex = currentProfile.kartLiveryIndex,
             botCount = effectiveBotCount
         )
         gameLoop.isPausedSolo = false
@@ -521,7 +645,8 @@ private fun DeskRacerAppRoot(
                             playerName = profile.playerName,
                             colorHex = GameConstants.KART_COLORS[profile.kartColorIndex],
                             bodyType = profile.kartBody,
-                            trackId = trackId
+                            trackId = trackId,
+                            liveryIndex = profile.kartLiveryIndex
                         )
                         gameLoop.forceHudRefresh()
                     },
@@ -543,6 +668,12 @@ private fun DeskRacerAppRoot(
                     onOpenGarage = {
                         currentScreen = Screen.Garage
                     },
+                    onOpenShop = {
+                        currentScreen = Screen.Shop
+                    },
+                    onOpenDeskPass = {
+                        currentScreen = Screen.DeskPass
+                    },
                     onOpenSettings = {
                         currentScreen = Screen.Settings(returnToRace = false)
                     },
@@ -561,7 +692,8 @@ private fun DeskRacerAppRoot(
                             playerName = prefs.state.value.playerName,
                             colorHex = GameConstants.KART_COLORS[prefs.state.value.kartColorIndex],
                             bodyType = prefs.state.value.kartBody,
-                            trackId = selectedSoloTrackId
+                            trackId = selectedSoloTrackId,
+                            liveryIndex = prefs.state.value.kartLiveryIndex
                         )
                         gameLoop.forceHudRefresh()
                     },
@@ -571,7 +703,8 @@ private fun DeskRacerAppRoot(
                             playerName = prefs.state.value.playerName,
                             colorHex = GameConstants.KART_COLORS[colorIdx],
                             bodyType = prefs.state.value.kartBody,
-                            trackId = selectedSoloTrackId
+                            trackId = selectedSoloTrackId,
+                            liveryIndex = prefs.state.value.kartLiveryIndex
                         )
                         gameLoop.forceHudRefresh()
                     },
@@ -581,10 +714,45 @@ private fun DeskRacerAppRoot(
                             playerName = prefs.state.value.playerName,
                             colorHex = GameConstants.KART_COLORS[prefs.state.value.kartColorIndex],
                             bodyType = body,
-                            trackId = selectedSoloTrackId
+                            trackId = selectedSoloTrackId,
+                            liveryIndex = prefs.state.value.kartLiveryIndex
                         )
                         gameLoop.forceHudRefresh()
                     },
+                    onLiverySelected = { liveryIdx ->
+                        prefs.updateKartLivery(liveryIdx)
+                        raceSession.setupShowroom(
+                            playerName = prefs.state.value.playerName,
+                            colorHex = GameConstants.KART_COLORS[prefs.state.value.kartColorIndex],
+                            bodyType = prefs.state.value.kartBody,
+                            trackId = selectedSoloTrackId,
+                            liveryIndex = liveryIdx
+                        )
+                        gameLoop.forceHudRefresh()
+                    },
+                    onBack = {
+                        currentScreen = Screen.MainMenu
+                    }
+                )
+            }
+
+            is Screen.Shop -> {
+                ShopScreen(
+                    profile = profile,
+                    prefs = prefs,
+                    billingGateway = billingGateway,
+                    adGateway = adGateway,
+                    onBack = {
+                        currentScreen = Screen.MainMenu
+                    }
+                )
+            }
+
+            is Screen.DeskPass -> {
+                DeskPassScreen(
+                    profile = profile,
+                    prefs = prefs,
+                    billingGateway = billingGateway,
                     onBack = {
                         currentScreen = Screen.MainMenu
                     }
@@ -615,7 +783,8 @@ private fun DeskRacerAppRoot(
                             playerName = profile.playerName,
                             colorHex = GameConstants.KART_COLORS[profile.kartColorIndex],
                             bodyType = profile.kartBody,
-                            trackId = newTrack
+                            trackId = newTrack,
+                            liveryIndex = profile.kartLiveryIndex
                         )
                         gameLoop.forceHudRefresh()
                     },
@@ -730,7 +899,8 @@ private fun DeskRacerAppRoot(
                             playerName = profile.playerName,
                             colorHex = GameConstants.KART_COLORS[profile.kartColorIndex],
                             bodyType = profile.kartBody,
-                            trackId = selectedSoloTrackId
+                            trackId = selectedSoloTrackId,
+                            liveryIndex = profile.kartLiveryIndex
                         )
                         gameLoop.forceHudRefresh()
                         currentScreen = Screen.MainMenu
@@ -746,6 +916,17 @@ private fun DeskRacerAppRoot(
                     isHost = raceSession.isHostAuthority,
                     gameMode = raceSession.gameMode,
                     cupRaceIndex = raceSession.grandPrixRaceIndex,
+                    coinsEarnedThisRace = lastEarnedRaceCoins,
+                    xpEarnedThisRace = lastEarnedRaceXp,
+                    onWatchAdDoubleCoins = if (!raceSession.isMultiplayer) {
+                        {
+                            adGateway.showRewardedAd(
+                                placement = "results_double_coins",
+                                onRewardEarned = { prefs.addCoins(lastEarnedRaceCoins) },
+                                onDismissed = { msg -> raceSession.showToast(msg, 2.2f) }
+                            )
+                        }
+                    } else null,
                     onRematch = {
                         prefs.markRocketStartTipSeen()
                         inputState.reset()
@@ -781,6 +962,7 @@ private fun DeskRacerAppRoot(
                             playerName = currentProfile.playerName,
                             colorIndex = currentProfile.kartColorIndex,
                             bodyType = currentProfile.kartBody,
+                            liveryIndex = currentProfile.kartLiveryIndex,
                             botCount = if (currentProfile.raceWithBots) currentProfile.botCount else 0
                         )
                         if (raceSession.gameMode == GameMode.GRAND_PRIX) {
@@ -814,7 +996,8 @@ private fun DeskRacerAppRoot(
                             playerName = profile.playerName,
                             colorHex = GameConstants.KART_COLORS[profile.kartColorIndex],
                             bodyType = profile.kartBody,
-                            trackId = selectedSoloTrackId
+                            trackId = selectedSoloTrackId,
+                            liveryIndex = profile.kartLiveryIndex
                         )
                         gameLoop.forceHudRefresh()
                         currentScreen = if (raceSession.isHostAuthority) {
@@ -831,7 +1014,8 @@ private fun DeskRacerAppRoot(
                             playerName = profile.playerName,
                             colorHex = GameConstants.KART_COLORS[profile.kartColorIndex],
                             bodyType = profile.kartBody,
-                            trackId = selectedSoloTrackId
+                            trackId = selectedSoloTrackId,
+                            liveryIndex = profile.kartLiveryIndex
                         )
                         gameLoop.forceHudRefresh()
                         currentScreen = Screen.MainMenu
@@ -851,6 +1035,12 @@ private fun DeskRacerAppRoot(
                     onHapticsChanged = { prefs.updateHapticsEnabled(it) },
                     onGraphicsChanged = { prefs.updateGraphicsQuality(it) },
                     onDifficultyChanged = { prefs.updateCpuDifficulty(it) },
+                    onSwapHandsChanged = { prefs.updateSwapHands(it) },
+                    onButtonScaleChanged = { prefs.updateButtonScale(it) },
+                    onHudOpacityChanged = { prefs.updateHudOpacity(it) },
+                    onPostFxChanged = { prefs.updatePostFxEnabled(it) },
+                    onContactShadowsChanged = { prefs.updateContactShadowsEnabled(it) },
+                    onShowDebugHudZonesChanged = { prefs.updateShowDebugHudZones(it) },
                     onBack = {
                         currentScreen = if (screen.returnToRace) {
                             Screen.Race
@@ -869,6 +1059,8 @@ private fun DeskRacerAppRoot(
             exit = fadeOut()
         ) {
             HowToPlayOverlay(
+                selectedScheme = profile.controlScheme,
+                onSelectScheme = { prefs.updateControlScheme(it) },
                 onDismiss = {
                     prefs.markHowToPlaySeen()
                     showHowToPlayModal = false
@@ -899,7 +1091,7 @@ private fun SplashScreenOverlay() {
             .fillMaxSize()
             .background(
                 Brush.radialGradient(
-                    colors = listOf(Color(0xFF1E293B), SlateAbyss)
+                    colors = listOf(Color(0xFF141C33), Color(0xFF0B1020))
                 )
             )
             .testTag("splash_screen")
@@ -910,7 +1102,7 @@ private fun SplashScreenOverlay() {
         ) {
             Text(
                 text = "DESK RACER",
-                fontFamily = OrbitronFontFamily,
+                fontFamily = Poppins,
                 fontWeight = FontWeight.Black,
                 fontSize = 42.sp,
                 color = RulerYellow,
@@ -918,8 +1110,8 @@ private fun SplashScreenOverlay() {
             )
             Spacer(modifier = Modifier.height(6.dp))
             Text(
-                text = "LAN HOTSPOT EDITION",
-                fontFamily = OrbitronFontFamily,
+                text = "LAN v3 • REAL WORLD EDITION",
+                fontFamily = Poppins,
                 fontWeight = FontWeight.Bold,
                 fontSize = 15.sp,
                 color = DriftAmber,
@@ -933,6 +1125,7 @@ private fun buildSoloRacers(
     playerName: String,
     colorIndex: Int,
     bodyType: KartBodyType,
+    liveryIndex: Int = 0,
     botCount: Int = 7
 ): List<KartRuntime> {
     val cpuNames = listOf("NIBBLES", "GRAPHITE", "VOLT", "SKETCH", "TURBO", "APEX", "PIXEL")
@@ -945,7 +1138,8 @@ private fun buildSoloRacers(
             isHuman = true,
             isLocalPlayer = true,
             colorHex = GameConstants.KART_COLORS[colorIndex % GameConstants.KART_COLORS.size],
-            bodyType = bodyType
+            bodyType = bodyType,
+            liveryIndex = liveryIndex
         )
     )
     for (slot in 1 until totalCount) {
@@ -958,7 +1152,8 @@ private fun buildSoloRacers(
                 isHuman = false,
                 isLocalPlayer = false,
                 colorHex = GameConstants.KART_COLORS[cpuColorIdx],
-                bodyType = cpuBody
+                bodyType = cpuBody,
+                liveryIndex = slot % 3
             )
         )
     }
@@ -992,7 +1187,8 @@ private fun startMultiplayerRaceFromLobby(
                     isHuman = true,
                     isLocalPlayer = (slot == localSlot),
                     colorHex = GameConstants.KART_COLORS[human.colorIndex % GameConstants.KART_COLORS.size],
-                    bodyType = human.bodyType
+                    bodyType = human.bodyType,
+                    liveryIndex = if (slot == localSlot) prefs.state.value.kartLiveryIndex else (slot % 3)
                 )
             )
         } else if (cpuFill) {
@@ -1003,7 +1199,8 @@ private fun startMultiplayerRaceFromLobby(
                     isHuman = false,
                     isLocalPlayer = false,
                     colorHex = GameConstants.KART_COLORS[slot % GameConstants.KART_COLORS.size],
-                    bodyType = KartBodyType.fromId(slot % KartBodyType.entries.size)
+                    bodyType = KartBodyType.fromId(slot % KartBodyType.entries.size),
+                    liveryIndex = slot % 3
                 )
             )
         }

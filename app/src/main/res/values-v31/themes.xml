@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.MyApplication" parent="android:Theme.DeviceDefault.NoActionBar">
+        <item name="android:windowBackground">@color/night_navy</item>
+        <item name="android:statusBarColor">@color/night_navy</item>
+        <item name="android:navigationBarColor">@color/night_navy</item>
+        <item name="android:windowSplashScreenBackground">@color/night_navy</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
+        <item name="android:windowSplashScreenIconBackgroundColor">@color/night_navy</item>
+    </style>
+</resources>

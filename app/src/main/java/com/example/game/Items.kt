@@ -25,7 +25,8 @@ enum class ProjectileKind(val id: Int) {
     MARBLE(0),
     ERASER(1),
     TACK(2),
-    PAPER_PLANE(3);
+    PAPER_PLANE(3),
+    MARBLE_HOMING(4);
 
     companion object {
         fun fromId(id: Int): ProjectileKind = entries.firstOrNull { it.id == id } ?: MARBLE
@@ -52,6 +53,31 @@ data class ActiveCoin(
     var rotationRad: Float = 0f
 )
 
+data class ActivePylon(
+    val propId: Int,
+    val modelPath: String,
+    val baseX: Float,
+    val baseY: Float,
+    val baseZ: Float,
+    val baseYawRad: Float,
+    val scale: Float,
+    val radius: Float,
+    var x: Float = baseX,
+    var y: Float = baseY,
+    var z: Float = baseZ,
+    var yawRad: Float = baseYawRad,
+    var pitchRad: Float = 0f,
+    var rollRad: Float = 0f,
+    var vx: Float = 0f,
+    var vy: Float = 0f,
+    var vz: Float = 0f,
+    var omegaPitch: Float = 0f,
+    var omegaRoll: Float = 0f,
+    var respawnTimerSec: Float = 0f
+) {
+    val isKnocked: Boolean get() = respawnTimerSec > 0f
+}
+
 data class WorldProjectile(
     val id: Int,
     val kind: ProjectileKind,
@@ -62,6 +88,7 @@ data class WorldProjectile(
     var vx: Float,
     var vz: Float,
     var headingRad: Float = 0f,
+    var distanceTravelled: Float = 0f,
     var bouncesRemaining: Int = GameConstants.MARBLE_MAX_BOUNCES,
     var lifeRemainingSec: Float = GameConstants.MARBLE_LIFETIME_SEC,
     var targetSlot: Int = -1
@@ -104,19 +131,19 @@ object ItemsEngine {
         }
 
         // Normal Item Mode (1..8)
-        return when (position) {
-            1 -> when {
+        return when {
+            position == 1 -> when {
                 r < 0.45f -> ItemType.ERASER
                 r < 0.82f -> ItemType.MARBLE
                 else -> ItemType.TRIPLE_TACKS
             }
-            2, 3 -> when {
+            position in 2..3 -> when {
                 r < 0.30f -> ItemType.MARBLE
                 r < 0.52f -> ItemType.ERASER
                 r < 0.76f -> ItemType.BATTERY
                 else -> ItemType.TRIPLE_TACKS
             }
-            4, 5 -> when {
+            position in 4..5 -> when {
                 r < 0.35f -> ItemType.BATTERY
                 r < 0.60f -> ItemType.TRIPLE_TACKS
                 r < 0.80f -> ItemType.MARBLE
@@ -124,7 +151,6 @@ object ItemsEngine {
                 else -> ItemType.PAPER_PLANE
             }
             else -> when {
-                // 6th..8th places: Battery, Paper Plane, Magnet
                 r < 0.36f -> ItemType.BATTERY
                 r < 0.68f -> ItemType.PAPER_PLANE
                 r < 0.92f -> ItemType.MAGNET
@@ -178,7 +204,7 @@ object ItemsEngine {
             }
         }
 
-        // 2. Update Coins & Check Pickups (Part D6: 10 coins per track, +0.6% top speed each, 8s respawn)
+        // 2. Update Coins & Check Pickups
         for (coin in coins) {
             coin.rotationRad += dt * 3.2f
             if (!coin.active) {
@@ -218,12 +244,25 @@ object ItemsEngine {
                 ProjectileKind.ERASER -> {
                     p.headingRad += dt * 0.5f
                 }
-                ProjectileKind.MARBLE, ProjectileKind.TACK -> {
+                ProjectileKind.MARBLE, ProjectileKind.MARBLE_HOMING, ProjectileKind.TACK -> {
+                    if (p.kind == ProjectileKind.MARBLE_HOMING && p.targetSlot >= 0) {
+                        val target = karts.firstOrNull { it.slotIndex == p.targetSlot && !it.isRespawning }
+                        if (target != null) {
+                            val dx = target.x - p.x
+                            val dz = target.z - p.z
+                            val dist = hypot(dx, dz).coerceAtLeast(0.01f)
+                            val speed = hypot(p.vx, p.vz).coerceAtLeast(GameConstants.MARBLE_SPEED)
+                            val desiredVx = (dx / dist) * speed
+                            val desiredVz = (dz / dist) * speed
+                            p.vx += (desiredVx - p.vx) * (3.5f * dt).coerceAtMost(1f)
+                            p.vz += (desiredVz - p.vz) * (3.5f * dt).coerceAtMost(1f)
+                        }
+                    }
+
                     val nextX = p.x + p.vx * dt
                     val nextZ = p.z + p.vz * dt
                     var bounced = false
 
-                    // Bounce against desk boundaries
                     if (abs(nextX) > track.deskHalfExtentX - 2f) {
                         p.vx = -p.vx
                         bounced = true
@@ -233,21 +272,21 @@ object ItemsEngine {
                         bounced = true
                     }
 
-                    // Bounce against solid oriented track props
-                    for (prop in track.props) {
-                        if (!prop.isSolidWall) continue
+                    // Bounce against solid placed props (landmarks)
+                    for (prop in track.placedProps) {
+                        if (!prop.solid || prop.isPylon) continue
                         val dx = nextX - prop.x
                         val dz = nextZ - prop.z
-                        val c = cos(-prop.yawRad)
-                        val s = sin(-prop.yawRad)
-                        val localX = dx * c - dz * s
-                        val localZ = dx * s + dz * c
-                        val hx = prop.sx * 0.5f + 0.6f
-                        val hz = prop.sz * 0.5f + 0.6f
-                        if (abs(localX) < hx && abs(localZ) < hz) {
-                            val ox = hx - abs(localX)
-                            val oz = hz - abs(localZ)
-                            if (ox < oz) p.vx = -p.vx else p.vz = -p.vz
+                        val d = hypot(dx, dz)
+                        val minR = prop.radius + 0.6f
+                        if (d < minR && d > 0.001f) {
+                            val nx = dx / d
+                            val nz = dz / d
+                            val dot = p.vx * nx + p.vz * nz
+                            if (dot < 0f) {
+                                p.vx -= 2f * dot * nx
+                                p.vz -= 2f * dot * nz
+                            }
                             bounced = true
                             break
                         }
@@ -260,6 +299,9 @@ object ItemsEngine {
                             continue
                         }
                     }
+                    val stepDist = hypot(p.vx, p.vz) * dt
+                    p.distanceTravelled += stepDist
+                    p.headingRad = atan2(p.vx, p.vz)
                     p.x += p.vx * dt
                     p.z += p.vz * dt
                 }
