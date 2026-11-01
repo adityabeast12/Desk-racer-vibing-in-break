@@ -1,6 +1,26 @@
-Desk Racer LAN - asset credits
-3D models (vehicles, coin, flag, item block, cloud), smoke sprite and sound effects:
-  Kenney (www.kenney.nl) - Starter Kit Racing, Starter Kit 3D Platformer, Starter Kit FPS,
-  Starter Kit City Builder. Assets licensed CC0 1.0 (public domain). Credit appreciated, not required.
-  Converted to DRM1 meshes with baked vertex colours + paint mask for this project.
-Music and jingles: original compositions generated for Desk Racer LAN (no third-party samples).
+DESK RACER LAN — ASSET CREDITS
+
+3D models from the Khronos glTF Sample Assets (github.com/KhronosGroup/glTF-Sample-Assets),
+mesh-optimised and converted for mobile by the Desk Racer project:
+  Traffic Cone — © 2020 Poly Haven (CC0 1.0); © 2024 hinndia (CC BY 4.0)
+  Water Bottle, Avocado, Sci-Fi Helmet, Toy Car — Public (CC0 1.0)
+  Mandarin Orange — © 2015 zamdreamer; © 2023 Wayfair (CC BY 4.0)
+  Teacup (Diffuse Transmission Teacup) — Public domain (CC0 1.0)
+  Barn Desk Lamp (Anisotropy Barn Lamp) — © 2023 Wayfair, LLC (CC BY 4.0)
+  Glass Vase Flowers — Public (CC0 1.0)
+  Potted Plant (Diffuse Transmission Plant) — Public domain (CC0); © 2024 Darmstadt Graphics Group GmbH (CC BY 4.0)
+  Chair (Sheen Chair) — © 2020 Wayfair, LLC (CC0 1.0)
+  Sofa (Sheen Wood Leather Sofa) — Public domain (CC0); © 2024 Darmstadt Graphics Group GmbH (CC BY 4.0)
+  Lantern — © 2017 Microsoft; © 2018 Frank Galligan (CC0 1.0)
+  Olive Dish (Iridescent Dish With Olives) — © 2020 Wayfair, LLC (CC BY 4.0)
+  Stained Glass Lamp — © 2021 Wayfair (CC BY 4.0)
+  Chess pieces (A Beautiful Game) — © 2020 ASWF; © 2022 Ed Mackey (CC BY 4.0)
+  Licence texts: https://creativecommons.org/licenses/by/4.0/  https://creativecommons.org/publicdomain/zero/1.0/
+
+Karts, coin, flag, item block, cloud, smoke sprite and sound effects:
+  Kenney (www.kenney.nl) — Starter Kits (Racing, 3D Platformer, FPS, City Builder). CC0 1.0.
+
+Room backdrops: Poly Haven HDRIs via the pmndrs/assets package (CC0 1.0), tone-mapped by the project.
+Fonts: Poppins — © 2020 The Poppins Project Authors, SIL Open Font License 1.1.
+Music, jingles, surface textures, item models (battery, thumbtack, eraser, marbles, paper plane,
+magnet, star sticker): original works created for Desk Racer LAN.

@@ -1,131 +1,418 @@
 {
- "format": "DeskRacer asset pack v1",
- "models": {
-  "block_coin": "models/block_coin.drm",
-  "cloud": "models/cloud.drm",
-  "coin": "models/coin.drm",
-  "flag": "models/flag.drm",
-  "kart_motorcycle": "models/kart_motorcycle.drm",
+ "format": "DeskRacer asset pack v3",
+ "unitsPerMetre": 100,
+ "notes": "DRM1 = untextured vertex-colour meshes (karts, coin, flag, block_coin, cloud). DRM2 = textured meshes (props, items). Track JSON is the single source of truth for layouts and prop placement.",
+ "karts": {
+  "kart_truck_red": "models/kart_truck_red.drm",
   "kart_truck_green": "models/kart_truck_green.drm",
   "kart_truck_purple": "models/kart_truck_purple.drm",
-  "kart_truck_red": "models/kart_truck_red.drm",
-  "kart_truck_yellow": "models/kart_truck_yellow.drm"
+  "kart_truck_yellow": "models/kart_truck_yellow.drm",
+  "kart_motorcycle": "models/kart_motorcycle.drm"
  },
- "sfx": {
-  "coin": {
-   "path": "audio/sfx/coin.ogg",
-   "seconds": 0.29,
-   "loop": false
+ "pickups": {
+  "coin": "models/coin.drm",
+  "flag": "models/flag.drm",
+  "block_coin": "models/block_coin.drm",
+  "cloud": "models/cloud.drm"
+ },
+ "props": {
+  "avocado": {
+   "file": "models/props/avocado.drm",
+   "sizeMeters": [
+    0.0677,
+    0.1,
+    0.0439
+   ],
+   "triangles": 682,
+   "source": "Avocado"
   },
-  "engine_loop": {
-   "path": "audio/sfx/engine_loop.ogg",
-   "seconds": 8.0,
-   "loop": true
+  "chair": {
+   "file": "models/props/chair.drm",
+   "sizeMeters": [
+    0.9637,
+    0.8,
+    0.6648
+   ],
+   "triangles": 14014,
+   "source": "SheenChair"
   },
-  "hit_spinout": {
-   "path": "audio/sfx/hit_spinout.ogg",
-   "seconds": 1.0,
-   "loop": false
+  "chess_bishop_b": {
+   "file": "models/props/chess_bishop_b.drm",
+   "sizeMeters": [
+    0.0485,
+    0.124,
+    0.0485
+   ],
+   "triangles": 4000,
+   "source": "ABeautifulGame"
   },
-  "hop": {
-   "path": "audio/sfx/hop.ogg",
-   "seconds": 0.17,
-   "loop": false
+  "chess_bishop_w": {
+   "file": "models/props/chess_bishop_w.drm",
+   "sizeMeters": [
+    0.0485,
+    0.124,
+    0.0485
+   ],
+   "triangles": 4000,
+   "source": "ABeautifulGame"
   },
-  "item_fire": {
-   "path": "audio/sfx/item_fire.ogg",
-   "seconds": 1.34,
-   "loop": false
+  "chess_king_b": {
+   "file": "models/props/chess_king_b.drm",
+   "sizeMeters": [
+    0.0559,
+    0.1515,
+    0.0561
+   ],
+   "triangles": 3998,
+   "source": "ABeautifulGame"
   },
-  "item_get": {
-   "path": "audio/sfx/item_get.ogg",
-   "seconds": 0.41,
-   "loop": false
+  "chess_king_w": {
+   "file": "models/props/chess_king_w.drm",
+   "sizeMeters": [
+    0.0559,
+    0.1515,
+    0.0561
+   ],
+   "triangles": 3998,
+   "source": "ABeautifulGame"
   },
-  "itembox_break": {
-   "path": "audio/sfx/itembox_break.ogg",
-   "seconds": 0.42,
-   "loop": false
+  "chess_knight_b": {
+   "file": "models/props/chess_knight_b.drm",
+   "sizeMeters": [
+    0.0499,
+    0.1001,
+    0.0601
+   ],
+   "triangles": 4000,
+   "source": "ABeautifulGame"
   },
-  "land": {
-   "path": "audio/sfx/land.ogg",
-   "seconds": 0.06,
-   "loop": false
+  "chess_knight_w": {
+   "file": "models/props/chess_knight_w.drm",
+   "sizeMeters": [
+    0.0499,
+    0.1001,
+    0.0601
+   ],
+   "triangles": 4000,
+   "source": "ABeautifulGame"
   },
-  "skid_loop": {
-   "path": "audio/sfx/skid_loop.ogg",
-   "seconds": 3.51,
-   "loop": true
+  "chess_pawn_b": {
+   "file": "models/props/chess_pawn_b.drm",
+   "sizeMeters": [
+    0.0421,
+    0.0664,
+    0.0421
+   ],
+   "triangles": 3996,
+   "source": "ABeautifulGame"
   },
-  "ui_back": {
-   "path": "audio/sfx/ui_back.ogg",
-   "seconds": 0.44,
-   "loop": false
+  "chess_pawn_w": {
+   "file": "models/props/chess_pawn_w.drm",
+   "sizeMeters": [
+    0.0421,
+    0.0664,
+    0.0421
+   ],
+   "triangles": 3996,
+   "source": "ABeautifulGame"
   },
-  "ui_click": {
-   "path": "audio/sfx/ui_click.ogg",
-   "seconds": 0.01,
-   "loop": false
+  "chess_queen_b": {
+   "file": "models/props/chess_queen_b.drm",
+   "sizeMeters": [
+    0.0533,
+    0.1362,
+    0.0533
+   ],
+   "triangles": 3998,
+   "source": "ABeautifulGame"
   },
-  "ui_confirm": {
-   "path": "audio/sfx/ui_confirm.ogg",
-   "seconds": 0.1,
-   "loop": false
+  "chess_queen_w": {
+   "file": "models/props/chess_queen_w.drm",
+   "sizeMeters": [
+    0.0533,
+    0.1362,
+    0.0533
+   ],
+   "triangles": 3998,
+   "source": "ABeautifulGame"
   },
-  "wall_bump": {
-   "path": "audio/sfx/wall_bump.ogg",
-   "seconds": 0.65,
-   "loop": false
+  "chess_rook_b": {
+   "file": "models/props/chess_rook_b.drm",
+   "sizeMeters": [
+    0.0537,
+    0.0971,
+    0.0537
+   ],
+   "triangles": 4000,
+   "source": "ABeautifulGame"
+  },
+  "chess_rook_w": {
+   "file": "models/props/chess_rook_w.drm",
+   "sizeMeters": [
+    0.0537,
+    0.0971,
+    0.0537
+   ],
+   "triangles": 4000,
+   "source": "ABeautifulGame"
+  },
+  "desk_lamp": {
+   "file": "models/props/desk_lamp.drm",
+   "sizeMeters": [
+    0.3364,
+    0.45,
+    0.3994
+   ],
+   "triangles": 10203,
+   "source": "AnisotropyBarnLamp"
+  },
+  "lantern": {
+   "file": "models/props/lantern.drm",
+   "sizeMeters": [
+    0.2716,
+    0.45,
+    0.0812
+   ],
+   "triangles": 5394,
+   "source": "Lantern"
+  },
+  "mandarin_orange": {
+   "file": "models/props/mandarin_orange.drm",
+   "sizeMeters": [
+    0.0545,
+    0.06,
+    0.0413
+   ],
+   "triangles": 7998,
+   "source": "MandarinOrange"
+  },
+  "olive_dish": {
+   "file": "models/props/olive_dish.drm",
+   "sizeMeters": [
+    0.0966,
+    0.06,
+    0.0966
+   ],
+   "triangles": 11994,
+   "source": "IridescentDishWithOlives"
+  },
+  "potted_plant": {
+   "file": "models/props/potted_plant.drm",
+   "sizeMeters": [
+    0.3175,
+    0.38,
+    0.2974
+   ],
+   "triangles": 14105,
+   "source": "DiffuseTransmissionPlant"
+  },
+  "scifi_helmet": {
+   "file": "models/props/scifi_helmet.drm",
+   "sizeMeters": [
+    0.1973,
+    0.25,
+    0.2145
+   ],
+   "triangles": 17999,
+   "source": "SciFiHelmet"
+  },
+  "sofa": {
+   "file": "models/props/sofa.drm",
+   "sizeMeters": [
+    2.1966,
+    0.9,
+    0.7434
+   ],
+   "triangles": 13991,
+   "source": "SheenWoodLeatherSofa"
+  },
+  "stained_glass_lamp": {
+   "file": "models/props/stained_glass_lamp.drm",
+   "sizeMeters": [
+    0.3507,
+    0.55,
+    0.3507
+   ],
+   "triangles": 11990,
+   "source": "StainedGlassLamp"
+  },
+  "teacup": {
+   "file": "models/props/teacup.drm",
+   "sizeMeters": [
+    0.1476,
+    0.07,
+    0.1528
+   ],
+   "triangles": 7997,
+   "source": "DiffuseTransmissionTeacup"
+  },
+  "toy_car": {
+   "file": "models/props/toy_car.drm",
+   "sizeMeters": [
+    0.0187,
+    0.0117,
+    0.0384
+   ],
+   "triangles": 13998,
+   "source": "ToyCar"
+  },
+  "traffic_cone": {
+   "file": "models/props/traffic_cone.drm",
+   "sizeMeters": [
+    0.0405,
+    0.05,
+    0.0405
+   ],
+   "triangles": 2500,
+   "source": "TrafficCone"
+  },
+  "vase_flowers": {
+   "file": "models/props/vase_flowers.drm",
+   "sizeMeters": [
+    0.3207,
+    0.3,
+    0.2104
+   ],
+   "triangles": 14036,
+   "source": "GlassVaseFlowers"
+  },
+  "water_bottle": {
+   "file": "models/props/water_bottle.drm",
+   "sizeMeters": [
+    0.1087,
+    0.26,
+    0.1087
+   ],
+   "triangles": 4500,
+   "source": "WaterBottle"
   }
+ },
+ "items": {
+  "battery": {
+   "file": "models/items/battery.drm",
+   "sizeMeters": [
+    0.009,
+    0.0162,
+    0.009
+   ]
+  },
+  "eraser": {
+   "file": "models/items/eraser.drm",
+   "sizeMeters": [
+    0.022,
+    0.0084,
+    0.0124
+   ]
+  },
+  "magnet": {
+   "file": "models/items/magnet.drm",
+   "sizeMeters": [
+    0.0185,
+    0.0212,
+    0.0045
+   ]
+  },
+  "marble": {
+   "file": "models/items/marble.drm",
+   "sizeMeters": [
+    0.012,
+    0.012,
+    0.012
+   ]
+  },
+  "marble_homing": {
+   "file": "models/items/marble_homing.drm",
+   "sizeMeters": [
+    0.012,
+    0.012,
+    0.012
+   ]
+  },
+  "paper_plane": {
+   "file": "models/items/paper_plane.drm",
+   "sizeMeters": [
+    0.022,
+    0.0037,
+    0.026
+   ]
+  },
+  "star_sticker": {
+   "file": "models/items/star_sticker.drm",
+   "sizeMeters": [
+    0.019,
+    0.0181,
+    0.008
+   ]
+  },
+  "thumbtack": {
+   "file": "models/items/thumbtack.drm",
+   "sizeMeters": [
+    0.01,
+    0.0138,
+    0.01
+   ]
+  }
+ },
+ "surfaces": [
+  "textures/surfaces/cardboard_kraft.jpg",
+  "textures/surfaces/checker_finish.png",
+  "textures/surfaces/chessboard.jpg",
+  "textures/surfaces/cutting_board.jpg",
+  "textures/surfaces/desk_mat_dark.jpg",
+  "textures/surfaces/kerb_red_white.png",
+  "textures/surfaces/marble_white.jpg",
+  "textures/surfaces/paper_paint.jpg",
+  "textures/surfaces/paper_ruled.jpg",
+  "textures/surfaces/road_asphalt.jpg",
+  "textures/surfaces/rug_playroom.jpg",
+  "textures/surfaces/ruler_strip.png",
+  "textures/surfaces/tiles_bath.jpg",
+  "textures/surfaces/wood_oak_light.jpg",
+  "textures/surfaces/wood_walnut.jpg",
+  "textures/surfaces/wood_walnut_n.jpg"
+ ],
+ "backdrops": [
+  "textures/backdrops/city_day.jpg",
+  "textures/backdrops/room_apartment.jpg",
+  "textures/backdrops/room_lobby.jpg",
+  "textures/backdrops/room_studio.jpg",
+  "textures/backdrops/room_workshop.jpg",
+  "textures/backdrops/window_dusk_hills.jpg"
+ ],
+ "tracks": [
+  "tracks/art_desk.json",
+  "tracks/bathtub_rim.json",
+  "tracks/bookshelf_spiral.json",
+  "tracks/gamer_desk.json",
+  "tracks/kitchen_counter.json",
+  "tracks/midnight_office.json",
+  "tracks/study_desk.json",
+  "tracks/toy_box.json"
+ ],
+ "sfx": {
+  "coin": "audio/sfx/coin.ogg",
+  "engine_loop": "audio/sfx/engine_loop.ogg",
+  "hit_spinout": "audio/sfx/hit_spinout.ogg",
+  "hop": "audio/sfx/hop.ogg",
+  "item_fire": "audio/sfx/item_fire.ogg",
+  "item_get": "audio/sfx/item_get.ogg",
+  "itembox_break": "audio/sfx/itembox_break.ogg",
+  "land": "audio/sfx/land.ogg",
+  "skid_loop": "audio/sfx/skid_loop.ogg",
+  "ui_back": "audio/sfx/ui_back.ogg",
+  "ui_click": "audio/sfx/ui_click.ogg",
+  "ui_confirm": "audio/sfx/ui_confirm.ogg",
+  "wall_bump": "audio/sfx/wall_bump.ogg"
  },
  "music": {
-  "jingle_countdown": {
-   "path": "audio/music/jingle_countdown.ogg",
-   "seconds": 3.25,
-   "loop": false
-  },
-  "jingle_final_lap": {
-   "path": "audio/music/jingle_final_lap.ogg",
-   "seconds": 2.54,
-   "loop": false
-  },
-  "jingle_finish": {
-   "path": "audio/music/jingle_finish.ogg",
-   "seconds": 2.82,
-   "loop": false
-  },
-  "jingle_win": {
-   "path": "audio/music/jingle_win.ogg",
-   "seconds": 3.46,
-   "loop": false
-  },
-  "menu_loop": {
-   "path": "audio/music/menu_loop.ogg",
-   "seconds": 40.0,
-   "loop": true
-  },
-  "race_bonus_loop": {
-   "path": "audio/music/race_bonus_loop.ogg",
-   "seconds": 29.09,
-   "loop": true
-  },
-  "race_gamer_desk_loop": {
-   "path": "audio/music/race_gamer_desk_loop.ogg",
-   "seconds": 30.0,
-   "loop": true
-  },
-  "race_kitchen_loop": {
-   "path": "audio/music/race_kitchen_loop.ogg",
-   "seconds": 26.3,
-   "loop": true
-  },
-  "race_study_desk_loop": {
-   "path": "audio/music/race_study_desk_loop.ogg",
-   "seconds": 27.83,
-   "loop": true
-  }
- },
- "textures": [
-  "textures/smoke.png"
- ]
+  "jingle_countdown": "audio/music/jingle_countdown.ogg",
+  "jingle_final_lap": "audio/music/jingle_final_lap.ogg",
+  "jingle_finish": "audio/music/jingle_finish.ogg",
+  "jingle_win": "audio/music/jingle_win.ogg",
+  "menu_loop": "audio/music/menu_loop.ogg",
+  "race_bonus_loop": "audio/music/race_bonus_loop.ogg",
+  "race_gamer_desk_loop": "audio/music/race_gamer_desk_loop.ogg",
+  "race_kitchen_loop": "audio/music/race_kitchen_loop.ogg",
+  "race_study_desk_loop": "audio/music/race_study_desk_loop.ogg"
+ }
 }

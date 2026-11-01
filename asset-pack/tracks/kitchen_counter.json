@@ -1,0 +1,739 @@
+{
+ "name": "KITCHEN COUNTER",
+ "slug": "kitchen_counter",
+ "roadWidth": 10.5,
+ "lengthApprox": 1123,
+ "controlPoints": [
+  [
+   0.0,
+   0.0,
+   100.0
+  ],
+  [
+   60.0,
+   0.0,
+   100.0
+  ],
+  [
+   115.0,
+   0.0,
+   90.0
+  ],
+  [
+   135.0,
+   0.0,
+   55.0
+  ],
+  [
+   110.0,
+   0.0,
+   30.0
+  ],
+  [
+   75.0,
+   0.0,
+   40.0
+  ],
+  [
+   50.0,
+   0.0,
+   15.0
+  ],
+  [
+   60.0,
+   0.0,
+   -20.0
+  ],
+  [
+   100.0,
+   0.0,
+   -30.0
+  ],
+  [
+   130.0,
+   0.0,
+   -60.0
+  ],
+  [
+   120.0,
+   0.0,
+   -100.0
+  ],
+  [
+   80.0,
+   0.0,
+   -120.0
+  ],
+  [
+   35.0,
+   0.0,
+   -110.0
+  ],
+  [
+   10.0,
+   0.0,
+   -80.0
+  ],
+  [
+   -20.0,
+   0.0,
+   -90.0
+  ],
+  [
+   -45.0,
+   0.0,
+   -120.0
+  ],
+  [
+   -90.0,
+   0.0,
+   -115.0
+  ],
+  [
+   -120.0,
+   0.0,
+   -80.0
+  ],
+  [
+   -100.0,
+   0.0,
+   -45.0
+  ],
+  [
+   -60.0,
+   0.0,
+   -40.0
+  ],
+  [
+   -45.0,
+   0.0,
+   -10.0
+  ],
+  [
+   -75.0,
+   0.0,
+   15.0
+  ],
+  [
+   -120.0,
+   0.0,
+   25.0
+  ],
+  [
+   -130.0,
+   0.0,
+   65.0
+  ],
+  [
+   -95.0,
+   0.0,
+   95.0
+  ],
+  [
+   -45.0,
+   0.0,
+   100.0
+  ]
+ ],
+ "splineSubdivisionsPerSegment": 18,
+ "unitsPerMetre": 100.0,
+ "surfaceTexture": "textures/surfaces/marble_white.jpg",
+ "surfaceTextureTileUnits": 60,
+ "roadTexture": "textures/surfaces/cutting_board.jpg",
+ "roadTextureTileUnits": 24,
+ "kerbTexture": "textures/surfaces/kerb_red_white.png",
+ "finishTexture": "textures/surfaces/checker_finish.png",
+ "backdropEquirect": "textures/backdrops/room_lobby.jpg",
+ "lightingPreset": "MORNING_SUN",
+ "music": "audio/music/race_kitchen_loop.ogg",
+ "props": [
+  {
+   "model": "models/props/traffic_cone.drm",
+   "name": "traffic_cone",
+   "role": "pylon",
+   "x": 33.0,
+   "y": 0.0,
+   "z": 90.41,
+   "yawRad": 5.565,
+   "scale": 100.0,
+   "radius": 2.02,
+   "solid": true
+  },
+  {
+   "model": "models/props/traffic_cone.drm",
+   "name": "traffic_cone",
+   "role": "pylon",
+   "x": 72.38,
+   "y": 0.0,
+   "z": 88.69,
+   "yawRad": 3.579,
+   "scale": 100.0,
+   "radius": 2.02,
+   "solid": true
+  },
+  {
+   "model": "models/props/traffic_cone.drm",
+   "name": "traffic_cone",
+   "role": "pylon",
+   "x": 97.28,
+   "y": 0.0,
+   "z": 85.51,
+   "yawRad": 2.711,
+   "scale": 100.0,
+   "radius": 2.02,
+   "solid": true
+  },
+  {
+   "model": "models/props/traffic_cone.drm",
+   "name": "traffic_cone",
+   "role": "pylon",
+   "x": 115.17,
+   "y": 0.0,
+   "z": 76.67,
+   "yawRad": 1.266,
+   "scale": 100.0,
+   "radius": 2.02,
+   "solid": true
+  },
+  {
+   "model": "models/props/traffic_cone.drm",
+   "name": "traffic_cone",
+   "role": "pylon",
+   "x": 124.26,
+   "y": 0.0,
+   "z": 60.19,
+   "yawRad": 5.332,
+   "scale": 100.0,
+   "radius": 2.02,
+   "solid": true
+  },
+  {
+   "model": "models/props/traffic_cone.drm",
+   "name": "traffic_cone",
+   "role": "pylon",
+   "x": 120.06,
+   "y": 0.0,
+   "z": 48.34,
+   "yawRad": 4.032,
+   "scale": 100.0,
+   "radius": 2.02,
+   "solid": true
+  },
+  {
+   "model": "models/props/traffic_cone.drm",
+   "name": "traffic_cone",
+   "role": "pylon",
+   "x": 107.35,
+   "y": 0.0,
+   "z": 40.01,
+   "yawRad": 1.053,
+   "scale": 100.0,
+   "radius": 2.02,
+   "solid": true
+  },
+  {
+   "model": "models/props/traffic_cone.drm",
+   "name": "traffic_cone",
+   "role": "pylon",
+   "x": 79.35,
+   "y": 0.0,
+   "z": 29.62,
+   "yawRad": 1.802,
+   "scale": 100.0,
+   "radius": 2.02,
+   "solid": true
+  },
+  {
+   "model": "models/props/traffic_cone.drm",
+   "name": "traffic_cone",
+   "role": "pylon",
+   "x": 68.22,
+   "y": 0.0,
+   "z": 24.26,
+   "yawRad": 3.185,
+   "scale": 100.0,
+   "radius": 2.02,
+   "solid": true
+  },
+  {
+   "model": "models/props/traffic_cone.drm",
+   "name": "traffic_cone",
+   "role": "pylon",
+   "x": 59.64,
+   "y": 0.0,
+   "z": 10.47,
+   "yawRad": 1.406,
+   "scale": 100.0,
+   "radius": 2.02,
+   "solid": true
+  },
+  {
+   "model": "models/props/traffic_cone.drm",
+   "name": "traffic_cone",
+   "role": "pylon",
+   "x": 64.0,
+   "y": 0.0,
+   "z": -8.59,
+   "yawRad": 4.455,
+   "scale": 100.0,
+   "radius": 2.02,
+   "solid": true
+  },
+  {
+   "model": "models/props/traffic_cone.drm",
+   "name": "traffic_cone",
+   "role": "pylon",
+   "x": 75.16,
+   "y": 0.0,
+   "z": -35.28,
+   "yawRad": 1.85,
+   "scale": 100.0,
+   "radius": 2.02,
+   "solid": true
+  },
+  {
+   "model": "models/props/traffic_cone.drm",
+   "name": "traffic_cone",
+   "role": "pylon",
+   "x": 95.09,
+   "y": 0.0,
+   "z": -39.03,
+   "yawRad": 0.344,
+   "scale": 100.0,
+   "radius": 2.02,
+   "solid": true
+  },
+  {
+   "model": "models/props/traffic_cone.drm",
+   "name": "traffic_cone",
+   "role": "pylon",
+   "x": 112.71,
+   "y": 0.0,
+   "z": -52.17,
+   "yawRad": 3.256,
+   "scale": 100.0,
+   "radius": 2.02,
+   "solid": true
+  },
+  {
+   "model": "models/props/traffic_cone.drm",
+   "name": "traffic_cone",
+   "role": "pylon",
+   "x": 120.61,
+   "y": 0.0,
+   "z": -65.34,
+   "yawRad": 6.147,
+   "scale": 100.0,
+   "radius": 2.02,
+   "solid": true
+  },
+  {
+   "model": "models/props/traffic_cone.drm",
+   "name": "traffic_cone",
+   "role": "pylon",
+   "x": 117.5,
+   "y": 0.0,
+   "z": -83.96,
+   "yawRad": 4.574,
+   "scale": 100.0,
+   "radius": 2.02,
+   "solid": true
+  },
+  {
+   "model": "models/props/traffic_cone.drm",
+   "name": "traffic_cone",
+   "role": "pylon",
+   "x": 106.98,
+   "y": 0.0,
+   "z": -98.2,
+   "yawRad": 2.758,
+   "scale": 100.0,
+   "radius": 2.02,
+   "solid": true
+  },
+  {
+   "model": "models/props/traffic_cone.drm",
+   "name": "traffic_cone",
+   "role": "pylon",
+   "x": 86.93,
+   "y": 0.0,
+   "z": -108.09,
+   "yawRad": 4.807,
+   "scale": 100.0,
+   "radius": 2.02,
+   "solid": true
+  },
+  {
+   "model": "models/props/traffic_cone.drm",
+   "name": "traffic_cone",
+   "role": "pylon",
+   "x": 66.03,
+   "y": 0.0,
+   "z": -109.45,
+   "yawRad": 3.707,
+   "scale": 100.0,
+   "radius": 2.02,
+   "solid": true
+  },
+  {
+   "model": "models/props/traffic_cone.drm",
+   "name": "traffic_cone",
+   "role": "pylon",
+   "x": 43.54,
+   "y": 0.0,
+   "z": -102.87,
+   "yawRad": 2.691,
+   "scale": 100.0,
+   "radius": 2.02,
+   "solid": true
+  },
+  {
+   "model": "models/props/traffic_cone.drm",
+   "name": "traffic_cone",
+   "role": "pylon",
+   "x": 13.96,
+   "y": 0.0,
+   "z": -101.1,
+   "yawRad": 5.524,
+   "scale": 100.0,
+   "radius": 2.02,
+   "solid": true
+  },
+  {
+   "model": "models/props/traffic_cone.drm",
+   "name": "traffic_cone",
+   "role": "pylon",
+   "x": 5.54,
+   "y": 0.0,
+   "z": -89.44,
+   "yawRad": 0.337,
+   "scale": 100.0,
+   "radius": 2.02,
+   "solid": true
+  },
+  {
+   "model": "models/props/traffic_cone.drm",
+   "name": "traffic_cone",
+   "role": "pylon",
+   "x": -11.1,
+   "y": 0.0,
+   "z": -96.3,
+   "yawRad": 1.064,
+   "scale": 100.0,
+   "radius": 2.02,
+   "solid": true
+  },
+  {
+   "model": "models/props/traffic_cone.drm",
+   "name": "traffic_cone",
+   "role": "pylon",
+   "x": -41.52,
+   "y": 0.0,
+   "z": -102.55,
+   "yawRad": 4.928,
+   "scale": 100.0,
+   "radius": 2.02,
+   "solid": true
+  },
+  {
+   "model": "models/props/traffic_cone.drm",
+   "name": "traffic_cone",
+   "role": "pylon",
+   "x": -54.86,
+   "y": 0.0,
+   "z": -111.58,
+   "yawRad": 1.059,
+   "scale": 100.0,
+   "radius": 2.02,
+   "solid": true
+  },
+  {
+   "model": "models/props/traffic_cone.drm",
+   "name": "traffic_cone",
+   "role": "pylon",
+   "x": -77.62,
+   "y": 0.0,
+   "z": -108.97,
+   "yawRad": 1.011,
+   "scale": 100.0,
+   "radius": 2.02,
+   "solid": true
+  },
+  {
+   "model": "models/props/traffic_cone.drm",
+   "name": "traffic_cone",
+   "role": "pylon",
+   "x": -96.03,
+   "y": 0.0,
+   "z": -97.97,
+   "yawRad": 0.983,
+   "scale": 100.0,
+   "radius": 2.02,
+   "solid": true
+  },
+  {
+   "model": "models/props/traffic_cone.drm",
+   "name": "traffic_cone",
+   "role": "pylon",
+   "x": -107.94,
+   "y": 0.0,
+   "z": -83.48,
+   "yawRad": 3.122,
+   "scale": 100.0,
+   "radius": 2.02,
+   "solid": true
+  },
+  {
+   "model": "models/props/traffic_cone.drm",
+   "name": "traffic_cone",
+   "role": "pylon",
+   "x": -108.29,
+   "y": 0.0,
+   "z": -71.17,
+   "yawRad": 6.006,
+   "scale": 100.0,
+   "radius": 2.02,
+   "solid": true
+  },
+  {
+   "model": "models/props/traffic_cone.drm",
+   "name": "traffic_cone",
+   "role": "pylon",
+   "x": -96.7,
+   "y": 0.0,
+   "z": -55.38,
+   "yawRad": 6.164,
+   "scale": 100.0,
+   "radius": 2.02,
+   "solid": true
+  },
+  {
+   "model": "models/props/traffic_cone.drm",
+   "name": "traffic_cone",
+   "role": "pylon",
+   "x": -81.91,
+   "y": 0.0,
+   "z": -31.82,
+   "yawRad": 1.951,
+   "scale": 100.0,
+   "radius": 2.02,
+   "solid": true
+  },
+  {
+   "model": "models/props/traffic_cone.drm",
+   "name": "traffic_cone",
+   "role": "pylon",
+   "x": -65.32,
+   "y": 0.0,
+   "z": -31.21,
+   "yawRad": 1.149,
+   "scale": 100.0,
+   "radius": 2.02,
+   "solid": true
+  },
+  {
+   "model": "models/props/traffic_cone.drm",
+   "name": "traffic_cone",
+   "role": "pylon",
+   "x": -55.54,
+   "y": 0.0,
+   "z": -17.45,
+   "yawRad": 0.306,
+   "scale": 100.0,
+   "radius": 2.02,
+   "solid": true
+  },
+  {
+   "model": "models/props/traffic_cone.drm",
+   "name": "traffic_cone",
+   "role": "pylon",
+   "x": -61.03,
+   "y": 0.0,
+   "z": -5.6,
+   "yawRad": 5.468,
+   "scale": 100.0,
+   "radius": 2.02,
+   "solid": true
+  },
+  {
+   "model": "models/props/traffic_cone.drm",
+   "name": "traffic_cone",
+   "role": "pylon",
+   "x": -79.15,
+   "y": 0.0,
+   "z": 5.6,
+   "yawRad": 1.942,
+   "scale": 100.0,
+   "radius": 2.02,
+   "solid": true
+  },
+  {
+   "model": "models/props/traffic_cone.drm",
+   "name": "traffic_cone",
+   "role": "pylon",
+   "x": -100.55,
+   "y": 0.0,
+   "z": 29.54,
+   "yawRad": 0.929,
+   "scale": 100.0,
+   "radius": 2.02,
+   "solid": true
+  },
+  {
+   "model": "models/props/traffic_cone.drm",
+   "name": "traffic_cone",
+   "role": "pylon",
+   "x": -114.74,
+   "y": 0.0,
+   "z": 34.44,
+   "yawRad": 2.604,
+   "scale": 100.0,
+   "radius": 2.02,
+   "solid": true
+  },
+  {
+   "model": "models/props/traffic_cone.drm",
+   "name": "traffic_cone",
+   "role": "pylon",
+   "x": -121.06,
+   "y": 0.0,
+   "z": 52.24,
+   "yawRad": 1.715,
+   "scale": 100.0,
+   "radius": 2.02,
+   "solid": true
+  },
+  {
+   "model": "models/props/traffic_cone.drm",
+   "name": "traffic_cone",
+   "role": "pylon",
+   "x": -117.39,
+   "y": 0.0,
+   "z": 66.56,
+   "yawRad": 4.955,
+   "scale": 100.0,
+   "radius": 2.02,
+   "solid": true
+  },
+  {
+   "model": "models/props/traffic_cone.drm",
+   "name": "traffic_cone",
+   "role": "pylon",
+   "x": -99.5,
+   "y": 0.0,
+   "z": 81.32,
+   "yawRad": 3.091,
+   "scale": 100.0,
+   "radius": 2.02,
+   "solid": true
+  },
+  {
+   "model": "models/props/traffic_cone.drm",
+   "name": "traffic_cone",
+   "role": "pylon",
+   "x": -78.08,
+   "y": 0.0,
+   "z": 88.5,
+   "yawRad": 1.527,
+   "scale": 100.0,
+   "radius": 2.02,
+   "solid": true
+  },
+  {
+   "model": "models/props/olive_dish.drm",
+   "name": "olive_dish",
+   "role": "landmark",
+   "x": -106.93,
+   "y": 0.0,
+   "z": 40.42,
+   "yawRad": -2.225,
+   "scale": 100.0,
+   "radius": 4.83,
+   "solid": true
+  },
+  {
+   "model": "models/props/mandarin_orange.drm",
+   "name": "mandarin_orange",
+   "role": "landmark",
+   "x": 120.03,
+   "y": 0.0,
+   "z": -1.13,
+   "yawRad": -2.6,
+   "scale": 100.0,
+   "radius": 2.73,
+   "solid": true
+  },
+  {
+   "model": "models/props/avocado.drm",
+   "name": "avocado",
+   "role": "landmark",
+   "x": -43.01,
+   "y": 0.0,
+   "z": -135.37,
+   "yawRad": -0.266,
+   "scale": 100.0,
+   "radius": 3.38,
+   "solid": true
+  },
+  {
+   "model": "models/props/teacup.drm",
+   "name": "teacup",
+   "role": "landmark",
+   "x": -102.24,
+   "y": 0.0,
+   "z": -21.16,
+   "yawRad": 0.087,
+   "scale": 100.0,
+   "radius": 7.64,
+   "solid": true
+  },
+  {
+   "model": "models/props/water_bottle.drm",
+   "name": "water_bottle",
+   "role": "landmark",
+   "x": -134.31,
+   "y": 0.0,
+   "z": 117.15,
+   "yawRad": 2.521,
+   "scale": 100.0,
+   "radius": 5.44,
+   "solid": true
+  },
+  {
+   "model": "models/props/vase_flowers.drm",
+   "name": "vase_flowers",
+   "role": "landmark",
+   "x": 14.8,
+   "y": 0.0,
+   "z": 2.58,
+   "yawRad": 1.492,
+   "scale": 100.0,
+   "radius": 16.04,
+   "solid": true
+  },
+  {
+   "model": "models/props/mandarin_orange.drm",
+   "name": "mandarin_orange",
+   "role": "landmark",
+   "x": 113.27,
+   "y": 0.0,
+   "z": -61.08,
+   "yawRad": 0.974,
+   "scale": 100.0,
+   "radius": 2.73,
+   "solid": true
+  },
+  {
+   "model": "models/props/avocado.drm",
+   "name": "avocado",
+   "role": "landmark",
+   "x": 53.39,
+   "y": 0.0,
+   "z": -82.06,
+   "yawRad": -2.7,
+   "scale": 100.0,
+   "radius": 3.38,
+   "solid": true
+  }
+ ]
+}

@@ -1,0 +1,361 @@
+{
+ "name": "BOOKSHELF SPIRAL",
+ "slug": "bookshelf_spiral",
+ "roadWidth": 11,
+ "lengthApprox": 904,
+ "controlPoints": [
+  [
+   0.0,
+   0.0,
+   90.0
+  ],
+  [
+   55.0,
+   0.0,
+   90.0
+  ],
+  [
+   95.0,
+   0.0,
+   72.0
+  ],
+  [
+   108.0,
+   0.0,
+   30.0
+  ],
+  [
+   80.0,
+   4.0,
+   -20.0
+  ],
+  [
+   40.0,
+   8.0,
+   -35.0
+  ],
+  [
+   0.0,
+   12.0,
+   -25.0
+  ],
+  [
+   -25.0,
+   16.0,
+   5.0
+  ],
+  [
+   -15.0,
+   20.0,
+   40.0
+  ],
+  [
+   20.0,
+   22.0,
+   50.0
+  ],
+  [
+   50.0,
+   22.0,
+   30.0
+  ],
+  [
+   55.0,
+   18.0,
+   -10.0
+  ],
+  [
+   35.0,
+   14.0,
+   -55.0
+  ],
+  [
+   0.0,
+   10.0,
+   -80.0
+  ],
+  [
+   -45.0,
+   6.0,
+   -85.0
+  ],
+  [
+   -85.0,
+   3.0,
+   -65.0
+  ],
+  [
+   -105.0,
+   0.0,
+   -25.0
+  ],
+  [
+   -110.0,
+   0.0,
+   25.0
+  ],
+  [
+   -90.0,
+   0.0,
+   65.0
+  ],
+  [
+   -50.0,
+   0.0,
+   88.0
+  ]
+ ],
+ "splineSubdivisionsPerSegment": 18,
+ "unitsPerMetre": 100.0,
+ "surfaceTexture": "textures/surfaces/wood_walnut.jpg",
+ "surfaceTextureTileUnits": 60,
+ "roadTexture": "textures/surfaces/cardboard_kraft.jpg",
+ "roadTextureTileUnits": 24,
+ "kerbTexture": "textures/surfaces/kerb_red_white.png",
+ "finishTexture": "textures/surfaces/checker_finish.png",
+ "backdropEquirect": "textures/backdrops/room_lobby.jpg",
+ "lightingPreset": "LIBRARY_WARM",
+ "music": "audio/music/race_bonus_loop.ogg",
+ "props": [
+  {
+   "model": "models/props/chess_pawn_b.drm",
+   "name": "chess_pawn_b",
+   "role": "pylon",
+   "x": 19.07,
+   "y": 0.0,
+   "z": 80.22,
+   "yawRad": 4.415,
+   "scale": 100.0,
+   "radius": 2.1,
+   "solid": true
+  },
+  {
+   "model": "models/props/chess_pawn_b.drm",
+   "name": "chess_pawn_b",
+   "role": "pylon",
+   "x": 43.17,
+   "y": 0.0,
+   "z": 80.66,
+   "yawRad": 0.214,
+   "scale": 100.0,
+   "radius": 2.1,
+   "solid": true
+  },
+  {
+   "model": "models/props/chess_pawn_b.drm",
+   "name": "chess_pawn_b",
+   "role": "pylon",
+   "x": 62.71,
+   "y": 0.0,
+   "z": 77.42,
+   "yawRad": 0.585,
+   "scale": 100.0,
+   "radius": 2.1,
+   "solid": true
+  },
+  {
+   "model": "models/props/chess_pawn_w.drm",
+   "name": "chess_pawn_w",
+   "role": "pylon",
+   "x": 82.17,
+   "y": 0.0,
+   "z": 69.25,
+   "yawRad": 2.283,
+   "scale": 100.0,
+   "radius": 2.1,
+   "solid": true
+  },
+  {
+   "model": "models/props/chess_pawn_b.drm",
+   "name": "chess_pawn_b",
+   "role": "pylon",
+   "x": 93.32,
+   "y": 0.0,
+   "z": 55.43,
+   "yawRad": 2.349,
+   "scale": 100.0,
+   "radius": 2.1,
+   "solid": true
+  },
+  {
+   "model": "models/props/chess_pawn_w.drm",
+   "name": "chess_pawn_w",
+   "role": "pylon",
+   "x": 97.91,
+   "y": 0.0,
+   "z": 35.53,
+   "yawRad": 0.546,
+   "scale": 100.0,
+   "radius": 2.1,
+   "solid": true
+  },
+  {
+   "model": "models/props/chess_pawn_w.drm",
+   "name": "chess_pawn_w",
+   "role": "pylon",
+   "x": -91.91,
+   "y": 0.0,
+   "z": -31.52,
+   "yawRad": 5.216,
+   "scale": 100.0,
+   "radius": 2.1,
+   "solid": true
+  },
+  {
+   "model": "models/props/chess_pawn_b.drm",
+   "name": "chess_pawn_b",
+   "role": "pylon",
+   "x": -98.26,
+   "y": 0.0,
+   "z": -6.85,
+   "yawRad": 4.136,
+   "scale": 100.0,
+   "radius": 2.1,
+   "solid": true
+  },
+  {
+   "model": "models/props/chess_pawn_b.drm",
+   "name": "chess_pawn_b",
+   "role": "pylon",
+   "x": -100.25,
+   "y": 0.0,
+   "z": 14.27,
+   "yawRad": 4.733,
+   "scale": 100.0,
+   "radius": 2.1,
+   "solid": true
+  },
+  {
+   "model": "models/props/chess_pawn_w.drm",
+   "name": "chess_pawn_w",
+   "role": "pylon",
+   "x": -96.04,
+   "y": 0.0,
+   "z": 35.86,
+   "yawRad": 2.102,
+   "scale": 100.0,
+   "radius": 2.1,
+   "solid": true
+  },
+  {
+   "model": "models/props/chess_pawn_b.drm",
+   "name": "chess_pawn_b",
+   "role": "pylon",
+   "x": -85.08,
+   "y": 0.0,
+   "z": 54.58,
+   "yawRad": 0.511,
+   "scale": 100.0,
+   "radius": 2.1,
+   "solid": true
+  },
+  {
+   "model": "models/props/chess_pawn_w.drm",
+   "name": "chess_pawn_w",
+   "role": "pylon",
+   "x": -68.63,
+   "y": 0.0,
+   "z": 68.48,
+   "yawRad": 0.028,
+   "scale": 100.0,
+   "radius": 2.1,
+   "solid": true
+  },
+  {
+   "model": "models/props/chess_pawn_b.drm",
+   "name": "chess_pawn_b",
+   "role": "pylon",
+   "x": -47.21,
+   "y": 0.0,
+   "z": 77.77,
+   "yawRad": 0.867,
+   "scale": 100.0,
+   "radius": 2.1,
+   "solid": true
+  },
+  {
+   "model": "models/props/chess_pawn_w.drm",
+   "name": "chess_pawn_w",
+   "role": "pylon",
+   "x": -11.37,
+   "y": 0.0,
+   "z": 100.69,
+   "yawRad": 5.791,
+   "scale": 100.0,
+   "radius": 2.1,
+   "solid": true
+  },
+  {
+   "model": "models/props/lantern.drm",
+   "name": "lantern",
+   "role": "landmark",
+   "x": 125.12,
+   "y": 0.0,
+   "z": 88.23,
+   "yawRad": -2.199,
+   "scale": 100.0,
+   "radius": 13.58,
+   "solid": true
+  },
+  {
+   "model": "models/props/desk_lamp.drm",
+   "name": "desk_lamp",
+   "role": "landmark",
+   "x": 139.89,
+   "y": 0.0,
+   "z": 15.02,
+   "yawRad": -1.289,
+   "scale": 100.0,
+   "radius": 19.97,
+   "solid": true
+  },
+  {
+   "model": "models/props/chess_rook_w.drm",
+   "name": "chess_rook_w",
+   "role": "landmark",
+   "x": -132.04,
+   "y": 0.0,
+   "z": 61.43,
+   "yawRad": 2.038,
+   "scale": 100.0,
+   "radius": 2.69,
+   "solid": true
+  },
+  {
+   "model": "models/props/chess_rook_b.drm",
+   "name": "chess_rook_b",
+   "role": "landmark",
+   "x": -87.07,
+   "y": 0.0,
+   "z": -24.95,
+   "yawRad": -1.868,
+   "scale": 100.0,
+   "radius": 2.69,
+   "solid": true
+  },
+  {
+   "model": "models/props/chess_bishop_w.drm",
+   "name": "chess_bishop_w",
+   "role": "landmark",
+   "x": -42.74,
+   "y": 0.0,
+   "z": 119.22,
+   "yawRad": 3.037,
+   "scale": 100.0,
+   "radius": 2.43,
+   "solid": true
+  },
+  {
+   "model": "models/props/potted_plant.drm",
+   "name": "potted_plant",
+   "role": "landmark",
+   "x": -147.1,
+   "y": 0.0,
+   "z": -11.84,
+   "yawRad": 1.413,
+   "scale": 100.0,
+   "radius": 15.88,
+   "solid": true
+  }
+ ]
+}
