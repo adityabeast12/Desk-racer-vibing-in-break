@@ -51,6 +51,7 @@ import com.example.ui.theme.MyApplicationTheme
 import java.io.File
 import java.io.FileOutputStream
 import org.junit.Rule
+import androidx.compose.ui.semantics.getOrNull
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
