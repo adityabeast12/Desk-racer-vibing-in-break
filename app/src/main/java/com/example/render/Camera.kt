@@ -1,5 +1,6 @@
 package com.example.render
 
+import android.opengl.Matrix
 import com.example.game.GameConstants
 import com.example.game.RacePhase
 import com.example.game.RenderKartSnapshot
@@ -8,6 +9,7 @@ import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.sin
+import kotlin.math.tan
 import kotlin.random.Random
 
 class Camera {
@@ -20,6 +22,7 @@ class Camera {
     var lookZ: Float = 40f
 
     var currentFovDeg: Float = 62f
+    var currentLensShiftX: Float = 0f
 
     private var shakeTimerSec: Float = 0f
     private var lastLandingSignal: Int = 0
@@ -32,11 +35,22 @@ class Camera {
         track: Track,
         flybyProgress01: Float,
         showroomAngleRad: Float,
-        landingShakeSignal: Int
+        landingShakeSignal: Int,
+        isGarageStage: Boolean = false,
+        garageZoom: Float = 1.0f,
+        viewportWidth: Int = 1280,
+        viewportHeight: Int = 720
     ) {
         if (landingShakeSignal != lastLandingSignal) {
             lastLandingSignal = landingShakeSignal
             shakeTimerSec = 0.22f
+        }
+
+        currentLensShiftX = if (isGarageStage && phase == RacePhase.SHOWROOM_MENU) {
+            val w = viewportWidth.coerceAtLeast(1).toFloat()
+            computeLensShiftX(stageCenterX = w * 0.30f, screenWidth = w)
+        } else {
+            0f
         }
 
         // 1. Pre-race 4s camera fly-by along the track spline
@@ -64,7 +78,7 @@ class Camera {
 
         if (targetKart == null) return
 
-        // 2. Showroom / Results / Finished local player orbit camera
+        // 2. Showroom / Garage / Results / Finished local player orbit camera
         val isOrbitMode = phase == RacePhase.SHOWROOM_MENU ||
             phase == RacePhase.RESULTS ||
             phase == RacePhase.FINISHED
@@ -72,17 +86,24 @@ class Camera {
         if (isOrbitMode) {
             finishOrbitAngleRad = (finishOrbitAngleRad + dt * 0.75f) % (2f * PI.toFloat())
             val orbitAngle = if (phase == RacePhase.SHOWROOM_MENU) showroomAngleRad else finishOrbitAngleRad
-            val orbitRadius = if (phase == RacePhase.SHOWROOM_MENU) 5.4f else 6.2f
-            val desiredX = targetKart.x + sin(orbitAngle) * orbitRadius
-            val desiredZ = targetKart.z + cos(orbitAngle) * orbitRadius
-            val desiredY = targetKart.y + 2.2f
-            posX += (desiredX - posX) * 0.15f
-            posY += (desiredY - posY) * 0.15f
-            posZ += (desiredZ - posZ) * 0.15f
+            val baseDist = if (isGarageStage) {
+                computeGarageCameraDistance(fovYDeg = 46f) / garageZoom.coerceIn(0.8f, 1.4f)
+            } else if (phase == RacePhase.SHOWROOM_MENU) {
+                5.4f
+            } else {
+                6.2f
+            }
+            val desiredX = targetKart.x + sin(orbitAngle) * baseDist
+            val desiredZ = targetKart.z + cos(orbitAngle) * baseDist
+            val desiredY = targetKart.y + if (isGarageStage) 1.55f else 2.2f
+            val lerpRate = if (isGarageStage) 0.35f else 0.15f
+            posX += (desiredX - posX) * lerpRate
+            posY += (desiredY - posY) * lerpRate
+            posZ += (desiredZ - posZ) * lerpRate
             lookX = targetKart.x
-            lookY = targetKart.y + 0.7f
+            lookY = targetKart.y + if (isGarageStage) 0.58f else 0.7f
             lookZ = targetKart.z
-            currentFovDeg = 56f
+            currentFovDeg = if (isGarageStage) 46f else 56f
             return
         }
 
@@ -117,10 +138,40 @@ class Camera {
             lookY += (Random.nextFloat() - 0.5f) * mag
         }
 
-        // Part H1: Speed FOV — 62° at rest -> 70° at top speed (+6° on boost), damped at 8 rad/s
+        // Speed FOV — 62° at rest -> 70° at top speed (+6° on boost), damped at 8 rad/s
         val speedNorm = (abs(targetKart.speed) / GameConstants.TOP_SPEED).coerceIn(0f, 1.15f)
         val boostKick = if (targetKart.isBoosting) 6.0f else 0.0f
         val targetFov = 62.0f + speedNorm * 8.0f + boostKick
         currentFovDeg += (targetFov - currentFovDeg) * (8.0f * dt).coerceIn(0.05f, 0.35f)
+    }
+
+    companion object {
+        fun computeLensShiftX(stageCenterX: Float, screenWidth: Float): Float {
+            val halfW = (screenWidth * 0.5f).coerceAtLeast(1f)
+            val screenCenterX = screenWidth * 0.5f
+            return (stageCenterX - screenCenterX) / halfW
+        }
+
+        fun computeGarageCameraDistance(
+            kartVisualHeight: Float = 2.45f,
+            targetFillFraction: Float = 0.70f,
+            fovYDeg: Float = 46f
+        ): Float {
+            val halfFovRad = Math.toRadians((fovYDeg * 0.5).toDouble())
+            val tanHalfFov = tan(halfFovRad).toFloat().coerceAtLeast(0.1f)
+            return (kartVisualHeight / (2f * targetFillFraction * tanHalfFov)).coerceAtLeast(4.1f)
+        }
+
+        fun buildOffCenterPerspectiveMatrix(
+            outProj: FloatArray,
+            fovYDeg: Float,
+            aspect: Float,
+            near: Float,
+            far: Float,
+            lensShiftX: Float
+        ) {
+            Matrix.perspectiveM(outProj, 0, fovYDeg, aspect, near, far)
+            outProj[8] = -lensShiftX
+        }
     }
 }

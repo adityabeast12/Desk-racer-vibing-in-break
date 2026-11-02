@@ -50,6 +50,9 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.game.CcClass
+import com.example.game.CpuDifficulty
+import com.example.game.ItemMode
 import com.example.game.Tracks
 import com.example.net.DiscoveredRoomBeacon
 import com.example.net.LobbySlotInfo
@@ -72,6 +75,11 @@ fun JoinScreen(
     roomCode: String,
     trackId: Int,
     laps: Int,
+    itemMode: ItemMode = ItemMode.NORMAL,
+    ccClass: CcClass = CcClass.CC_150,
+    cpuFill: Boolean = true,
+    botCount: Int = 7,
+    botDifficulty: CpuDifficulty = CpuDifficulty.PRO,
     slots: List<LobbySlotInfo>,
     isClientReady: Boolean,
     onConnectIp: (String) -> Unit,

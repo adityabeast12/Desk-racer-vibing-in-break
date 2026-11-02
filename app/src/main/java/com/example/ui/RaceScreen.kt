@@ -64,6 +64,7 @@ import com.example.ui.components.DRCard
 import com.example.ui.controls.ActionButtons
 import com.example.ui.controls.SteerZone
 import com.example.ui.hud.CountdownOverlay
+import com.example.ui.hud.HudCoverageMetrics
 import com.example.ui.hud.HudLayout
 import com.example.ui.hud.HudZone
 import com.example.ui.hud.ItemSlot
@@ -96,7 +97,8 @@ fun RaceScreen(
     onPauseChanged: (Boolean) -> Unit,
     onRestartRace: () -> Unit,
     onOpenSettings: () -> Unit,
-    onQuitToMenu: () -> Unit
+    onQuitToMenu: () -> Unit,
+    onHudCoverageMeasured: (HudCoverageMetrics) -> Unit = {}
 ) {
     val context = LocalContext.current
     var pauseMenuOpen by remember { mutableStateOf(false) }

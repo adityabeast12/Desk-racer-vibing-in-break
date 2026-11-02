@@ -15,6 +15,13 @@ mesh-optimised and converted for mobile by the Desk Racer project:
   Olive Dish (Iridescent Dish With Olives) — © 2020 Wayfair, LLC (CC BY 4.0)
   Stained Glass Lamp — © 2021 Wayfair (CC BY 4.0)
   Chess pieces (A Beautiful Game) — © 2020 ASWF; © 2022 Ed Mackey (CC BY 4.0)
+  Flight Helmet, BoomBox, Barramundi Fish — Public (CC0 1.0)
+  Iridescence Lamp — © 2022 Wayfair, LLC (CC BY 4.0)
+  Arched Lamp (Lights Punctual Lamp) — © 2021 DGG (CC BY 4.0)
+  Velvet Sofa (Glam Velvet Sofa) — © 2021 Wayfair, LLC (CC BY 4.0)
+  Damask Chair (Chair Damask Purplegold) — © 2021 Wayfair (CC BY 4.0)
+  Sneaker (Materials Variants Shoe) — © 2021 Shopify (CC BY 4.0)
+  Fox — © 2014 Public (CC0); © 2014 tomkranis (CC BY 4.0); © 2017 @AsoboStudio and @scurest (CC BY 4.0)
   Licence texts: https://creativecommons.org/licenses/by/4.0/  https://creativecommons.org/publicdomain/zero/1.0/
 
 Karts, coin, flag, item block, cloud, smoke sprite and sound effects:
@@ -23,4 +30,4 @@ Karts, coin, flag, item block, cloud, smoke sprite and sound effects:
 Room backdrops: Poly Haven HDRIs via the pmndrs/assets package (CC0 1.0), tone-mapped by the project.
 Fonts: Poppins — © 2020 The Poppins Project Authors, SIL Open Font License 1.1.
 Music, jingles, surface textures, item models (battery, thumbtack, eraser, marbles, paper plane,
-magnet, star sticker): original works created for Desk Racer LAN.
+magnet, star sticker), decals, UI icons and track preview cards: original works created for Desk Racer LAN.

@@ -57,6 +57,7 @@ import com.example.game.GraphicsQuality
 import com.example.game.HeadlessRaceTest
 import com.example.game.TrackQaResult
 import com.example.render.AssetRepository
+import com.example.ui.hud.HudCoverageMetrics
 import com.example.ui.theme.ArcadeCrimson
 import com.example.ui.theme.DriftAmber
 import com.example.ui.theme.HostEmerald
@@ -87,10 +88,13 @@ fun SettingsScreen(
     onDifficultyChanged: (CpuDifficulty) -> Unit,
     onSwapHandsChanged: (Boolean) -> Unit = {},
     onButtonScaleChanged: (Float) -> Unit = {},
+    onHudScaleChanged: (Float) -> Unit = {},
     onHudOpacityChanged: (Float) -> Unit = {},
     onPostFxChanged: (Boolean) -> Unit = {},
     onContactShadowsChanged: (Boolean) -> Unit = {},
     onShowDebugHudZonesChanged: (Boolean) -> Unit = {},
+    onLaunchTestTrackLoop: () -> Unit = {},
+    latestHudCoverage: HudCoverageMetrics? = null,
     onBack: () -> Unit
 ) {
     BackHandler(onBack = onBack)

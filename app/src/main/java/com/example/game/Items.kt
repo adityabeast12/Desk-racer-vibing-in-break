@@ -16,6 +16,8 @@ enum class ItemType(val id: Int, val label: String, val badgeColorHex: Long) {
     PAPER_PLANE(5, "PAPER PLANE", 0xFFA855F7L),
     MAGNET(6, "DESK MAGNET", 0xFFEF4444L);
 
+    val displayName: String get() = label
+
     companion object {
         fun fromId(id: Int): ItemType = entries.firstOrNull { it.id == id } ?: NONE
     }
@@ -168,6 +170,8 @@ object ItemsEngine {
         projectiles: MutableList<WorldProjectile>,
         itemMode: ItemMode,
         isTimeTrial: Boolean = false,
+        hostAuthority: Boolean = true,
+        localSlotIndex: Int = 0,
         onHitEvent: (victimSlot: Int, attackerSlot: Int, kind: ProjectileKind) -> Unit,
         onBoxPickedUp: (slot: Int, boxId: Int, grantedItem: ItemType) -> Unit,
         onCoinPickedUp: (slot: Int, coinId: Int) -> Unit = { _, _ -> }
@@ -187,6 +191,7 @@ object ItemsEngine {
                 continue
             }
             for (kart in karts) {
+                if (!hostAuthority && kart.slotIndex != localSlotIndex) continue
                 if (kart.isRespawning) continue
                 val dx = kart.x - box.x
                 val dz = kart.z - box.z
@@ -194,7 +199,11 @@ object ItemsEngine {
                     box.active = false
                     box.respawnTimerSec = GameConstants.ITEM_BOX_RESPAWN_SEC
                     if (kart.heldItem == ItemType.NONE && kart.rouletteTimerSec <= 0f) {
-                        val rolled = rollItemForPosition(kart.racePosition, itemMode)
+                        val rolled = if (hostAuthority) {
+                            rollItemForPosition(kart.racePosition, itemMode)
+                        } else {
+                            ItemType.BATTERY // Client optimistic roulette start; host event grants authoritative item
+                        }
                         kart.pendingItem = rolled
                         kart.rouletteTimerSec = GameConstants.ITEM_ROULETTE_SEC
                         onBoxPickedUp(kart.slotIndex, box.id, rolled)
@@ -326,30 +335,32 @@ object ItemsEngine {
                 }
             }
 
-            // Check collision with karts
-            var hitAnyone = false
-            for (kart in karts) {
-                if (kart.isRespawning || kart.invulnerableTimerSec > 0f || kart.ghostTimerSec > 0f) continue
-                if (kart.slotIndex == p.ownerSlot && p.lifeRemainingSec > GameConstants.MARBLE_LIFETIME_SEC - 0.35f) {
-                    continue
-                }
-                val dx = kart.x - p.x
-                val dz = kart.z - p.z
-                if (dx * dx + dz * dz < 2.35f && abs(kart.y - p.y) < 2.4f) {
-                    if (kart.shieldEraserHeld) {
-                        kart.shieldEraserHeld = false
-                        kart.heldItem = ItemType.NONE
+            // Check collision with karts (Host Authority only — Part B2)
+            if (hostAuthority) {
+                var hitAnyone = false
+                for (kart in karts) {
+                    if (kart.isRespawning || kart.invulnerableTimerSec > 0f || kart.ghostTimerSec > 0f) continue
+                    if (kart.slotIndex == p.ownerSlot && p.lifeRemainingSec > GameConstants.MARBLE_LIFETIME_SEC - 0.35f) {
+                        continue
+                    }
+                    val dx = kart.x - p.x
+                    val dz = kart.z - p.z
+                    if (dx * dx + dz * dz < 2.35f && abs(kart.y - p.y) < 2.4f) {
+                        if (kart.shieldEraserHeld) {
+                            kart.shieldEraserHeld = false
+                            kart.heldItem = ItemType.NONE
+                            hitAnyone = true
+                            break
+                        }
+                        KartPhysics.triggerSpinOut(kart)
+                        onHitEvent(kart.slotIndex, p.ownerSlot, p.kind)
                         hitAnyone = true
                         break
                     }
-                    KartPhysics.triggerSpinOut(kart)
-                    onHitEvent(kart.slotIndex, p.ownerSlot, p.kind)
-                    hitAnyone = true
-                    break
                 }
-            }
-            if (hitAnyone) {
-                iter.remove()
+                if (hitAnyone) {
+                    iter.remove()
+                }
             }
         }
     }

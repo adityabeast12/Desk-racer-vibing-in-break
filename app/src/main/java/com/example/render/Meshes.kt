@@ -8,7 +8,11 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 
-class GlMesh(val buffer: FloatBuffer, val vertexCount: Int)
+class GlMesh(
+    val buffer: FloatBuffer,
+    val vertexCount: Int,
+    val tangentBuffer: FloatBuffer? = null
+)
 
 class TrackRenderMeshes(
     val deskSlabMesh: GlMesh,
@@ -43,6 +47,23 @@ object Meshes {
                 put(data)
                 position(0)
             }
+    }
+
+    /**
+     * Flat unit XZ quad [-0.5..0.5] at y = 0 facing +Y with top-left UV origin (v=0 at -Z, v=1 at +Z).
+     * Used for desk decals, start grid boxes, boost pad chevrons, and the garage turntable disc.
+     */
+    fun buildFlatQuadXZ(): GlMesh {
+        val verts = floatArrayOf(
+            // px, py, pz,   nx, ny, nz,   u, v,   r, g, b
+            -0.5f, 0f, -0.5f, 0f, 1f, 0f, 0f, 0f, 1f, 1f, 1f,
+            -0.5f, 0f,  0.5f, 0f, 1f, 0f, 0f, 1f, 1f, 1f, 1f,
+             0.5f, 0f,  0.5f, 0f, 1f, 0f, 1f, 1f, 1f, 1f, 1f,
+            -0.5f, 0f, -0.5f, 0f, 1f, 0f, 0f, 0f, 1f, 1f, 1f,
+             0.5f, 0f,  0.5f, 0f, 1f, 0f, 1f, 1f, 1f, 1f, 1f,
+             0.5f, 0f, -0.5f, 0f, 1f, 0f, 1f, 0f, 1f, 1f, 1f
+        )
+        return GlMesh(createFloatBuffer(verts), 6)
     }
 
     fun buildUnitCube(): GlMesh {
@@ -119,8 +140,9 @@ object Meshes {
         for (i in 0 until stacks) {
             val v0 = i.toFloat() / stacks
             val v1 = (i + 1).toFloat() / stacks
-            val phi0 = PI * (v0 - 0.5)
-            val phi1 = PI * (v1 - 0.5)
+            // Top-left UV origin: v=0 at top (+Y), v=1 at bottom (-Y)
+            val phi0 = PI * (0.5 - v0)
+            val phi1 = PI * (0.5 - v1)
             val y0 = sin(phi0).toFloat(); val r0 = cos(phi0).toFloat()
             val y1 = sin(phi1).toFloat(); val r1 = cos(phi1).toFloat()
 
@@ -135,12 +157,12 @@ object Meshes {
                 val x11 = r1 * cos(th1).toFloat(); val z11 = r1 * sin(th1).toFloat()
 
                 val tris = arrayOf(
-                    floatArrayOf(x00, y0, z00, u0, 1f - v0),
-                    floatArrayOf(x10, y1, z10, u0, 1f - v1),
-                    floatArrayOf(x11, y1, z11, u1, 1f - v1),
-                    floatArrayOf(x00, y0, z00, u0, 1f - v0),
-                    floatArrayOf(x11, y1, z11, u1, 1f - v1),
-                    floatArrayOf(x01, y0, z01, u1, 1f - v0)
+                    floatArrayOf(x00, y0, z00, u0, v0),
+                    floatArrayOf(x10, y1, z10, u0, v1),
+                    floatArrayOf(x11, y1, z11, u1, v1),
+                    floatArrayOf(x00, y0, z00, u0, v0),
+                    floatArrayOf(x11, y1, z11, u1, v1),
+                    floatArrayOf(x01, y0, z01, u1, v0)
                 )
                 for (v in tris) {
                     out.add(v[0]); out.add(v[1]); out.add(v[2])
@@ -155,7 +177,8 @@ object Meshes {
     }
 
     /**
-     * Part C3: Inside-out Equirectangular Backdrop Sphere (radius = 900 u, 5 floats/vert: px,py,pz, u,v).
+     * Inside-out Equirectangular Backdrop Sphere (radius = 900 u, 5 floats/vert: px,py,pz, u,v).
+     * Top-left UV origin: v=0 at top pole (+Y), v=1 at bottom pole (-Y).
      */
     fun buildBackdropSphere(radius: Float = 900f, stacks: Int = 18, slices: Int = 28): GlMesh {
         val out = ArrayList<Float>(stacks * slices * 6 * 5)
@@ -200,8 +223,7 @@ object Meshes {
     }
 
     /**
-     * Part C4: Soft radial Contact AO / Shadow Disc (unit diameter = 1.0, 7 floats/vert for unlit shader).
-     * Center vertex has alpha = 0.55f, outer ring has alpha = 0.0f for smooth soft contact shadow.
+     * Part D9: Soft radial Contact AO / Shadow Disc (unit diameter = 1.0, 7 floats/vert for unlit shader).
      */
     fun buildContactShadowDisc(slices: Int = 18): GlMesh {
         val out = ArrayList<Float>(slices * 6 * 7)
@@ -277,12 +299,13 @@ object Meshes {
     }
 
     /**
-     * Part C5 & C6: Builds separate UV-mapped meshes for the Desk Tabletop Slab, Road Ribbon,
+     * Part D2: Builds separate UV-mapped meshes for the Desk Tabletop Slab, Road Ribbon (with spline tangent buffer),
      * Red/White Kerb Strips, Checkered Finish Banner, and Elevated Bridge Walls & Pillars.
      */
     fun buildTrackMeshes(track: Track): TrackRenderMeshes {
         val deskOut = ArrayList<Float>(36 * 11)
         val roadOut = ArrayList<Float>(track.samples.size * 6 * 11)
+        val roadTanOut = ArrayList<Float>(track.samples.size * 6 * 3)
         val kerbOut = ArrayList<Float>(track.samples.size * 36 * 11)
         val finishOut = ArrayList<Float>(24 * 11)
         val bridgeOut = ArrayList<Float>(track.samples.size * 30 * 11)
@@ -412,6 +435,15 @@ object Meshes {
                 l1x, y1L, l1z, 0f, rv1,
                 0f, 1f, 0f
             )
+            // Per-vertex spline tangent (6 vertices per quad) for D2 road normal mapping
+            val t0x = s0.tangentX; val t0z = s0.tangentZ
+            val t1x = s1.tangentX; val t1z = s1.tangentZ
+            roadTanOut.add(t0x); roadTanOut.add(0f); roadTanOut.add(t0z)
+            roadTanOut.add(t0x); roadTanOut.add(0f); roadTanOut.add(t0z)
+            roadTanOut.add(t1x); roadTanOut.add(0f); roadTanOut.add(t1z)
+            roadTanOut.add(t0x); roadTanOut.add(0f); roadTanOut.add(t0z)
+            roadTanOut.add(t1x); roadTanOut.add(0f); roadTanOut.add(t1z)
+            roadTanOut.add(t1x); roadTanOut.add(0f); roadTanOut.add(t1z)
 
             // Raised Left Kerb (top + inner lip)
             val kl0x = l0x - s0.rightX * kerbWidth
@@ -511,13 +543,18 @@ object Meshes {
 
         val deskArr = deskOut.toFloatArray()
         val roadArr = roadOut.toFloatArray()
+        val roadTanArr = roadTanOut.toFloatArray()
         val kerbArr = kerbOut.toFloatArray()
         val finishArr = finishOut.toFloatArray()
         val bridgeArr = bridgeOut.toFloatArray()
 
         return TrackRenderMeshes(
             deskSlabMesh = GlMesh(createFloatBuffer(deskArr), deskArr.size / 11),
-            roadRibbonMesh = GlMesh(createFloatBuffer(roadArr), roadArr.size / 11),
+            roadRibbonMesh = GlMesh(
+                buffer = createFloatBuffer(roadArr),
+                vertexCount = roadArr.size / 11,
+                tangentBuffer = createFloatBuffer(roadTanArr)
+            ),
             kerbRibbonMesh = GlMesh(createFloatBuffer(kerbArr), kerbArr.size / 11),
             finishBannerMesh = GlMesh(createFloatBuffer(finishArr), finishArr.size / 11),
             bridgeSupportMesh = GlMesh(createFloatBuffer(bridgeArr), bridgeArr.size / 11)

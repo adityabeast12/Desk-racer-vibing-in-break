@@ -57,6 +57,7 @@ class KartRuntime(
     var isRespawning: Boolean = false
     var respawnTimerSec: Float = 0f
     var wrongWayTimerSec: Float = 0f
+    var wrongWayGraceTimerSec: Float = 0f
     var isWrongWay: Boolean = false
     var farOffTrackTimerSec: Float = 0f
 
@@ -77,6 +78,9 @@ class KartRuntime(
     var heldItem: ItemType = ItemType.NONE
     var pendingItem: ItemType = ItemType.NONE
     var rouletteTimerSec: Float = 0f
+    var clientBoxPickupPendingSec: Float = 0f
+    var clientUsedItemHoldbackSec: Float = 0f
+    var clientPreUseItem: ItemType = ItemType.NONE
     var orbitingTacksCount: Int = 0
     var shieldEraserHeld: Boolean = false
     var magnetTimerSec: Float = 0f
@@ -147,6 +151,7 @@ object KartPhysics {
         kart.isRespawning = false
         kart.respawnTimerSec = 0f
         kart.wrongWayTimerSec = 0f
+        kart.wrongWayGraceTimerSec = 2.0f
         kart.isWrongWay = false
         kart.farOffTrackTimerSec = 0f
         kart.watchdogWriteIdx = 0
@@ -159,6 +164,9 @@ object KartPhysics {
         kart.heldItem = ItemType.NONE
         kart.pendingItem = ItemType.NONE
         kart.rouletteTimerSec = 0f
+        kart.clientBoxPickupPendingSec = 0f
+        kart.clientUsedItemHoldbackSec = 0f
+        kart.clientPreUseItem = ItemType.NONE
         kart.orbitingTacksCount = 0
         kart.shieldEraserHeld = false
         kart.magnetTimerSec = 0f
@@ -194,6 +202,10 @@ object KartPhysics {
         if (kart.invulnerableTimerSec > 0f || kart.ghostTimerSec > 0f || kart.isRespawning) return
         kart.spinOutTimerSec = GameConstants.SPIN_OUT_DURATION_SEC
         kart.invulnerableTimerSec = GameConstants.SPIN_OUT_DURATION_SEC + GameConstants.INVULNERABLE_AFTER_HIT_SEC
+        // Part C7: Ignore wrong-way for 2s after spin-out finishes
+        kart.wrongWayGraceTimerSec = GameConstants.SPIN_OUT_DURATION_SEC + 2.0f
+        kart.wrongWayTimerSec = 0f
+        kart.isWrongWay = false
         kart.forwardSpeed *= GameConstants.SPIN_OUT_SPEED_FACTOR
         kart.isDrifting = false
         kart.driftChargeUnits = 0
@@ -217,14 +229,28 @@ object KartPhysics {
         }
     }
 
+    /**
+     * Part C5 & C7: Place kart on the road centreline facing the tangent, 10 u behind the last good sample,
+     * with 1.5 s ghost, checked for prop clearance, and 2.0 s wrong-way grace.
+     */
     fun respawnKartBehindLastGood(kart: KartRuntime, track: Track) {
         val goodSample = track.samples.getOrElse(kart.lastGoodSampleIndex) { track.samples.first() }
-        val targetS = track.wrapDistance(goodSample.distance - GameConstants.WATCHDOG_RESPAWN_BACK_OFFSET)
-        val respawnSample = track.sampleAtDistance(targetS)
+        val baseBack = GameConstants.WATCHDOG_RESPAWN_BACK_OFFSET
+        val candidateOffsets = floatArrayOf(baseBack, baseBack + 3.5f, baseBack - 3.5f, baseBack + 7f, baseBack + 11f)
+        var chosenSample = track.sampleAtDistance(track.wrapDistance(goodSample.distance - baseBack))
 
-        kart.x = respawnSample.pos.x
-        kart.y = respawnSample.pos.y + 0.15f
-        kart.z = respawnSample.pos.z
+        for (offset in candidateOffsets) {
+            val candS = track.wrapDistance(goodSample.distance - offset)
+            val cand = track.sampleAtDistance(candS)
+            if (isClearOfSolidProps(cand.pos.x, cand.pos.y, cand.pos.z, track)) {
+                chosenSample = cand
+                break
+            }
+        }
+
+        kart.x = chosenSample.pos.x
+        kart.y = chosenSample.pos.y + 0.15f
+        kart.z = chosenSample.pos.z
         kart.prevX = kart.x
         kart.prevY = kart.y
         kart.prevZ = kart.z
@@ -232,7 +258,7 @@ object KartPhysics {
         kart.vy = 0f
         kart.vz = 0f
         kart.forwardSpeed = 6.0f
-        kart.headingRad = respawnSample.headingRad
+        kart.headingRad = chosenSample.headingRad
         kart.isDrifting = false
         kart.driftChargeUnits = 0
         kart.isRespawning = false
@@ -240,21 +266,79 @@ object KartPhysics {
         kart.ghostTimerSec = GameConstants.GHOST_AFTER_RESPAWN_SEC
         kart.invulnerableTimerSec = GameConstants.GHOST_AFTER_RESPAWN_SEC
         kart.wrongWayTimerSec = 0f
+        kart.wrongWayGraceTimerSec = 2.0f
         kart.isWrongWay = false
         kart.farOffTrackTimerSec = 0f
         kart.watchdogSampleCount = 0
         kart.watchdogSampleTimerSec = 0f
 
-        val deltaBack = track.wrapSignedDelta(respawnSample.distance - kart.trackS)
-        kart.trackS = respawnSample.distance
-        kart.splineDistance = respawnSample.distance
-        kart.lastSampleIndex = respawnSample.index
-        kart.lastGoodSampleIndex = respawnSample.index
-        if (deltaBack < 0f && abs(deltaBack) < 40f) {
+        val deltaBack = track.wrapSignedDelta(chosenSample.distance - kart.trackS)
+        kart.trackS = chosenSample.distance
+        kart.splineDistance = chosenSample.distance
+        kart.lastSampleIndex = chosenSample.index
+        kart.lastGoodSampleIndex = chosenSample.index
+        if (deltaBack < 0f && abs(deltaBack) < 45f) {
             val minLapFloor = kart.lapsCompleted * track.totalLength
             kart.raceDistance = (kart.raceDistance + deltaBack).coerceAtLeast(minLapFloor)
         }
         kart.watchdogRespawnCount++
+    }
+
+    private fun isClearOfSolidProps(x: Float, y: Float, z: Float, track: Track): Boolean {
+        val clearanceRadius = 1.6f
+        for (prop in track.placedProps) {
+            if (!prop.solid || prop.isPylon) continue
+            if (y > prop.y + 25f || y + 1.5f < prop.y) continue
+            val d = hypot(x - prop.x, z - prop.z)
+            if (d < prop.radius + clearanceRadius) return false
+        }
+        for (prop in track.props) {
+            if (!prop.isSolidWall) continue
+            if (y > prop.y + prop.sy + 0.5f || y + 1.5f < prop.y) continue
+            val r = maxOf(prop.sx, prop.sz) * 0.5f + clearanceRadius
+            if (hypot(x - prop.x, z - prop.z) < r) return false
+        }
+        return true
+    }
+
+    /**
+     * Part B7: Progress Robustness (host & solo).
+     * Never silently ignore large progress jumps (|deltaS| > 25 u).
+     * Re-seat the kart with a windowed spline search (±60 samples around last index, height-matched)
+     * and add the true signed delta when moving forward. Only a confirmed respawn moves raceDistance backwards.
+     */
+    fun updateKartSplineProgress(kart: KartRuntime, track: Track): NearestSampleResult {
+        var nearestRes = track.findNearestSampleWindowed(
+            worldX = kart.x,
+            worldY = kart.y,
+            worldZ = kart.z,
+            prevSampleIndex = kart.lastSampleIndex,
+            windowRadius = 40
+        )
+        val oldS = kart.trackS
+        var newS = nearestRes.sample.distance
+        var deltaS = track.wrapSignedDelta(newS - oldS)
+
+        if (abs(deltaS) > 25f) {
+            nearestRes = track.findNearestSampleWindowed(
+                worldX = kart.x,
+                worldY = kart.y,
+                worldZ = kart.z,
+                prevSampleIndex = kart.lastSampleIndex,
+                windowRadius = 60
+            )
+            newS = nearestRes.sample.distance
+            deltaS = track.wrapSignedDelta(newS - oldS)
+        }
+
+        kart.lastSampleIndex = nearestRes.sample.index
+        kart.trackS = newS
+        kart.splineDistance = newS
+
+        if (deltaS > 0f && deltaS < track.totalLength * 0.45f) {
+            kart.raceDistance += deltaS
+        }
+        return nearestRes
     }
 
     fun stepPylons(dt: Float, pylons: List<ActivePylon>) {
@@ -309,7 +393,7 @@ object KartPhysics {
         onBoostTriggered: () -> Unit = {},
         onLanded: () -> Unit = {},
         onRespawnToast: () -> Unit = {},
-        onLapCompleted: (completedLap: Int) -> Unit = {}
+        onLapCompleted: (completedLap: Int, subTickFraction: Float) -> Unit = { _, _ -> }
     ) {
         kart.prevX = kart.x
         kart.prevY = kart.y
@@ -345,6 +429,9 @@ object KartPhysics {
         if (kart.ghostTimerSec > 0f) {
             kart.ghostTimerSec = (kart.ghostTimerSec - dt).coerceAtLeast(0f)
         }
+        if (kart.wrongWayGraceTimerSec > 0f) {
+            kart.wrongWayGraceTimerSec = (kart.wrongWayGraceTimerSec - dt).coerceAtLeast(0f)
+        }
         if (kart.boostTimerSec > 0f) {
             kart.boostTimerSec = (kart.boostTimerSec - dt).coerceAtLeast(0f)
         }
@@ -359,26 +446,13 @@ object KartPhysics {
             kart.rocketStartStallTimerSec = (kart.rocketStartStallTimerSec - dt).coerceAtLeast(0f)
         }
 
-        // 3. Windowed Height-Aware Nearest Spline Sample
-        val nearestRes = track.findNearestSampleWindowed(
-            worldX = kart.x,
-            worldY = kart.y,
-            worldZ = kart.z,
-            prevSampleIndex = kart.lastSampleIndex,
-            windowRadius = 40
-        )
+        // 3. Windowed Height-Aware Nearest Spline Sample (Part B7)
+        val oldS = kart.trackS
+        val nearestRes = updateKartSplineProgress(kart, track)
         val nearestSample = nearestRes.sample
         val signedLateral = nearestRes.lateralOffset
-        val oldS = kart.trackS
-        val newS = nearestSample.distance
-        kart.lastSampleIndex = nearestSample.index
-        kart.trackS = newS
-        kart.splineDistance = newS
-
+        val newS = kart.trackS
         val deltaS = track.wrapSignedDelta(newS - oldS)
-        if (abs(deltaS) <= 25f) {
-            kart.raceDistance += deltaS
-        }
 
         val halfRoad = track.roadWidth * 0.5f
         val verticalDiffFromRoad = abs(kart.y - nearestSample.pos.y)
@@ -762,7 +836,11 @@ object KartPhysics {
         }
 
         val dotTangent = fwdX * nearestSample.tangentX + fwdZ * nearestSample.tangentZ
-        if (dotTangent < -0.30f && kart.forwardSpeed > 2.0f) {
+        if (kart.wrongWayGraceTimerSec > 0f || kart.spinOutTimerSec > 0f) {
+            // Part C7: Ignore the first 2s after respawn or spin-out
+            kart.wrongWayTimerSec = 0f
+            kart.isWrongWay = false
+        } else if (dotTangent < -0.30f && kart.forwardSpeed > 2.0f) {
             kart.wrongWayTimerSec += dt
             kart.isWrongWay = kart.wrongWayTimerSec > 1.0f
         } else {
@@ -813,7 +891,7 @@ object KartPhysics {
         val targetPitch = if (kart.vy > 1f) -0.18f else if (kart.vy < -2f) 0.14f else 0f
         kart.visualPitchRad += (targetPitch - kart.visualPitchRad) * (10f * dt).coerceAtMost(1f)
 
-        // 13. Plane-Crossing Checkpoint Gates & Unwrapped Lap Completion
+        // 13. Plane-Crossing Checkpoint Gates & Unwrapped Lap Completion (with C3 Sub-Tick Interpolation)
         for (g in track.checkpoints) {
             if (g.index == 0) continue
             val prevSide = (kart.prevX - g.center.x) * g.normalX + (kart.prevZ - g.center.z) * g.normalZ
@@ -835,12 +913,19 @@ object KartPhysics {
 
         val requiredLapDist = kart.lapsCompleted * track.totalLength + 0.85f * track.totalLength
         if ((crossedFinishPlane || wrappedFinishSpline) && kart.raceDistance >= requiredLapDist) {
+            val subTickFrac = if (crossedFinishPlane) {
+                val denom = currSide0 - prevSide0
+                if (denom > 0.0001f) (-prevSide0 / denom).coerceIn(0f, 1f) else 1f
+            } else {
+                val distToLine = (track.totalLength - oldS).coerceAtLeast(0f)
+                if (deltaS > 0.001f) (distToLine / deltaS).coerceIn(0f, 1f) else 1f
+            }
             kart.lapsCompleted += 1
             val completedLap = kart.lapsCompleted
             kart.lap = kart.lapsCompleted + 1
             kart.highestCheckpointPassed = 0
             kart.raceDistance = kart.lapsCompleted * track.totalLength + newS
-            onLapCompleted(completedLap)
+            onLapCompleted(completedLap, subTickFrac)
         }
     }
 

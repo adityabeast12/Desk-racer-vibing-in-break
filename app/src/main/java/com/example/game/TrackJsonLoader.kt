@@ -10,16 +10,20 @@ data class ParsedTrackJson(
     val roadWidth: Float,
     val splineSubdivisionsPerSegment: Int,
     val surfaceTexture: String,
+    val surfaceNormal: String,
     val surfaceTextureTileUnits: Float,
     val roadTexture: String,
+    val roadNormal: String,
     val roadTextureTileUnits: Float,
     val kerbTexture: String,
     val finishTexture: String,
     val backdropEquirect: String,
+    val previewCard: String,
     val lightingPreset: LightingPreset,
     val music: String,
     val controlPoints: List<Vec3>,
-    val props: List<PlacedTrackProp>
+    val props: List<PlacedTrackProp>,
+    val decals: List<TrackDecal>
 )
 
 object TrackJsonLoader {
@@ -58,6 +62,15 @@ object TrackJsonLoader {
         }
     }
 
+    private fun deriveNormalPath(baseTex: String): String {
+        val dot = baseTex.lastIndexOf('.')
+        return if (dot > 0) {
+            baseTex.substring(0, dot) + "_n" + baseTex.substring(dot)
+        } else {
+            ""
+        }
+    }
+
     fun parseJsonString(rawJson: String, fallbackSlug: String): ParsedTrackJson? {
         val obj = JSONObject(rawJson)
         val name = obj.optString("name", fallbackSlug.uppercase().replace('_', ' '))
@@ -65,12 +78,15 @@ object TrackJsonLoader {
         val roadWidth = obj.optDouble("roadWidth", 12.0).toFloat()
         val subdivs = obj.optInt("splineSubdivisionsPerSegment", 18).coerceIn(8, 36)
         val surfaceTex = obj.optString("surfaceTexture", "textures/surfaces/wood_walnut.jpg")
+        val surfaceNorm = obj.optString("surfaceNormal", deriveNormalPath(surfaceTex))
         val surfaceTile = obj.optDouble("surfaceTextureTileUnits", 60.0).toFloat()
         val roadTex = obj.optString("roadTexture", "textures/surfaces/road_asphalt.jpg")
+        val roadNorm = obj.optString("roadNormal", deriveNormalPath(roadTex))
         val roadTile = obj.optDouble("roadTextureTileUnits", 24.0).toFloat()
         val kerbTex = obj.optString("kerbTexture", "textures/surfaces/kerb_red_white.png")
         val finishTex = obj.optString("finishTexture", "textures/surfaces/checker_finish.png")
         val backdropTex = obj.optString("backdropEquirect", "textures/backdrops/room_apartment.jpg")
+        val previewCard = obj.optString("previewCard", "textures/ui/tracks/$slug.jpg")
         val lightingStr = obj.optString("lightingPreset", "DUSK_LAMP")
         val music = obj.optString("music", "audio/music/race_study_desk_loop.ogg")
 
@@ -113,22 +129,46 @@ object TrackJsonLoader {
             }
         }
 
+        val decalsArr = obj.optJSONArray("decals")
+        val decals = ArrayList<TrackDecal>(decalsArr?.length() ?: 0)
+        if (decalsArr != null) {
+            for (i in 0 until decalsArr.length()) {
+                val dObj = decalsArr.optJSONObject(i) ?: continue
+                val tex = dObj.optString("texture", "")
+                if (tex.isNotEmpty()) {
+                    decals.add(
+                        TrackDecal(
+                            texture = tex,
+                            x = dObj.optDouble("x", 0.0).toFloat(),
+                            z = dObj.optDouble("z", 0.0).toFloat(),
+                            yawRad = dObj.optDouble("yawRad", 0.0).toFloat(),
+                            size = dObj.optDouble("size", 14.0).toFloat()
+                        )
+                    )
+                }
+            }
+        }
+
         return ParsedTrackJson(
             name = name,
             slug = slug,
             roadWidth = roadWidth,
             splineSubdivisionsPerSegment = subdivs,
             surfaceTexture = surfaceTex,
+            surfaceNormal = surfaceNorm,
             surfaceTextureTileUnits = surfaceTile,
             roadTexture = roadTex,
+            roadNormal = roadNorm,
             roadTextureTileUnits = roadTile,
             kerbTexture = kerbTex,
             finishTexture = finishTex,
             backdropEquirect = backdropTex,
+            previewCard = previewCard,
             lightingPreset = LightingPreset.fromString(lightingStr),
             music = music,
             controlPoints = controlPoints,
-            props = placedProps
+            props = placedProps,
+            decals = decals
         )
     }
 }

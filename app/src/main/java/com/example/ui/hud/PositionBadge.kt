@@ -1,5 +1,13 @@
 package com.example.ui.hud
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -11,30 +19,41 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.R
 import com.example.ui.theme.BoostCyan
 import com.example.ui.theme.DRType
 import com.example.ui.theme.DangerCoral
-import com.example.ui.theme.InkBorder
-import com.example.ui.theme.InkSurface
 import com.example.ui.theme.LampAmber
 import com.example.ui.theme.SuccessLime
 import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
 
+/**
+ * Part C1, C2, F2, F4, F6:
+ * - Position: 44 sp ExtraBold + "/8" 14 sp; lap 13 sp below.
+ * - Animates position changes with vertical slide + 1.15x pulse; ▲/▼ chip only for >= 400 ms changes.
+ * - Lap display capped at totalLaps and shows "FINISHED" after crossing the finish line.
+ * - 45% black glass (#73000000) with 1 dp white 12% border (#1FFFFFFF) and drop shadows on text.
+ */
 @Composable
 fun PositionBadge(
     position: Int,
     totalRacers: Int,
     lap: Int,
     totalLaps: Int,
+    isFinished: Boolean = false,
     coinsHeld: Int = 0,
     positionDeltaChip: String? = null,
     balloonsRemaining: Int = -1,
@@ -53,41 +72,96 @@ fun PositionBadge(
         else -> "th"
     }
 
+    // Part C1: 1.15x scale pulse on position change
+    val pulseScale = remember { Animatable(1f) }
+    LaunchedEffect(position) {
+        pulseScale.snapTo(1.15f)
+        pulseScale.animateTo(1f, animationSpec = tween(durationMillis = 180))
+    }
+
+    val safeLap = lap.coerceIn(1, totalLaps.coerceAtLeast(1))
+    val finishedText = stringResource(R.string.hud_finished)
+
     Column(
         modifier = modifier
-            .widthIn(min = 96.dp, max = 186.dp)
-            .background(InkSurface.copy(alpha = 0.88f), RoundedCornerShape(14.dp))
-            .border(1.5.dp, rankColor.copy(alpha = 0.75f), RoundedCornerShape(14.dp))
-            .padding(horizontal = 12.dp, vertical = 6.dp)
+            .widthIn(min = 92.dp, max = 176.dp)
+            .background(HudGlassBg, RoundedCornerShape(12.dp))
+            .border(1.dp, HudGlassBorder, RoundedCornerShape(12.dp))
+            .padding(horizontal = 10.dp, vertical = 4.dp)
             .testTag("hud_position_badge"),
         horizontalAlignment = Alignment.Start,
-        verticalArrangement = Arrangement.spacedBy(2.dp)
+        verticalArrangement = Arrangement.spacedBy(1.dp)
     ) {
         Row(
             verticalAlignment = Alignment.Bottom,
-            horizontalArrangement = Arrangement.spacedBy(5.dp)
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            Text(
-                text = "$position$suffix",
-                style = DRType.HudNumber.copy(fontSize = 26.sp, lineHeight = 28.sp),
-                color = rankColor,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+            AnimatedContent(
+                targetState = position,
+                transitionSpec = {
+                    if (targetState < initialState) {
+                        (slideInVertically { height -> height / 2 } + fadeIn(tween(120)))
+                            .togetherWith(slideOutVertically { height -> -height / 2 } + fadeOut(tween(120)))
+                    } else {
+                        (slideInVertically { height -> -height / 2 } + fadeIn(tween(120)))
+                            .togetherWith(slideOutVertically { height -> height / 2 } + fadeOut(tween(120)))
+                    }
+                },
+                label = "position_slide"
+            ) { targetPos ->
+                val sfx = when (targetPos) {
+                    1 -> "st"
+                    2 -> "nd"
+                    3 -> "rd"
+                    else -> "th"
+                }
+                Row(
+                    verticalAlignment = Alignment.Bottom,
+                    modifier = Modifier.scale(pulseScale.value)
+                ) {
+                    Text(
+                        text = "$targetPos",
+                        style = DRType.HudNumber.copy(
+                            fontSize = 44.sp,
+                            lineHeight = 44.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            shadow = HudTextShadow
+                        ),
+                        color = rankColor,
+                        maxLines = 1
+                    )
+                    Text(
+                        text = sfx,
+                        style = DRType.TabularLabel.copy(
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            shadow = HudTextShadow
+                        ),
+                        color = rankColor,
+                        maxLines = 1,
+                        modifier = Modifier.padding(bottom = 5.dp)
+                    )
+                }
+            }
+
             Text(
                 text = "/$totalRacers",
-                style = DRType.TabularLabel,
+                style = DRType.TabularLabel.copy(
+                    fontSize = 14.sp,
+                    shadow = HudTextShadow
+                ),
                 color = TextSecondary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(bottom = 2.dp)
+                modifier = Modifier.padding(bottom = 5.dp)
             )
+
             if (!positionDeltaChip.isNullOrBlank()) {
                 val isGain = positionDeltaChip.startsWith("▲")
                 Surface(
                     shape = RoundedCornerShape(6.dp),
                     color = if (isGain) SuccessLime else DangerCoral,
-                    modifier = Modifier.padding(bottom = 3.dp)
+                    modifier = Modifier.padding(bottom = 6.dp)
                 ) {
                     Text(
                         text = positionDeltaChip,
@@ -103,21 +177,33 @@ fun PositionBadge(
                 }
             }
         }
+
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            val lapLabel = when {
+                balloonsRemaining >= 0 -> "BALLOONS $balloonsRemaining"
+                isFinished -> finishedText
+                else -> "LAP $safeLap/$totalLaps"
+            }
             Text(
-                text = if (balloonsRemaining >= 0) "🎈 $balloonsRemaining" else "LAP $lap/$totalLaps",
-                style = DRType.TabularLabel.copy(fontSize = 12.sp),
-                color = TextPrimary,
+                text = lapLabel,
+                style = DRType.TabularLabel.copy(
+                    fontSize = 13.sp,
+                    shadow = HudTextShadow
+                ),
+                color = if (isFinished) LampAmber else TextPrimary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.testTag("hud_lap_counter")
             )
             Text(
-                text = "🪙 ${coinsHeld.coerceIn(0, 10)}",
-                style = DRType.TabularLabel.copy(fontSize = 12.sp),
+                text = "COIN ${coinsHeld.coerceIn(0, 10)}",
+                style = DRType.TabularLabel.copy(
+                    fontSize = 12.sp,
+                    shadow = HudTextShadow
+                ),
                 color = LampAmber,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,

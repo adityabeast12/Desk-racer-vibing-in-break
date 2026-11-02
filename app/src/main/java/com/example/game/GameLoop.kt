@@ -14,8 +14,9 @@ import kotlinx.coroutines.launch
 import java.util.concurrent.atomic.AtomicReference
 
 /**
- * Runs the fixed-timestep 60 Hz simulation off the UI thread.
+ * Part H1 & H2: Runs the fixed-timestep 60 Hz simulation off the UI thread.
  * Publishes lock-free WorldRenderSnapshot for OpenGL ES 3.0 and throttles HudState to ~15 Hz for Compose.
+ * Supports thermal/battery saver throttling (`thermalThrottle30Fps`).
  */
 class GameLoop(
     val inputState: InputState,
@@ -32,6 +33,9 @@ class GameLoop(
 
     @Volatile
     var isPausedSolo: Boolean = false
+
+    @Volatile
+    var thermalThrottle30Fps: Boolean = false
 
     var onSimTickForNetwork: ((WorldRenderSnapshot) -> Unit)? = null
 
@@ -74,7 +78,11 @@ class GameLoop(
                 }
 
                 val elapsedMs = (System.nanoTime() - frameStartNs) / 1_000_000L
-                val targetFrameMs = if (settings.graphicsQuality == GraphicsQuality.LOW) 33L else 16L
+                val targetFrameMs = if (settings.graphicsQuality == GraphicsQuality.LOW || thermalThrottle30Fps) {
+                    33L
+                } else {
+                    16L
+                }
                 val sleepMs = (targetFrameMs - elapsedMs).coerceAtLeast(2L)
                 delay(sleepMs)
             }

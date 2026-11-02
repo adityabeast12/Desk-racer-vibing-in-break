@@ -14,40 +14,38 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.input.pointer.pointerInteropFilter
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.game.MinimapDot
 import com.example.game.Tracks
 import com.example.ui.theme.BoostCyan
-import com.example.ui.theme.InkBorder
-import com.example.ui.theme.InkSurface
 
 /**
- * Part E1 & E2: Minimap sits strictly in LEFT_MID (0-18% w x 26-56% h), never intruding into
- * the BOTTOM_LEFT steering zone, and is non-interactive.
+ * Part F3 & F4:
+ * - Minimap: 96 x 96 dp inside LEFT_MID (0-14% w x 24-52% h), 35% dark fill, 2 px road,
+ *   5 dp dots for opponents, and 7 dp player indicator.
  */
 @Composable
 fun Minimap(
     trackId: Int,
     dots: List<MinimapDot>,
     modifier: Modifier = Modifier,
-    sizeDp: Dp = 108.dp
+    sizeDp: Dp = 96.dp
 ) {
     val track = Tracks.byId(trackId)
     Box(
         modifier = modifier
             .size(sizeDp)
-            .clip(RoundedCornerShape(14.dp))
-            .background(InkSurface.copy(alpha = 0.82f))
-            .border(1.5.dp, InkBorder, RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(12.dp))
+            .background(Color(0x59000000)) // 35% dark fill
+            .border(1.dp, HudGlassBorder, RoundedCornerShape(12.dp))
             .testTag("hud_minimap")
     ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
             val w = size.width
             val h = size.height
-            val pad = 8f
+            val pad = 7f
             val scaleX = (w - pad * 2f) / (track.deskHalfExtentX * 1.65f)
             val scaleZ = (h - pad * 2f) / (track.deskHalfExtentZ * 1.45f)
 
@@ -67,18 +65,27 @@ fun Minimap(
                     path.lineTo(p.x, p.y)
                 }
                 path.close()
-                drawPath(path, color = Color(0x44FFFFFF), style = Stroke(width = 6f))
-                drawPath(path, color = BoostCyan.copy(alpha = 0.75f), style = Stroke(width = 2.5f))
+                drawPath(path, color = BoostCyan.copy(alpha = 0.80f), style = Stroke(width = 2f))
             }
+
+            val dotRadiusPx = 2.5.dp.toPx() // 5 dp diameter
+            val playerRadiusPx = 3.5.dp.toPx() // 7 dp player indicator
 
             for (d in dots) {
                 val pt = toScreen(d.x, d.z)
                 if (d.isLocal) {
-                    drawCircle(color = Color.White, radius = 6.2f, center = pt)
-                    drawCircle(color = Color(d.colorHex), radius = 4.5f, center = pt)
+                    val arrow = Path().apply {
+                        moveTo(pt.x, pt.y - playerRadiusPx * 1.15f)
+                        lineTo(pt.x + playerRadiusPx, pt.y + playerRadiusPx)
+                        lineTo(pt.x, pt.y + playerRadiusPx * 0.45f)
+                        lineTo(pt.x - playerRadiusPx, pt.y + playerRadiusPx)
+                        close()
+                    }
+                    drawPath(arrow, color = Color.White)
+                    drawCircle(color = Color(d.colorHex), radius = playerRadiusPx * 0.65f, center = pt)
                 } else {
-                    drawCircle(color = Color(0xFF0B1020), radius = 4.6f, center = pt)
-                    drawCircle(color = Color(d.colorHex), radius = 3.4f, center = pt)
+                    drawCircle(color = Color(0xCC000000), radius = dotRadiusPx + 1f, center = pt)
+                    drawCircle(color = Color(d.colorHex), radius = dotRadiusPx, center = pt)
                 }
             }
         }

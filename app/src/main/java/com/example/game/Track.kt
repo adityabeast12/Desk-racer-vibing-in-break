@@ -233,6 +233,14 @@ data class StartGridSlot(
     val headingRad: Float
 )
 
+data class TrackDecal(
+    val texture: String,
+    val x: Float,
+    val z: Float,
+    val yawRad: Float,
+    val size: Float
+)
+
 data class NearestSampleResult(
     val sample: SplineSample,
     val lateralOffset: Float
@@ -255,12 +263,15 @@ class Track(
     val skyBottomHex: Long,
     val fogHex: Long,
     val surfaceTexture: String = "textures/surfaces/wood_walnut.jpg",
+    val surfaceNormal: String = "textures/surfaces/wood_walnut_n.jpg",
     val surfaceTextureTileUnits: Float = 60f,
     val roadTexture: String = "textures/surfaces/road_asphalt.jpg",
+    val roadNormal: String = "textures/surfaces/road_asphalt_n.jpg",
     val roadTextureTileUnits: Float = 24f,
     val kerbTexture: String = "textures/surfaces/kerb_red_white.png",
     val finishTexture: String = "textures/surfaces/checker_finish.png",
     val backdropEquirect: String = "textures/backdrops/room_apartment.jpg",
+    val previewCard: String = "textures/ui/tracks/study_desk.jpg",
     val lightingPreset: LightingPreset = LightingPreset.DUSK_LAMP,
     val musicAssetPath: String = "audio/music/race_study_desk_loop.ogg",
     val goldTimeMs: Long = 95_000L,
@@ -282,6 +293,7 @@ class Track(
     val controlPoints: List<Vec3>,
     rawProps: List<TrackProp> = emptyList(),
     rawPlacedProps: List<PlacedTrackProp> = emptyList(),
+    rawDecals: List<TrackDecal> = emptyList(),
     val paintPuddles: List<PaintPuddleZone> = emptyList(),
     val slipperyZones: List<SlipperyZone> = emptyList(),
     val dynamicHazards: List<DynamicHazardSpec> = emptyList()
@@ -294,6 +306,7 @@ class Track(
     val coins: List<TrackCoinPlacement>
     val props: List<TrackProp>
     val placedProps: List<PlacedTrackProp>
+    val decals: List<TrackDecal>
 
     init {
         val rawPoints = buildCatmullRomLoop(controlPoints, subdivisionsPerSegment = splineSubdivisionsPerSegment)
@@ -459,6 +472,30 @@ class Track(
 
         props = sanitizePropsClearance(rawProps)
         placedProps = sanitizePlacedPropsClearance(rawPlacedProps)
+        decals = sanitizeDecalsClearance(rawDecals)
+    }
+
+    private fun sanitizeDecalsClearance(input: List<TrackDecal>): List<TrackDecal> {
+        val minRoadClearance = roadWidth * 0.5f + 1.2f
+        return input.map { d ->
+            var ax = d.x
+            var az = d.z
+            val halfDiag = d.size * 0.55f
+            for (s in samples) {
+                val dx = ax - s.pos.x
+                val dz = az - s.pos.z
+                val dist = hypot(dx, dz)
+                val needed = minRoadClearance + halfDiag
+                if (dist < needed) {
+                    val push = (needed - dist) + 0.5f
+                    val lat = dx * s.rightX + dz * s.rightZ
+                    val sign = if (lat >= 0f) 1f else -1f
+                    ax += s.rightX * sign * push
+                    az += s.rightZ * sign * push
+                }
+            }
+            d.copy(x = ax, z = az)
+        }
     }
 
     private fun sanitizePropsClearance(inputProps: List<TrackProp>): List<TrackProp> {

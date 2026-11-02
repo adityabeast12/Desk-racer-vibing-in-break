@@ -62,8 +62,14 @@ import com.example.game.CpuDifficulty
 import com.example.game.CupType
 import com.example.game.GameMode
 import com.example.game.ItemMode
+import androidx.compose.foundation.Image
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import com.example.game.Track
 import com.example.game.Tracks
+import com.example.render.AssetRepository
 import com.example.ui.hud.formatRaceTime
 import com.example.ui.theme.ArcadeCrimson
 import com.example.ui.theme.DRColors
@@ -153,7 +159,7 @@ fun MainMenuScreen(
                             color = RulerYellow
                         ) {
                             Text(
-                                text = "LAN v3",
+                                text = "LAN v4",
                                 fontFamily = Poppins,
                                 fontWeight = FontWeight.ExtraBold,
                                 fontSize = 12.sp,
@@ -872,6 +878,10 @@ private fun TrackCardMini(
     bestLapMs: Long,
     onClick: () -> Unit
 ) {
+    val context = LocalContext.current
+    val previewBmp = remember(track.previewCard) {
+        AssetRepository.loadUiBitmapStatic(context, track.previewCard)
+    }
     Surface(
         shape = RoundedCornerShape(12.dp),
         color = if (selected) SkyCyan.copy(alpha = 0.22f) else SlateSurface,
@@ -892,22 +902,34 @@ private fun TrackCardMini(
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Mini Spline Preview
-            Canvas(modifier = Modifier.size(42.dp)) {
-                val w = size.width
-                val h = size.height
-                val scaleX = (w - 8f) / (track.deskHalfExtentX * 1.7f)
-                val scaleZ = (h - 8f) / (track.deskHalfExtentZ * 1.5f)
-                val path = Path()
-                if (track.samples.isNotEmpty()) {
-                    val p0 = track.samples[0].pos
-                    path.moveTo(w * 0.5f + p0.x * scaleX, h * 0.5f + p0.z * scaleZ)
-                    for (i in 1 until track.samples.size step 3) {
-                        val p = track.samples[i].pos
-                        path.lineTo(w * 0.5f + p.x * scaleX, h * 0.5f + p.z * scaleZ)
+            if (previewBmp != null) {
+                Image(
+                    bitmap = previewBmp.asImageBitmap(),
+                    contentDescription = track.name,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .size(width = 64.dp, height = 42.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .border(1.dp, if (selected) SkyCyan else SlateBorder, RoundedCornerShape(8.dp))
+                )
+            } else {
+                // Fallback Mini Spline Preview
+                Canvas(modifier = Modifier.size(42.dp)) {
+                    val w = size.width
+                    val h = size.height
+                    val scaleX = (w - 8f) / (track.deskHalfExtentX * 1.7f)
+                    val scaleZ = (h - 8f) / (track.deskHalfExtentZ * 1.5f)
+                    val path = Path()
+                    if (track.samples.isNotEmpty()) {
+                        val p0 = track.samples[0].pos
+                        path.moveTo(w * 0.5f + p0.x * scaleX, h * 0.5f + p0.z * scaleZ)
+                        for (i in 1 until track.samples.size step 3) {
+                            val p = track.samples[i].pos
+                            path.lineTo(w * 0.5f + p.x * scaleX, h * 0.5f + p.z * scaleZ)
+                        }
+                        path.close()
+                        drawPath(path, color = if (selected) SkyCyan else Color(0xFF94A3B8), style = Stroke(width = 3f))
                     }
-                    path.close()
-                    drawPath(path, color = if (selected) SkyCyan else Color(0xFF94A3B8), style = Stroke(width = 3f))
                 }
             }
 

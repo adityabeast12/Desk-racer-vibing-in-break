@@ -52,6 +52,12 @@ import com.example.ui.theme.SlateAbyss
 import com.example.ui.theme.SlateBorder
 import com.example.ui.theme.SlateSurface
 
+/**
+ * Part C4:
+ * - DNF racers placed after finishers, ordered by `raceDistance`.
+ * - Times formatted `m:ss.mmm` or `"DNF"`.
+ * - Best lap marked with `★` per racer; `"NEW BEST"` only on a personal record.
+ */
 @Composable
 fun ResultsScreen(
     trackName: String,
@@ -71,6 +77,16 @@ fun ResultsScreen(
     val isGrandPrix = gameMode == GameMode.GRAND_PRIX
     val isCupFinale = isGrandPrix && cupRaceIndex >= 3
     var doubledCoinsClaimed by remember { mutableStateOf(false) }
+
+    // Ensure finishers come first by position, followed by DNF racers ordered by position (which host sorted by raceDistance)
+    val orderedStandings = remember(standings) {
+        val finishers = standings.filter { !it.isDnf }.sortedBy { it.position }
+        val dnfs = standings.filter { it.isDnf }.sortedBy { it.position }
+        finishers + dnfs
+    }
+    val fastestLapOverallMs = remember(orderedStandings) {
+        orderedStandings.mapNotNull { it.bestLapMs.takeIf { ms -> ms > 0L } }.minOrNull() ?: 0L
+    }
 
     Box(
         modifier = Modifier
@@ -98,7 +114,7 @@ fun ResultsScreen(
                 ) {
                     Column {
                         Text(
-                            text = if (isCupFinale) "🏆 CUP TROPHY CEREMONY" else "RACE RESULTS",
+                            text = if (isCupFinale) "CUP TROPHY CEREMONY" else "RACE RESULTS",
                             fontFamily = Poppins,
                             fontWeight = FontWeight.Bold,
                             fontSize = 20.sp,
@@ -113,7 +129,6 @@ fun ResultsScreen(
                         )
                     }
 
-                    // Coins & Desk Pass XP Pill
                     Surface(
                         shape = RoundedCornerShape(999.dp),
                         color = SlateSurface,
@@ -137,9 +152,9 @@ fun ResultsScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.Bottom
                 ) {
-                    val first = standings.getOrNull(0)
-                    val second = standings.getOrNull(1)
-                    val third = standings.getOrNull(2)
+                    val first = orderedStandings.getOrNull(0)
+                    val second = orderedStandings.getOrNull(1)
+                    val third = orderedStandings.getOrNull(2)
 
                     PodiumStep(
                         place = "2ND",
@@ -164,7 +179,7 @@ fun ResultsScreen(
                     )
                 }
 
-                // Bottom Action Buttons + Solo Opt-In 2× Coins Rewarded Button (Part J4)
+                // Bottom Action Buttons + Solo Opt-In 2x Coins Rewarded Button
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     if (!isMultiplayer && onWatchAdDoubleCoins != null && !doubledCoinsClaimed) {
                         Button(
@@ -180,7 +195,7 @@ fun ResultsScreen(
                                 .testTag("btn_results_double_coins")
                         ) {
                             Text(
-                                text = "🎬 WATCH CLIP FOR 2× COINS (+$coinsEarnedThisRace BONUS)",
+                                text = "WATCH CLIP FOR 2× COINS (+$coinsEarnedThisRace BONUS)",
                                 fontFamily = Poppins,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 11.sp,
@@ -203,7 +218,7 @@ fun ResultsScreen(
                                 .testTag("btn_results_rematch")
                         ) {
                             Text(
-                                text = if (!isMultiplayer || isHost) "RACE AGAIN" else "READY",
+                                text = if (!isMultiplayer || isHost) "REMATCH" else "READY",
                                 fontFamily = Poppins,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 11.sp
@@ -277,7 +292,7 @@ fun ResultsScreen(
                         .padding(12.dp),
                     verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    items(standings) { r ->
+                    items(orderedStandings) { r ->
                         Surface(
                             shape = RoundedCornerShape(10.dp),
                             color = if (r.isLocal) SkyCyan.copy(alpha = 0.18f) else SlateSurface,
@@ -315,13 +330,14 @@ fun ResultsScreen(
                                         fontSize = 12.sp,
                                         color = Color.White
                                     )
+                                    // Part C4: "NEW BEST" only on a personal record
                                     if (r.isNewRecord) {
                                         Surface(
                                             shape = RoundedCornerShape(6.dp),
                                             color = RulerYellow
                                         ) {
                                             Text(
-                                                text = "NEW BEST!",
+                                                text = "NEW BEST",
                                                 fontFamily = Poppins,
                                                 fontWeight = FontWeight.Bold,
                                                 fontSize = 8.sp,
@@ -354,15 +370,22 @@ fun ResultsScreen(
                                         fontSize = 12.sp,
                                         color = if (r.isDnf) ArcadeCrimson else Color.White
                                     )
-                                    val subText = when {
-                                        isGrandPrix -> "+${r.cupPointsEarned} PTS (TOTAL ${r.cupTotalPoints})"
-                                        r.bestLapMs > 0L -> "BEST ${formatRaceTime(r.bestLapMs)}"
-                                        else -> "LAP RACER"
+                                    // Part C4: Best lap marked with ★ per racer
+                                    val bestLapPart = if (r.bestLapMs > 0L) {
+                                        "★ ${formatRaceTime(r.bestLapMs)}"
+                                    } else {
+                                        "★ --:--.---"
                                     }
+                                    val subText = if (isGrandPrix) {
+                                        "$bestLapPart  •  +${r.cupPointsEarned} PTS (${r.cupTotalPoints})"
+                                    } else {
+                                        bestLapPart
+                                    }
+                                    val isOverallFastest = fastestLapOverallMs > 0L && r.bestLapMs == fastestLapOverallMs
                                     Text(
                                         text = subText,
                                         style = DRType.MicroTag,
-                                        color = if (isGrandPrix) RulerYellow else SkyCyan
+                                        color = if (isOverallFastest || isGrandPrix) RulerYellow else SkyCyan
                                     )
                                 }
                             }

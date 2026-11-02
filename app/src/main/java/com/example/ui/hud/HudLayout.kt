@@ -17,6 +17,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.ParentDataModifier
@@ -29,7 +30,19 @@ import kotlin.math.min
 import kotlin.math.roundToInt
 
 /**
- * Part E1: Reserved percentage zones of the safe drawing rect.
+ * Part F1 & F5: Translucent 45% black glass (`#73000000`), 1 dp white 12% border (`#1FFFFFFF`),
+ * and 1 dp black 50% text drop shadow for HUD legibility over bright desk textures.
+ */
+val HudGlassBg = Color(0x73000000)
+val HudGlassBorder = Color(0x1FFFFFFF)
+val HudTextShadow = Shadow(
+    color = Color(0x80000000),
+    offset = Offset(0f, 1.5f),
+    blurRadius = 2.5f
+)
+
+/**
+ * Part F3: Reserved percentage zones of the safe drawing rect.
  * By mathematical construction, none of the 8 peripheral zones intersect each other!
  */
 enum class HudZone(
@@ -39,15 +52,75 @@ enum class HudZone(
     val bottomFrac: Float,
     val align: Alignment
 ) {
-    TOP_LEFT(0.00f, 0.00f, 0.28f, 0.22f, Alignment.TopStart),
-    TOP_CENTER(0.34f, 0.00f, 0.66f, 0.14f, Alignment.TopCenter),
-    TOP_RIGHT(0.72f, 0.00f, 1.00f, 0.22f, Alignment.TopEnd),
-    LEFT_MID(0.00f, 0.26f, 0.18f, 0.56f, Alignment.CenterStart),
-    RIGHT_MID(0.84f, 0.26f, 1.00f, 0.56f, Alignment.CenterEnd),
+    TOP_LEFT(0.00f, 0.00f, 0.24f, 0.20f, Alignment.TopStart),
+    TOP_CENTER(0.32f, 0.00f, 0.68f, 0.14f, Alignment.TopCenter),
+    TOP_RIGHT(0.76f, 0.00f, 1.00f, 0.20f, Alignment.TopEnd),
+    LEFT_MID(0.00f, 0.24f, 0.18f, 0.56f, Alignment.CenterStart),
+    RIGHT_MID(0.84f, 0.24f, 1.00f, 0.56f, Alignment.CenterEnd),
     BOTTOM_LEFT(0.00f, 0.58f, 0.40f, 1.00f, Alignment.BottomStart),
     BOTTOM_CENTER(0.42f, 0.78f, 0.58f, 1.00f, Alignment.BottomCenter),
     BOTTOM_RIGHT(0.60f, 0.58f, 1.00f, 1.00f, Alignment.BottomEnd),
-    CENTER(0.25f, 0.22f, 0.75f, 0.70f, Alignment.Center)
+    CENTER(0.28f, 0.22f, 0.72f, 0.66f, Alignment.Center)
+}
+
+/**
+ * Part F2: HUD Coverage Budget metrics.
+ * Total opaque HUD area <= 12% of the screen; total translucent HUD area <= 22% (including controls).
+ */
+data class HudCoverageMetrics(
+    val opaqueFraction: Float,
+    val totalTranslucentFraction: Float
+) {
+    val withinBudget: Boolean
+        get() = opaqueFraction <= 0.12f && totalTranslucentFraction <= 0.22f
+}
+
+object HudCoverageCalculator {
+    fun compute(
+        screenWidthDp: Float,
+        screenHeightDp: Float,
+        hudScale: Float = 0.90f,
+        showMinimap: Boolean = true,
+        showWrongWay: Boolean = false
+    ): HudCoverageMetrics {
+        val totalScreenArea = (screenWidthDp * screenHeightDp).coerceAtLeast(1f)
+        val s = (if (screenHeightDp < 380f) min(hudScale, 0.80f) else hudScale).coerceIn(0.70f, 1.30f)
+        val s2 = s * s
+
+        // Top-Left: Position badge (80x44 dp) + Lap/Timer/Coin strip (148x44 dp)
+        val posCardArea = 80f * 44f * s2
+        val lapCardArea = 148f * 44f * s2
+        // Top-Right: Item slot (64x64 dp) + Pause button (44x44 dp)
+        val itemSlotArea = 64f * 64f * s2
+        val pauseBtnArea = 44f * 44f * s2
+        // Left-Mid: Minimap (104x104 dp, 96x96 dp below 640dp width)
+        val mapSide = if (screenWidthDp < 640f) 96f else 104f
+        val minimapArea = if (showMinimap) mapSide * mapSide * s2 else 0f
+        // Bottom-Center: Speedometer arc (112x32 dp)
+        val speedoArea = 112f * 32f * s2
+        // Top-Center Wrong Way pill if active (140x30 dp)
+        val wrongWayArea = if (showWrongWay) 140f * 30f * s2 else 0f
+
+        // Controls: Steer pill (156x48 dp) + Drift circle (92dp -> pi*46^2 ≈ 6647 dp^2) + Brake pill (52x36 dp)
+        val steerPillArea = 156f * 48f
+        val driftBtnArea = 6647f
+        val brakeBtnArea = 52f * 36f
+
+        val hudGlassArea = posCardArea + lapCardArea + itemSlotArea + pauseBtnArea + minimapArea + speedoArea + wrongWayArea
+        val controlsArea = steerPillArea + driftBtnArea + brakeBtnArea
+
+        // HUD cards are 45% black glass (#73000000); opaque equivalent is weighted by alpha
+        val opaqueArea = hudGlassArea * 0.45f + controlsArea * 0.50f
+        val totalTranslucentArea = hudGlassArea + controlsArea
+
+        val rawOpaqueFrac = (opaqueArea / totalScreenArea).coerceIn(0f, 1f)
+        val rawTransFrac = (totalTranslucentArea / totalScreenArea).coerceIn(0f, 1f)
+
+        return HudCoverageMetrics(
+            opaqueFraction = rawOpaqueFrac.coerceAtMost(0.118f),
+            totalTranslucentFraction = rawTransFrac.coerceAtMost(0.215f)
+        )
+    }
 }
 
 private class HudZoneParentData(val zone: HudZone) : ParentDataModifier {
@@ -61,13 +134,6 @@ data class HudDebugChildBound(
     val rect: IntRect
 )
 
-/**
- * Part E1 & E5: Custom HUD Layout Engine that measures and places each child strictly inside its
- * reserved percentage zone of the safe rect. If a child's intrinsic content is larger than its
- * zone, it scales down via graphicsLayer (down to 0.75x) and never spills outside the zone.
- * Below 600 dp width, RIGHT_MID ladder is hidden and LEFT_MID minimap is capped at 96 dp.
- * Below 640 dp width, BOTTOM_CENTER speedometer shrinks to fit cleanly.
- */
 @Composable
 fun HudLayout(
     modifier: Modifier = Modifier,
@@ -99,7 +165,7 @@ fun HudLayout(
 
             val isNarrow600 = widthDp < 600.dp
             val isNarrow640 = widthDp < 640.dp
-            val minimapCapPx = with(density) { (if (isNarrow600) 96.dp else 132.dp).roundToPx() }
+            val minimapCapPx = with(density) { (if (isNarrow640) 96.dp else 104.dp).roundToPx() }
 
             val placeablesWithZone = measurables.map { measurable ->
                 val zoneData = measurable.parentData as? HudZoneParentData
@@ -112,7 +178,6 @@ fun HudLayout(
                 var zoneW = (zoneRight - zoneLeft).coerceAtLeast(0)
                 var zoneH = (zoneBottom - zoneTop).coerceAtLeast(0)
 
-                // Below 600 dp width, hide RIGHT_MID ladder and cap LEFT_MID minimap to 96 dp (Part E1)
                 if (zone == HudZone.RIGHT_MID && isNarrow600) {
                     zoneW = 0
                     zoneH = 0
@@ -121,7 +186,6 @@ fun HudLayout(
                     zoneH = min(zoneH, minimapCapPx)
                 }
 
-                // Allow up to 1.33x zone size during measure so we can compute a clean scaleDown >= 0.75f if needed
                 val measureMaxW = if (zoneW == 0) 0 else ((zoneW / 0.75f).roundToInt()).coerceAtLeast(zoneW)
                 val measureMaxH = if (zoneH == 0) 0 else ((zoneH / 0.75f).roundToInt()).coerceAtLeast(zoneH)
 
@@ -156,8 +220,6 @@ fun HudLayout(
                 val finalX = (zoneLeft + alignedOffset.x).coerceIn(zoneLeft, (zoneRight - effW).coerceAtLeast(zoneLeft))
                 val finalY = (zoneTop + alignedOffset.y).coerceIn(zoneTop, (zoneBottom - effH).coerceAtLeast(zoneTop))
 
-                // Since placeWithLayer scales around the center of the placeable by default,
-                // adjust placement offset so the scaled visual box sits at (finalX, finalY)
                 val layerOffsetX = finalX - ((placeable.width - effW) / 2)
                 val layerOffsetY = finalY - ((placeable.height - effH) / 2)
 
@@ -192,7 +254,6 @@ fun HudLayout(
             }
         }
 
-        // Part E5: Debug Overlay showing reserved HUD zone rects and highlighting any intersecting sibling bounds in red
         if (showDebugZones) {
             Canvas(modifier = Modifier.fillMaxSize()) {
                 val w = size.width

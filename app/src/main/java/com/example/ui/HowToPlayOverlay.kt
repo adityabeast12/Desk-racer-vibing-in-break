@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
@@ -31,17 +30,26 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.game.ControlSchemeType
+import com.example.game.ItemType
+import com.example.ui.hud.ItemModelMiniGlyph
+import com.example.ui.hud.shortLabel
 import com.example.ui.theme.DriftAmber
 import com.example.ui.theme.HostEmerald
 import com.example.ui.theme.Poppins
 import com.example.ui.theme.RulerYellow
 import com.example.ui.theme.SkyCyan
 import com.example.ui.theme.SlateAbyss
+import com.example.ui.theme.SlateBorder
 import com.example.ui.theme.SlateSurface
 
+/**
+ * Part D5: Tutorial / How-to-Play overlay displaying the 3 control scheme cards AND the
+ * 6 official v4 PNG item icons (`textures/ui/items/<item>.png`).
+ */
 @Composable
 fun HowToPlayOverlay(
     selectedScheme: ControlSchemeType = ControlSchemeType.SMART,
@@ -68,7 +76,7 @@ fun HowToPlayOverlay(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(18.dp),
+                    .padding(16.dp),
                 verticalArrangement = Arrangement.SpaceBetween
             ) {
                 Row(
@@ -78,10 +86,10 @@ fun HowToPlayOverlay(
                 ) {
                     Column {
                         Text(
-                            text = "CHOOSE YOUR DRIVING STYLE & HOTSPOT SETUP",
+                            text = "CHOOSE YOUR DRIVING STYLE, ITEMS & HOTSPOT SETUP",
                             fontFamily = Poppins,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 17.sp,
+                            fontSize = 16.sp,
                             color = SkyCyan
                         )
                         Text(
@@ -102,7 +110,7 @@ fun HowToPlayOverlay(
                     }
                 }
 
-                // 3 Interactive Control Cards (Smart / Pro / Tilt) + Hotspot Summary
+                // 3 Interactive Control Cards (Smart / Pro / Tilt)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -110,7 +118,7 @@ fun HowToPlayOverlay(
                     StepCard(
                         stepNum = "1",
                         title = "SMART (DEFAULT)",
-                        desc = "Auto-gas + floating thumb steer. Hold DRIFT around corners to charge Blue, Orange & Purple Mini-Turbos!",
+                        desc = "Auto-gas + floating thumb steer (64dp full lock). Hold DRIFT around corners to charge Blue & Orange Mini-Turbos!",
                         accent = RulerYellow,
                         selected = selectedScheme == ControlSchemeType.SMART,
                         onClick = { onSelectScheme(ControlSchemeType.SMART) },
@@ -119,7 +127,7 @@ fun HowToPlayOverlay(
                     StepCard(
                         stepNum = "2",
                         title = "PRO MANUAL",
-                        desc = "Manual GAS + BRAKE/DRIFT pedals + floating steering pad. Full throttle control for hairpins and shortcuts.",
+                        desc = "Manual GAS + BRAKE/DRIFT pedals + Purple Ultra Mini-Turbos. Full off-road shortcut freedom.",
                         accent = HostEmerald,
                         selected = selectedScheme == ControlSchemeType.PRO,
                         onClick = { onSelectScheme(ControlSchemeType.PRO) },
@@ -128,12 +136,66 @@ fun HowToPlayOverlay(
                     StepCard(
                         stepNum = "3",
                         title = "TILT & HOTSPOT LAN",
-                        desc = "Steer by tilting your phone! For 2–8 player LAN: one friend turns ON Wi-Fi Hotspot, others join & tap JOIN RACE.",
+                        desc = "Steer by tilting your phone (±22°)! For 2–8 player LAN: one friend turns ON Wi-Fi Hotspot, others tap JOIN RACE.",
                         accent = DriftAmber,
                         selected = selectedScheme == ControlSchemeType.TILT,
                         onClick = { onSelectScheme(ControlSchemeType.TILT) },
                         modifier = Modifier.weight(1f)
                     )
+                }
+
+                // Part D5: Desk Item Guide Row using PNG item icons (`textures/ui/items/<item>.png`)
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = SlateSurface,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, SlateBorder),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        val tutorialItems = listOf(
+                            ItemType.MARBLE to "Ricochet Shot",
+                            ItemType.PAPER_PLANE to "Homing Strike",
+                            ItemType.BATTERY to "1.5s Turbo",
+                            ItemType.ERASER to "Spin Hazard",
+                            ItemType.TRIPLE_TACKS to "3x Orbit Shield",
+                            ItemType.MAGNET to "Pull Leader"
+                        )
+                        tutorialItems.forEach { (item, desc) ->
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                ItemModelMiniGlyph(
+                                    item = item,
+                                    modifier = Modifier.size(28.dp)
+                                )
+                                Column {
+                                    Text(
+                                        text = item.shortLabel,
+                                        fontFamily = Poppins,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 9.sp,
+                                        color = Color.White,
+                                        maxLines = 1
+                                    )
+                                    Text(
+                                        text = desc,
+                                        fontFamily = Poppins,
+                                        fontSize = 8.sp,
+                                        color = RulerYellow,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -170,14 +232,14 @@ private fun StepCard(
                 Box(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier
-                        .size(28.dp)
+                        .size(26.dp)
                         .background(accent, CircleShape)
                 ) {
                     Text(
                         text = stepNum,
                         fontFamily = Poppins,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 13.sp,
+                        fontSize = 12.sp,
                         color = SlateAbyss
                     )
                 }
@@ -192,8 +254,8 @@ private fun StepCard(
             Text(
                 text = desc,
                 fontFamily = Poppins,
-                fontSize = 11.sp,
-                lineHeight = 15.sp,
+                fontSize = 10.sp,
+                lineHeight = 14.sp,
                 color = Color(0xFFCBD5E1)
             )
         }

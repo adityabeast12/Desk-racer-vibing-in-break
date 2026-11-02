@@ -17,11 +17,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ui.theme.BoostCyan
 import com.example.ui.theme.DRType
-import com.example.ui.theme.InkBorder
-import com.example.ui.theme.InkSurface
 import com.example.ui.theme.TextPrimary
 import java.util.Locale
 
+/**
+ * Part F2, F4, F6:
+ * - Timer: 15 sp tabular; best lap 11 sp below.
+ * - 45% black glass (#73000000) with 1 dp white 12% border (#1FFFFFFF) and drop shadow on text.
+ */
 @Composable
 fun LapTimer(
     raceTimeMs: Long,
@@ -30,16 +33,20 @@ fun LapTimer(
 ) {
     Column(
         modifier = modifier
-            .widthIn(min = 108.dp, max = 188.dp)
-            .background(InkSurface.copy(alpha = 0.88f), RoundedCornerShape(12.dp))
-            .border(1.dp, InkBorder, RoundedCornerShape(12.dp))
-            .padding(horizontal = 12.dp, vertical = 4.dp)
+            .widthIn(min = 98.dp, max = 164.dp)
+            .background(HudGlassBg, RoundedCornerShape(10.dp))
+            .border(1.dp, HudGlassBorder, RoundedCornerShape(10.dp))
+            .padding(horizontal = 10.dp, vertical = 3.dp)
             .testTag("hud_lap_timer"),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
             text = formatRaceTime(raceTimeMs),
-            style = DRType.TabularSubtitle.copy(fontSize = 16.sp, fontWeight = FontWeight.W800),
+            style = DRType.TabularSubtitle.copy(
+                fontSize = 15.sp,
+                fontWeight = FontWeight.W800,
+                shadow = HudTextShadow
+            ),
             color = TextPrimary,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
@@ -48,9 +55,10 @@ fun LapTimer(
             Text(
                 text = "BEST ${formatRaceTime(bestLapMs)}",
                 style = DRType.Caption.copy(
-                    fontSize = 10.sp,
+                    fontSize = 11.sp,
                     fontWeight = FontWeight.W700,
-                    fontFeatureSettings = "tnum"
+                    fontFeatureSettings = "tnum",
+                    shadow = HudTextShadow
                 ),
                 color = BoostCyan,
                 maxLines = 1,
@@ -60,10 +68,13 @@ fun LapTimer(
     }
 }
 
+/**
+ * Part C4: Times formatted `m:ss.mmm` (or `mm:ss.mmm` when >= 10 minutes).
+ */
 fun formatRaceTime(ms: Long): String {
     val safe = ms.coerceAtLeast(0L)
     val minutes = safe / 60000L
     val seconds = (safe % 60000L) / 1000L
     val millis = safe % 1000L
-    return String.format(Locale.US, "%02d:%02d.%03d", minutes, seconds, millis)
+    return String.format(Locale.US, "%d:%02d.%03d", minutes, seconds, millis)
 }

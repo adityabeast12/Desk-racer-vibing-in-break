@@ -1,18 +1,16 @@
 package com.example.ui.hud
 
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
@@ -20,11 +18,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -32,13 +26,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ui.theme.BoostCyan
 import com.example.ui.theme.DRType
-import com.example.ui.theme.InkBorder
 import com.example.ui.theme.InkElevated
-import com.example.ui.theme.InkSurface
 import com.example.ui.theme.LampAmber
 import com.example.ui.theme.SuccessLime
 import com.example.ui.theme.TextPrimary
 
+/**
+ * Part F2, F4, F5, F6:
+ * - Speedometer: compact 120 x 32 dp bar + number inside BOTTOM_CENTER (43-57% w x 84-100% h).
+ * - Contextual hiding (Part F5): hides the "SPEED" label after the player's first 3 completed races
+ *   (still displays drift spark tier labels while drifting).
+ * - Uses 45% black glass (#73000000) with 1 dp white 12% border (#1FFFFFFF) and drop shadow on text.
+ */
 @Composable
 fun Speedometer(
     speedKmh: Int,
@@ -46,6 +45,7 @@ fun Speedometer(
     isDrifting: Boolean,
     driftChargeRatio: Float,
     sparkTier: Int,
+    showSpeedLabel: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val tierColor = when (sparkTier) {
@@ -54,55 +54,42 @@ fun Speedometer(
         1 -> BoostCyan         // Blue Mini-Turbo
         else -> SuccessLime
     }
-    val tierLabel = when (sparkTier) {
+    val tierLabel: String? = when (sparkTier) {
         3 -> "PURPLE ULTRA!"
         2 -> "ORANGE SUPER!"
         1 -> "BLUE TURBO!"
-        else -> if (isDrifting) "DRIFT CHARGE" else "SPEED"
+        else -> when {
+            isDrifting -> "DRIFT"
+            showSpeedLabel -> "SPEED"
+            else -> null
+        }
     }
 
     Column(
         modifier = modifier
-            .widthIn(min = 104.dp, max = 148.dp)
-            .background(InkSurface.copy(alpha = 0.88f), RoundedCornerShape(14.dp))
-            .border(1.dp, InkBorder, RoundedCornerShape(14.dp))
-            .padding(horizontal = 10.dp, vertical = 6.dp)
+            .width(120.dp)
+            .heightIn(min = 32.dp)
+            .background(HudGlassBg, RoundedCornerShape(10.dp))
+            .border(1.dp, HudGlassBorder, RoundedCornerShape(10.dp))
+            .padding(horizontal = 8.dp, vertical = 4.dp)
             .testTag("hud_speedometer"),
-        horizontalAlignment = Alignment.CenterHorizontally
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
     ) {
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier.size(width = 102.dp, height = 38.dp)
+        Row(
+            verticalAlignment = Alignment.Bottom,
+            horizontalArrangement = Arrangement.SpaceBetween,
+            modifier = Modifier.fillMaxWidth()
         ) {
-            Canvas(modifier = Modifier.matchParentSize()) {
-                val w = size.width
-                val h = size.height
-                drawArc(
-                    color = InkElevated,
-                    startAngle = 190f,
-                    sweepAngle = 160f,
-                    useCenter = false,
-                    topLeft = Offset(6f, 4f),
-                    size = Size(w - 12f, h * 1.55f),
-                    style = Stroke(width = 8f, cap = StrokeCap.Round)
-                )
-                drawArc(
-                    color = tierColor,
-                    startAngle = 190f,
-                    sweepAngle = 160f * speedRatio.coerceIn(0f, 1f),
-                    useCenter = false,
-                    topLeft = Offset(6f, 4f),
-                    size = Size(w - 12f, h * 1.55f),
-                    style = Stroke(width = 8f, cap = StrokeCap.Round)
-                )
-            }
-            Row(
-                verticalAlignment = Alignment.Bottom,
-                modifier = Modifier.padding(top = 8.dp)
-            ) {
+            Row(verticalAlignment = Alignment.Bottom) {
                 Text(
                     text = "$speedKmh",
-                    style = DRType.HudNumber.copy(fontSize = 20.sp, lineHeight = 22.sp),
+                    style = DRType.HudNumber.copy(
+                        fontSize = 16.sp,
+                        lineHeight = 17.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        shadow = HudTextShadow
+                    ),
                     color = TextPrimary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -110,30 +97,39 @@ fun Speedometer(
                 Spacer(modifier = Modifier.width(2.dp))
                 Text(
                     text = "KM/H",
-                    style = DRType.Caption.copy(fontSize = 9.sp, fontWeight = FontWeight.W700),
+                    style = DRType.Caption.copy(
+                        fontSize = 8.sp,
+                        fontWeight = FontWeight.W700,
+                        shadow = HudTextShadow
+                    ),
                     color = BoostCyan,
+                    maxLines = 1
+                )
+            }
+            if (tierLabel != null) {
+                Text(
+                    text = tierLabel,
+                    style = DRType.Caption.copy(
+                        fontSize = 8.sp,
+                        fontWeight = FontWeight.W800,
+                        shadow = HudTextShadow
+                    ),
+                    color = tierColor,
                     maxLines = 1,
-                    modifier = Modifier.padding(bottom = 1.dp)
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }
 
-        Spacer(modifier = Modifier.height(2.dp))
+        Spacer(modifier = Modifier.height(3.dp))
         LinearProgressIndicator(
-            progress = { if (isDrifting) driftChargeRatio else speedRatio },
+            progress = { (if (isDrifting) driftChargeRatio else speedRatio).coerceIn(0f, 1f) },
             modifier = Modifier
                 .fillMaxWidth()
-                .height(5.dp)
-                .clip(RoundedCornerShape(3.dp)),
+                .height(4.dp)
+                .clip(RoundedCornerShape(2.dp)),
             color = tierColor,
             trackColor = InkElevated
-        )
-        Text(
-            text = tierLabel,
-            style = DRType.Caption.copy(fontSize = 9.sp, fontWeight = FontWeight.W800),
-            color = tierColor,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
         )
     }
 }

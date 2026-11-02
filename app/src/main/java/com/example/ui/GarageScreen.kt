@@ -32,11 +32,13 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -62,6 +64,10 @@ fun GarageScreen(
     onColorSelected: (Int) -> Unit,
     onBodySelected: (KartBodyType) -> Unit,
     onLiverySelected: (Int) -> Unit = {},
+    onPaintFinishSelected: (Int) -> Unit = {},
+    onRotateTurntable: (Float, Float) -> Unit = { _, _ -> },
+    onPinchZoomTurntable: (Float) -> Unit = {},
+    onResetTurntable: () -> Unit = {},
     onBack: () -> Unit
 ) {
     BackHandler(onBack = onBack)
@@ -391,3 +397,44 @@ private fun GarageStatBar(
         )
     }
 }
+
+@Composable
+fun KartThumbnailImage(
+    body: KartBodyType,
+    accentColor: Color,
+    modifier: Modifier = Modifier
+) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val bitmap = remember(body) {
+        val slug = body.drmAssetPath
+            .substringAfterLast("kart_")
+            .substringBefore(".drm")
+        com.example.render.AssetRepository.loadUiBitmapStatic(
+            context,
+            "textures/ui/karts/$slug.png"
+        )?.asImageBitmap()
+    }
+    Box(
+        modifier = modifier
+            .background(Color(0x660F172A), RoundedCornerShape(8.dp))
+            .border(1.dp, accentColor.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+            .padding(3.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        if (bitmap != null) {
+            androidx.compose.foundation.Image(
+                bitmap = bitmap,
+                contentDescription = body.title,
+                modifier = Modifier.fillMaxSize()
+            )
+        } else {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(0.78f)
+                    .height(14.dp)
+                    .background(accentColor, RoundedCornerShape(4.dp))
+            )
+        }
+    }
+}
+

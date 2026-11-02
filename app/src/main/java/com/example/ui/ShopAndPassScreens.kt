@@ -38,6 +38,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.size
 import com.example.data.AdGateway
 import com.example.data.BillingGateway
 import com.example.data.CosmeticOffer
@@ -46,11 +47,14 @@ import com.example.data.Prefs
 import com.example.data.PriceTag
 import com.example.data.ShopCatalog
 import com.example.data.UserProfileAndSettings
+import com.example.game.ItemType
+import com.example.game.KartBodyType
 import com.example.ui.components.DRButton
 import com.example.ui.components.DRButtonVariant
 import com.example.ui.components.DRCard
 import com.example.ui.components.DRChip
 import com.example.ui.components.DRTopBar
+import com.example.ui.hud.ItemModelMiniGlyph
 import com.example.ui.theme.DRColors
 import com.example.ui.theme.DRRadius
 import com.example.ui.theme.DRType
@@ -281,24 +285,42 @@ private fun CosmeticOfferRow(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(
+            Row(
                 modifier = Modifier.weight(1f).padding(end = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(2.dp)
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Text(
-                    text = offer.title,
-                    style = DRType.CardTitle,
-                    color = DRColors.CrispWhite,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    text = offer.subtitle,
-                    style = DRType.Caption,
-                    color = DRColors.MutedSlate,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+                val bodyId = offer.unlocksBodyId
+                if (bodyId != null) {
+                    KartThumbnailImage(
+                        body = KartBodyType.fromId(bodyId),
+                        accentColor = Color(offer.accentHex),
+                        modifier = Modifier.size(width = 52.dp, height = 38.dp)
+                    )
+                } else {
+                    ItemModelMiniGlyph(
+                        item = ItemType.BATTERY,
+                        modifier = Modifier.size(34.dp)
+                    )
+                }
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    Text(
+                        text = offer.title,
+                        style = DRType.CardTitle,
+                        color = DRColors.CrispWhite,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = offer.subtitle,
+                        style = DRType.Caption,
+                        color = DRColors.MutedSlate,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
             }
 
             if (owned) {

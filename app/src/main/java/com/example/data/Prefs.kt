@@ -39,10 +39,12 @@ data class StoredGhostLap(
 )
 
 data class UserProfileAndSettings(
+    val playerId: String = "local-player",
     val playerName: String = "RACER",
     val kartColorIndex: Int = 0,
     val kartBody: KartBodyType = KartBodyType.CLASSIC,
     val toyCarLiveryIndex: Int = 0, // 0..2 hue shift liveries for Classic Toy (Part B8)
+    val paintFinishIndex: Int = 0,  // 0=Gloss, 1=Matte, 2=Metallic, 3=Pearl (Part E5)
     val wheelStyleIndex: Int = 0,
     val controlScheme: ControlSchemeType = ControlSchemeType.SMART,
     val steerSensitivity: Float = 1.0f,
@@ -52,11 +54,12 @@ data class UserProfileAndSettings(
     val separateHopButton: Boolean = false,
     val controlsOpacity: Float = 0.90f, // 0.30..1.00 (Part F6)
     val controlsScale: Float = 1.00f,   // 0.85..1.15 (Part F6)
+    val hudScale: Float = 0.90f,        // 0.70..1.30 (Part F1: default 90%)
     val controlsOffsetXFrac: Float = 0f,
     val controlsOffsetYFrac: Float = 0f,
     val leftHandedMirror: Boolean = false,
     val showMinimap: Boolean = true,
-    val showHudDebugZones: Boolean = false, // Part E5
+    val showHudDebugZones: Boolean = false, // Part E5/F2
     val soundEnabled: Boolean = true,
     val hapticsEnabled: Boolean = true,
     val graphicsQuality: GraphicsQuality = GraphicsQuality.MEDIUM,
@@ -85,6 +88,7 @@ data class UserProfileAndSettings(
     val claimedFreePassTiers: Set<Int> = emptySet(),
     val claimedPremiumPassTiers: Set<Int> = emptySet(),
     val soloRacesSinceLastAd: Int = 0,
+    val completedRacesCount: Int = 0,
     val bestLapMsByTrack: Map<Int, Long> = emptyMap(),
     val cupTrophies: Map<Int, Int> = emptyMap() // cupId -> best place (1=Gold, 2=Silver, 3=Bronze)
 ) {
@@ -101,6 +105,7 @@ data class UserProfileAndSettings(
     val buttonScale: Float get() = controlsScale
     val hudOpacity: Float get() = controlsOpacity
     val swapHands: Boolean get() = leftHandedMirror
+    val postFxEnabled: Boolean get() = fxaaEnabled && bloomEnabled
     val contactShadowsEnabled: Boolean get() = fxaaEnabled
     val showDebugHudZones: Boolean get() = showHudDebugZones
     val starterPackOwned: Boolean get() = "starter_pack" in ownedShopIds
@@ -117,7 +122,7 @@ class Prefs(private val context: Context) {
     private val prefs: SharedPreferences =
         context.getSharedPreferences("desk_racer_lan_prefs", Context.MODE_PRIVATE)
 
-    private val installId: String = run {
+    val installId: String = run {
         val existing = prefs.getString("install_id", null)
         if (!existing.isNullOrBlank()) {
             existing
@@ -205,10 +210,12 @@ class Prefs(private val context: Context) {
             ?.mapNotNull { it.toIntOrNull() }?.toSet() ?: emptySet()
 
         return UserProfileAndSettings(
-            playerName = prefs.getString("player_name", defaultName)?.take(12) ?: defaultName,
+            playerId = installId,
+            playerName = sanitizePlayerName(prefs.getString("player_name", defaultName) ?: defaultName),
             kartColorIndex = prefs.getInt("kart_color_idx", 0).coerceIn(0, GameConstants.KART_COLORS.lastIndex),
             kartBody = KartBodyType.fromId(prefs.getInt("kart_body_id", 0)),
             toyCarLiveryIndex = prefs.getInt("toy_livery_idx", 0).coerceIn(0, 2),
+            paintFinishIndex = prefs.getInt("paint_finish_idx", 0).coerceIn(0, 3),
             wheelStyleIndex = prefs.getInt("wheel_style_idx", 0).coerceIn(0, 5),
             controlScheme = scheme,
             steerSensitivity = prefs.getFloat("steer_sensitivity", 1.0f).coerceIn(0.6f, 1.6f),
@@ -218,6 +225,7 @@ class Prefs(private val context: Context) {
             separateHopButton = prefs.getBoolean("separate_hop_btn", false),
             controlsOpacity = prefs.getFloat("controls_opacity", 0.90f).coerceIn(0.30f, 1.00f),
             controlsScale = prefs.getFloat("controls_scale", 1.00f).coerceIn(0.85f, 1.15f),
+            hudScale = prefs.getFloat("hud_scale", 0.90f).coerceIn(0.70f, 1.30f),
             controlsOffsetXFrac = prefs.getFloat("controls_offset_x", 0f).coerceIn(-0.15f, 0.15f),
             controlsOffsetYFrac = prefs.getFloat("controls_offset_y", 0f).coerceIn(-0.15f, 0.15f),
             leftHandedMirror = prefs.getBoolean("left_handed_mirror", false),
@@ -250,15 +258,52 @@ class Prefs(private val context: Context) {
             ownedShopIds = ownedIds,
             claimedFreePassTiers = claimedFree,
             claimedPremiumPassTiers = claimedPrem,
+            completedRacesCount = prefs.getInt("completed_races_count", 0).coerceAtLeast(0),
             bestLapMsByTrack = bestLaps,
             cupTrophies = trophies
         )
     }
 
     fun updatePlayerName(name: String) {
-        val clean = name.trim().take(12).ifEmpty { "RACER" }
+        val clean = sanitizePlayerName(name)
         prefs.edit().putString("player_name", clean).apply()
         _state.value = _state.value.copy(playerName = clean)
+    }
+
+    fun updatePaintFinish(index: Int) {
+        val idx = index.coerceIn(0, 3)
+        prefs.edit().putInt("paint_finish_idx", idx).apply()
+        _state.value = _state.value.copy(paintFinishIndex = idx)
+    }
+
+    fun updateHudScale(scale: Float) {
+        val s = scale.coerceIn(0.70f, 1.30f)
+        prefs.edit().putFloat("hud_scale", s).apply()
+        _state.value = _state.value.copy(hudScale = s)
+    }
+
+    fun incrementCompletedRaces() {
+        val next = _state.value.completedRacesCount + 1
+        prefs.edit().putInt("completed_races_count", next).apply()
+        _state.value = _state.value.copy(completedRacesCount = next)
+    }
+
+    companion object {
+        private val BLOCKED_WORDS = listOf(
+            "fuck", "shit", "bitch", "asshole", "cunt", "dick", "pussy", "nigger", "faggot", "slut", "whore", "bastard"
+        )
+
+        fun sanitizePlayerName(raw: String): String {
+            var cleaned = raw.trim().replace(Regex("[^A-Za-z0-9 _\\-]"), "").take(12)
+            val lower = cleaned.lowercase()
+            for (bad in BLOCKED_WORDS) {
+                if (lower.contains(bad)) {
+                    cleaned = "RACER"
+                    break
+                }
+            }
+            return cleaned.ifEmpty { "RACER" }
+        }
     }
 
     fun updateKartColor(index: Int) {

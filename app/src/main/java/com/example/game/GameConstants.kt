@@ -33,6 +33,8 @@ object GameConstants {
     const val HIGH_SPEED_STEER_FACTOR = 0.58f
     const val DRIFT_STEER_BONUS = 1.25f
     const val SMART_STEERING_PULL = 2.8f
+    const val TILT_DEADZONE_DEG = 3.0f
+    const val TILT_FULL_LOCK_DEG = 22.0f
 
     // Hop, Gravity, Ramps & Tricks
     const val GRAVITY = 30f                   // 30 u/s^2
@@ -89,7 +91,7 @@ object GameConstants {
     const val MAGNET_PULL_ACCEL = 16f
 
     // Networking & Remote Interpolation
-    const val PROTOCOL_VERSION: Byte = 3
+    const val PROTOCOL_VERSION: Byte = 4
     const val UDP_DISCOVERY_PORT = 47777
     const val TCP_CONTROL_PORT = 47778
     const val UDP_STATE_PORT = 47779
@@ -98,6 +100,7 @@ object GameConstants {
     const val ROOM_EXPIRY_MS = 3000L
     const val HEARTBEAT_INTERVAL_MS = 1000L
     const val PEER_TIMEOUT_MS = 5000L
+    const val REJOIN_WINDOW_MS = 30_000L
     const val INTERP_BUFFER_MS = 100L
     const val MAX_EXTRAPOLATION_MS = 150L
     const val TELEPORT_ERROR_THRESHOLD = 8.0f
@@ -105,7 +108,7 @@ object GameConstants {
     // Grand Prix Points for 8 positions
     val GRAND_PRIX_POINTS = intArrayOf(15, 12, 10, 8, 6, 4, 2, 1)
 
-    // Palette of 16 Kart Swatches
+    // Palette of Kart Swatches (12 core + 4 bonus)
     val KART_COLORS = longArrayOf(
         0xFFFF3D7FL, // Hot Pink
         0xFFFFB547L, // Lamp Amber
@@ -131,6 +134,8 @@ object GameConstants {
         "Crimson", "Emerald", "Gold", "Tangerine",
         "Magenta", "Aqua", "Violet", "Silver"
     )
+
+    val PAINT_FINISH_NAMES = arrayOf("Gloss", "Matte", "Metallic", "Pearl")
 
     val ROTATING_LOADING_TIPS = arrayOf(
         "Hold DRIFT through a corner until sparks turn purple for an Ultra Mini-Turbo!",
@@ -272,6 +277,8 @@ enum class GraphicsQuality(val id: Int, val label: String, val renderScale: Floa
     HIGH(2, "High (250k tri • 2048 PCF + Post FX)", 1.0f);
 
     companion object {
+        val BATTERY_SAVER = LOW
+        val BALANCED = MEDIUM
         fun fromId(id: Int): GraphicsQuality = entries.firstOrNull { it.id == id } ?: MEDIUM
     }
 }
@@ -286,6 +293,7 @@ enum class CpuDifficulty(val id: Int, val label: String, val baseSpeedMult: Floa
         val EASY = ROOKIE
         val NORMAL = PRO
         val HARD = CHAMPION
+        val MASTER = CHAMPION
         fun fromId(id: Int): CpuDifficulty = entries.firstOrNull { it.id == id } ?: PRO
     }
 }
@@ -307,6 +315,7 @@ enum class CcClass(val id: Int, val label: String, val speedScale: Float) {
     CC_150(2, "150cc", 1.00f);
 
     companion object {
+        val CC_200 = CC_150
         fun fromId(id: Int): CcClass = entries.firstOrNull { it.id == id } ?: CC_150
     }
 }

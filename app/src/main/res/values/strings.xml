@@ -1,6 +1,8 @@
 <resources>
     <string name="app_name">Desk Racer LAN</string>
     <string name="title_desk_racer">DESK RACER</string>
+    <string name="splash_title">DESK RACER</string>
+    <string name="splash_subtitle">LAN v4 • PRODUCTION EDITION</string>
     <string name="chip_lan">LAN</string>
     <string name="menu_quick_race">QUICK RACE</string>
     <string name="menu_host_race">HOST RACE</string>
@@ -8,10 +10,12 @@
     <string name="menu_garage">GARAGE</string>
     <string name="menu_settings">SETTINGS</string>
     <string name="menu_how_to_connect">How to connect</string>
+    <string name="toast_cooling_down">Cooling down</string>
     <string name="cd_pause">Pause Race</string>
     <string name="cd_item_slot">Use Held Item</string>
     <string name="cd_steer_zone">Thumb Steering Zone</string>
     <string name="cd_drift">Hop and Drift</string>
     <string name="cd_gas">Accelerate</string>
     <string name="cd_brake">Brake or Reverse</string>
+    <string name="hud_finished">FINISHED</string>
 </resources>

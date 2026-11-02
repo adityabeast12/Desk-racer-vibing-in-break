@@ -48,6 +48,8 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.game.CcClass
+import com.example.game.CpuDifficulty
 import com.example.game.GameConstants
 import com.example.game.ItemMode
 import com.example.game.Tracks
@@ -71,11 +73,17 @@ fun HostLobbyScreen(
     selectedTrackId: Int,
     selectedLaps: Int,
     cpuFillEnabled: Boolean,
+    botCount: Int = 7,
+    botDifficulty: CpuDifficulty = CpuDifficulty.PRO,
+    ccClass: CcClass = CcClass.CC_150,
     itemMode: ItemMode,
     canForceStart: Boolean,
     onSelectTrack: (Int) -> Unit,
     onSelectLaps: (Int) -> Unit,
     onToggleCpuFill: () -> Unit,
+    onCycleBotCount: () -> Unit = {},
+    onCycleBotDifficulty: () -> Unit = {},
+    onCycleCcClass: () -> Unit = {},
     onCycleItemMode: () -> Unit,
     onKickSlot: (Int) -> Unit,
     onStartRace: () -> Unit,
