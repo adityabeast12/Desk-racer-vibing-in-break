@@ -214,7 +214,7 @@ class V6ScreenshotTest {
         "14_leave_dialog", "textures/backdrops/room_studio.jpg",
         before = {
             rule.onNodeWithTag("hud_pause_button").performClick()
-            rule.waitForIdle()
+            rule.mainClock.advanceTimeBy(400)
             rule.onNodeWithTag("btn_pause_quit").performClick()
         }
     ) {
