@@ -92,10 +92,10 @@ fun HowToPlayOverlay(
             Box(Modifier.weight(1f).fillMaxWidth()) {
                 when (page) {
                     0 -> Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        SchemeCard("Smart", "Auto-gas. Drag anywhere on the left to steer. Hold DRIFT in corners, release for a boost.", selectedScheme == ControlSchemeType.SMART, Modifier.weight(1f)) { onSelectScheme(ControlSchemeType.SMART) }
-                        SchemeCard("Pro", "Manual GAS and BRAKE, bigger drift boosts. For players who want full control.", selectedScheme == ControlSchemeType.PRO, Modifier.weight(1f)) { onSelectScheme(ControlSchemeType.PRO) }
-                        SchemeCard("Tilt", "Tilt the phone to steer. Brake sits on the left.", selectedScheme == ControlSchemeType.TILT, Modifier.weight(1f)) { onSelectScheme(ControlSchemeType.TILT) }
-                        SchemeCard("Buttons", "Big left / right buttons with a smooth ramp.", selectedScheme == ControlSchemeType.BUTTONS, Modifier.weight(1f)) { onSelectScheme(ControlSchemeType.BUTTONS) }
+                        SchemeCard("Smart", "Auto-gas. Drag on the left to steer. Hold DRIFT in turns, release to boost.", selectedScheme == ControlSchemeType.SMART, Modifier.weight(1f)) { onSelectScheme(ControlSchemeType.SMART) }
+                        SchemeCard("Pro", "Manual GAS and BRAKE. Bigger drift boosts.", selectedScheme == ControlSchemeType.PRO, Modifier.weight(1f)) { onSelectScheme(ControlSchemeType.PRO) }
+                        SchemeCard("Tilt", "Tilt the phone to steer. Brake on the left.", selectedScheme == ControlSchemeType.TILT, Modifier.weight(1f)) { onSelectScheme(ControlSchemeType.TILT) }
+                        SchemeCard("Buttons", "Big left / right buttons.", selectedScheme == ControlSchemeType.BUTTONS, Modifier.weight(1f)) { onSelectScheme(ControlSchemeType.BUTTONS) }
                     }
                     1 -> {
                         val items = listOf(

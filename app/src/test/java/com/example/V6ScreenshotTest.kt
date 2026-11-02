@@ -106,7 +106,7 @@ open class V6ScreenshotTest {
             if (text.isBlank() || r.width < 1f || r.height < 1f) return@mapNotNull null
             val layouts = mutableListOf<androidx.compose.ui.text.TextLayoutResult>()
             n.config.getOrNull(androidx.compose.ui.semantics.SemanticsActions.GetTextLayoutResult)?.action?.invoke(layouts)
-            val clipped = layouts.any { it.hasVisualOverflow || (it.lineCount > 0 && it.isLineEllipsized(it.lineCount - 1)) }
+            val clipped = layouts.any { it.didOverflowWidth || (it.lineCount > 0 && it.isLineEllipsized(it.lineCount - 1)) }
             T(text, r, clipped)
         }
         val out = mutableListOf<String>()

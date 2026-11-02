@@ -258,7 +258,9 @@ fun GarageScreen(
                     selected = tab,
                     onSelect = { tab = it },
                     modifier = Modifier.fillMaxWidth(),
-                    testTagPrefix = "garage_tab"
+                    testTagPrefix = "garage_tab",
+                    showIndex = panelW > 330.dp,
+                    spacing = if (panelW > 330.dp) 18.dp else 14.dp
                 )
                 Box(Modifier.weight(1f).fillMaxWidth().padding(top = 12.dp)) {
                     when (tab) {

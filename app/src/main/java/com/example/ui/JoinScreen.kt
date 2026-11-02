@@ -181,6 +181,7 @@ fun JoinScreen(
                                             cpuFill = cpuFill,
                                             onKick = null,
                                             localSlot = -1,
+                                            showThumb = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp >= 880,
                                             modifier = Modifier.weight(1f)
                                         )
                                     }

@@ -157,7 +157,7 @@ fun ResultsScreen(
                                 myPos > 0 -> "${ordinal(myPos)} PLACE"
                                 else -> "RESULTS"
                             },
-                            style = DRType.Display.copy(fontSize = 40.sp, lineHeight = 42.sp),
+                            style = DRType.Display.copy(fontSize = if (androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp < 400) 32.sp else 40.sp, lineHeight = 40.sp),
                             color = if (myPos == 1) DR.Gold else DR.TextHi,
                             maxLines = 1
                         )
@@ -176,7 +176,7 @@ fun ResultsScreen(
                             horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
                             DRLabel("Pos", color = DR.TextLo, modifier = Modifier.width(30.dp))
-                            DRLabel("Driver", color = DR.TextLo, modifier = Modifier.weight(1f).padding(start = 50.dp))
+                            DRLabel("Driver", color = DR.TextLo, modifier = Modifier.weight(1f).padding(start = if (androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp < 400) 0.dp else 50.dp))
                             DRLabel(if (isGrandPrix) "Pts" else "Best lap", color = DR.TextLo, modifier = Modifier.width(72.dp))
                             DRLabel("Time", color = DR.TextLo, modifier = Modifier.width(76.dp))
                             DRLabel("Gap", color = DR.TextLo, modifier = Modifier.width(56.dp))
@@ -275,10 +275,11 @@ private fun RewardRow(label: String, value: String) {
 
 @Composable
 private fun ResultRow(r: RacerStanding, leaderMs: Long, fastestLap: Long, isGrandPrix: Boolean) {
+    val compact = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp < 400
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(40.dp)
+            .height(if (compact) 34.dp else 40.dp)
             .background(if (r.isLocal) DR.YouWash else Color.Transparent)
             .drawBehind {
                 drawRect(DR.Line, topLeft = Offset(0f, size.height - 1.dp.toPx()), size = Size(size.width, 1.dp.toPx()))
@@ -290,7 +291,7 @@ private fun ResultRow(r: RacerStanding, leaderMs: Long, fastestLap: Long, isGran
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Text("${r.position}", style = DRType.Title.copy(fontSize = 22.sp), color = DR.podium(r.position), modifier = Modifier.width(30.dp), textAlign = TextAlign.Start)
-        KartThumb(r.bodyType, Modifier.size(width = 42.dp, height = 28.dp))
+        if (!compact) KartThumb(r.bodyType, Modifier.size(width = 42.dp, height = 28.dp))
         Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(r.name, style = DRType.BodyStrong, color = DR.TextHi, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
             if (r.isLocal) DRBadge("You", DRBadgeKind.YOU)

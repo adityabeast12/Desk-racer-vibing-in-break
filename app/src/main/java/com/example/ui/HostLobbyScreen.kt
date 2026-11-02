@@ -23,6 +23,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
@@ -110,6 +112,8 @@ fun HostLobbyScreen(
     val allReady = notReady.isEmpty()
     val readyCount = humans.count { it.isReady || it.slotIndex == 0 }
     val track = Tracks.byId(selectedTrackId)
+    val screenW = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp
+    val compactLobby = screenW < 880
 
     BackHandler {
         if (confirmClose) confirmClose = false else confirmClose = true
@@ -141,8 +145,9 @@ fun HostLobbyScreen(
             }
             Spacer(Modifier.height(10.dp))
             Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                // Left: connection + race settings
-                DRPanel(Modifier.width(292.dp).fillMaxHeight()) {
+                // Left: connection + race settings (scrolls on short screens)
+                DRPanel(Modifier.width(if (compactLobby) 268.dp else 292.dp).fillMaxHeight()) {
+                  Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
                     DRLabel("Friends join this room")
                     Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         Text(roomCode, style = DRType.NumXL.copy(fontSize = 34.sp, letterSpacing = 4.sp), color = DR.TextHi, modifier = Modifier.testTag("lobby_room_code"))
@@ -191,6 +196,7 @@ fun HostLobbyScreen(
                             DRChip(botDifficulty.label, onClick = onCycleBotDifficulty, testTag = "lobby_bot_skill")
                         }
                     }
+                  }
                 }
 
                 // Right: players + start
@@ -212,6 +218,7 @@ fun HostLobbyScreen(
                                         info = slots.firstOrNull { it.slotIndex == idx },
                                         cpuFill = cpuFillEnabled,
                                         onKick = { onKickSlot(idx) },
+                                        showThumb = !compactLobby,
                                         modifier = Modifier.weight(1f)
                                     )
                                 }
@@ -305,7 +312,8 @@ fun LobbySlotRow(
     cpuFill: Boolean,
     onKick: (() -> Unit)?,
     modifier: Modifier = Modifier,
-    localSlot: Int = 0
+    localSlot: Int = 0,
+    showThumb: Boolean = true
 ) {
     val isYou = info != null && info.slotIndex == localSlot
     Row(
@@ -323,13 +331,13 @@ fun LobbySlotRow(
     ) {
         Text("${slotIdx + 1}", style = DRType.NumS, color = DR.TextDis, modifier = Modifier.width(12.dp))
         if (info != null) {
-            KartThumb(info.bodyType, Modifier.size(width = 40.dp, height = 26.dp))
+            if (showThumb) KartThumb(info.bodyType, Modifier.size(width = 40.dp, height = 26.dp))
             Column(Modifier.weight(1f)) {
                 Text(info.playerName, style = DRType.BodyStrong.copy(fontSize = 12.5.sp, lineHeight = 15.sp), color = DR.TextHi, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 if (slotIdx != 0) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
                         Icon(Icons.Rounded.NetworkWifi, contentDescription = null, tint = if (info.pingMs < 80) DR.Ok else DR.Amber, modifier = Modifier.size(11.dp))
-                        Text("${info.pingMs}ms", style = DRType.NumS.copy(fontSize = 10.5.sp), color = DR.TextLo)
+                        Text("${info.pingMs}ms", style = DRType.NumS.copy(fontSize = 10.5.sp), color = DR.TextLo, maxLines = 1, softWrap = false)
                     }
                 }
             }
@@ -343,7 +351,7 @@ fun LobbySlotRow(
                 Box(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier
-                        .size(40.dp)
+                        .size(width = 32.dp, height = 46.dp)
                         .clickable(role = Role.Button, onClick = onKick)
                         .testTag("lobby_kick_$slotIdx")
                 ) {

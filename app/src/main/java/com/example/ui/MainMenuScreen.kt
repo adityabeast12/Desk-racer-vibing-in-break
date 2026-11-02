@@ -146,7 +146,7 @@ fun MainMenuScreen(
                 .fillMaxSize()
                 .background(Brush.verticalGradient(0.7f to Color.Transparent, 1f to DR.Bg.copy(alpha = 0.7f)))
         )
-        BoxWithConstraints(
+        if (!showRaceSetup) BoxWithConstraints(
             Modifier
                 .fillMaxSize()
                 .windowInsetsPadding(WindowInsets.safeDrawing.union(WindowInsets.displayCutout))
@@ -386,7 +386,7 @@ private fun RaceSetupScreen(
                     if (mode != GameMode.BATTLE_BALLOONS) {
                         RuleRow("Laps") {
                             val opts = listOf(1, 3, 5)
-                            DRSegmented(opts.map { "$it" }, opts.indexOf(laps).coerceAtLeast(1), { laps = opts[it]; push() }, Modifier.width(150.dp), height = 34.dp, testTagPrefix = "setup_laps")
+                            DRSegmented(opts.map { "$it" }, opts.indexOf(laps).coerceAtLeast(1), { laps = opts[it]; push() }, Modifier.fillMaxWidth(), height = 34.dp, testTagPrefix = "setup_laps")
                         }
                     }
                     if (mode != GameMode.TIME_TRIAL) {
@@ -401,18 +401,18 @@ private fun RaceSetupScreen(
                         )
                         RuleRow("Bot skill") {
                             val opts = CpuDifficulty.entries
-                            DRSegmented(listOf("Rookie", "Pro", "Champ", "Mixed"), opts.indexOf(difficulty), { difficulty = opts[it]; push() }, Modifier.width(190.dp), height = 34.dp, testTagPrefix = "setup_skill")
+                            DRSegmented(listOf("Rookie", "Pro", "Champ", "Mixed"), opts.indexOf(difficulty), { difficulty = opts[it]; push() }, Modifier.fillMaxWidth(), height = 34.dp, testTagPrefix = "setup_skill")
                         }
                         RuleRow("Items") {
                             val opts = ItemMode.entries
-                            DRSegmented(listOf("Normal", "Frantic", "Skill", "Off"), opts.indexOf(itemMode), { itemMode = opts[it]; push() }, Modifier.width(190.dp), height = 34.dp, testTagPrefix = "setup_items")
+                            DRSegmented(listOf("Normal", "Wild", "Skill", "Off"), opts.indexOf(itemMode), { itemMode = opts[it]; push() }, Modifier.fillMaxWidth(), height = 34.dp, testTagPrefix = "setup_items")
                         }
                     } else {
                         Text("Solo · 3 laps · race your ghost", style = DRType.Body, color = DR.TextMid, modifier = Modifier.padding(vertical = 12.dp))
                     }
                     RuleRow("Engine") {
                         val opts = CcClass.entries
-                        DRSegmented(opts.map { it.label }, opts.indexOf(ccClass), { ccClass = opts[it]; push() }, Modifier.width(190.dp), height = 34.dp, testTagPrefix = "setup_cc")
+                        DRSegmented(opts.map { it.label }, opts.indexOf(ccClass), { ccClass = opts[it]; push() }, Modifier.fillMaxWidth(), height = 34.dp, testTagPrefix = "setup_cc")
                     }
                 }
                 Spacer(Modifier.height(10.dp))
@@ -439,8 +439,8 @@ private fun RuleRow(label: String, control: @Composable () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Text(label, style = DRType.BodyStrong.copy(fontSize = 13.sp), color = DR.TextHi)
-        control()
+        Text(label, style = DRType.BodyStrong.copy(fontSize = 13.sp), color = DR.TextHi, maxLines = 1, modifier = Modifier.width(80.dp))
+        Box(Modifier.weight(1f), contentAlignment = Alignment.CenterEnd) { control() }
     }
 }
 
@@ -495,8 +495,8 @@ private fun TrackHero(
             }
         }
         if (canBrowse) {
-            HeroArrow(Icons.AutoMirrored.Rounded.KeyboardArrowLeft, "Previous track", Modifier.align(Alignment.CenterStart).padding(start = 10.dp), onPrev)
-            HeroArrow(Icons.AutoMirrored.Rounded.KeyboardArrowRight, "Next track", Modifier.align(Alignment.CenterEnd).padding(end = 10.dp), onNext)
+            HeroArrow(Icons.AutoMirrored.Rounded.KeyboardArrowLeft, "Previous track", Modifier.align(Alignment.TopStart).padding(start = 10.dp, top = 10.dp), onPrev)
+            HeroArrow(Icons.AutoMirrored.Rounded.KeyboardArrowRight, "Next track", Modifier.align(Alignment.TopEnd).padding(end = 10.dp, top = 10.dp), onNext)
         }
     }
 }

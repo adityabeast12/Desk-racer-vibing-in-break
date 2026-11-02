@@ -373,7 +373,9 @@ fun DRTabs(
     selected: Int,
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier,
-    testTagPrefix: String = "tab"
+    testTagPrefix: String = "tab",
+    showIndex: Boolean = true,
+    spacing: Dp = 18.dp
 ) {
     val tick = rememberTick()
     Row(
@@ -382,7 +384,7 @@ fun DRTabs(
             .drawBehind {
                 drawRect(DR.Line, topLeft = Offset(0f, size.height - 1.dp.toPx()), size = Size(size.width, 1.dp.toPx()))
             },
-        horizontalArrangement = Arrangement.spacedBy(18.dp)
+        horizontalArrangement = Arrangement.spacedBy(spacing)
     ) {
         items.forEachIndexed { i, t ->
             val sel = i == selected
@@ -403,7 +405,7 @@ fun DRTabs(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(5.dp)
             ) {
-                Text(String.format(java.util.Locale.US, "%02d", i + 1), style = DRType.NumS.copy(fontSize = 10.sp), color = if (sel) DR.Amber else DR.TextDis)
+                if (showIndex) Text(String.format(java.util.Locale.US, "%02d", i + 1), style = DRType.NumS.copy(fontSize = 10.sp), color = if (sel) DR.Amber else DR.TextDis)
                 Text(t.uppercase(), style = DRType.Label.copy(fontSize = 12.5.sp), color = if (sel) DR.TextHi else DR.TextLo, maxLines = 1)
             }
         }

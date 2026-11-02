@@ -356,12 +356,12 @@ private fun PauseOverlay(
             .background(DR.Scrim)
             .clickable(interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, indication = null) {}
             .windowInsetsPadding(WindowInsets.safeDrawing.union(WindowInsets.displayCutout))
-            .padding(horizontal = 40.dp, vertical = 28.dp)
+            .padding(horizontal = 36.dp, vertical = 16.dp)
             .testTag("pause_overlay")
     ) {
         Column(Modifier.align(Alignment.TopStart).width(270.dp)) {
             DRLabel("${trackName} · Lap ${lap.coerceAtMost(totalLaps)}/$totalLaps", color = DR.Amber)
-            Text("PAUSED", style = DRType.Display.copy(fontSize = 54.sp, lineHeight = 54.sp), color = DR.TextHi, modifier = Modifier.padding(top = 2.dp, bottom = 16.dp))
+            Text("PAUSED", style = DRType.Display.copy(fontSize = 44.sp, lineHeight = 46.sp), color = DR.TextHi, modifier = Modifier.padding(top = 2.dp, bottom = 10.dp))
             DRButton(
                 text = "Resume",
                 icon = Icons.Rounded.PlayArrow,
@@ -370,7 +370,7 @@ private fun PauseOverlay(
                 modifier = Modifier.fillMaxWidth(),
                 testTag = "btn_pause_resume"
             )
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(6.dp))
             if (!isMultiplayer) PauseRow(Icons.Rounded.CameraAlt, "Photo mode", DR.TextHi, "btn_pause_photo_mode", onPhoto)
             if (canRestart) PauseRow(Icons.Rounded.RestartAlt, "Restart race", DR.TextHi, "btn_pause_restart", onRestart)
             PauseRow(Icons.Rounded.Tune, "Controls & settings", DR.TextHi, "btn_pause_settings", onSettings)
