@@ -19,6 +19,15 @@ plan=[
  ('lantern','Lantern',5394,512,dict(height=0.45)),
  ('olive_dish','IridescentDishWithOlives',12000,512,dict(height=0.06)),
  ('stained_glass_lamp','StainedGlassLamp',12000,512,dict(height=0.55)),
+ ('flight_helmet','FlightHelmet',16000,1024,dict(height=0.30)),
+ ('iridescence_lamp','IridescenceLamp',10000,512,dict(height=0.50)),
+ ('punctual_lamp','LightsPunctualLamp',10000,512,dict(height=0.50)),
+ ('velvet_sofa','GlamVelvetSofa',12000,512,dict(height=0.85)),
+ ('damask_chair','ChairDamaskPurplegold',12000,512,dict(height=0.90)),
+ ('sneaker','MaterialsVariantsShoe',10000,1024,dict(height=0.12)),
+ ('barramundi_fish','BarramundiFish',8000,1024,dict(height=0.06,rot=(0,0,90))),
+ ('fox_toy','Fox',2000,512,dict(height=0.14)),
+ ('boombox','BoomBox',6036,512,dict(height=0.18)),
 ]
 for piece in ['King_W','Queen_W','Bishop_W1','Knight_W1','Castle_W1','Pawn_Body_W1','King_B','Queen_B','Bishop_B1','Knight_B1','Castle_B1','Pawn_Body_B1']:
     nm='chess_'+piece.lower().replace('pawn_body','pawn').replace('1','').replace('castle','rook')

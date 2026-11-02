@@ -138,7 +138,7 @@
  "splineSubdivisionsPerSegment": 18,
  "unitsPerMetre": 100.0,
  "surfaceTexture": "textures/surfaces/marble_white.jpg",
- "surfaceTextureTileUnits": 60,
+ "surfaceTextureTileUnits": 160,
  "roadTexture": "textures/surfaces/cutting_board.jpg",
  "roadTextureTileUnits": 24,
  "kerbTexture": "textures/surfaces/kerb_red_white.png",
@@ -154,7 +154,7 @@
    "x": 33.0,
    "y": 0.0,
    "z": 90.41,
-   "yawRad": 5.565,
+   "yawRad": 1.265,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -166,7 +166,7 @@
    "x": 72.38,
    "y": 0.0,
    "z": 88.69,
-   "yawRad": 3.579,
+   "yawRad": 4.278,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -178,7 +178,7 @@
    "x": 97.28,
    "y": 0.0,
    "z": 85.51,
-   "yawRad": 2.711,
+   "yawRad": 4.485,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -190,7 +190,7 @@
    "x": 115.17,
    "y": 0.0,
    "z": 76.67,
-   "yawRad": 1.266,
+   "yawRad": 4.647,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -202,7 +202,7 @@
    "x": 124.26,
    "y": 0.0,
    "z": 60.19,
-   "yawRad": 5.332,
+   "yawRad": 1.407,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -214,7 +214,7 @@
    "x": 120.06,
    "y": 0.0,
    "z": 48.34,
-   "yawRad": 4.032,
+   "yawRad": 5.03,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -226,7 +226,7 @@
    "x": 107.35,
    "y": 0.0,
    "z": 40.01,
-   "yawRad": 1.053,
+   "yawRad": 0.133,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -238,7 +238,7 @@
    "x": 79.35,
    "y": 0.0,
    "z": 29.62,
-   "yawRad": 1.802,
+   "yawRad": 4.631,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -250,7 +250,7 @@
    "x": 68.22,
    "y": 0.0,
    "z": 24.26,
-   "yawRad": 3.185,
+   "yawRad": 1.338,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -262,7 +262,7 @@
    "x": 59.64,
    "y": 0.0,
    "z": 10.47,
-   "yawRad": 1.406,
+   "yawRad": 6.054,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -274,7 +274,7 @@
    "x": 64.0,
    "y": 0.0,
    "z": -8.59,
-   "yawRad": 4.455,
+   "yawRad": 4.457,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -286,7 +286,7 @@
    "x": 75.16,
    "y": 0.0,
    "z": -35.28,
-   "yawRad": 1.85,
+   "yawRad": 3.235,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -298,7 +298,7 @@
    "x": 95.09,
    "y": 0.0,
    "z": -39.03,
-   "yawRad": 0.344,
+   "yawRad": 5.052,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -310,7 +310,7 @@
    "x": 112.71,
    "y": 0.0,
    "z": -52.17,
-   "yawRad": 3.256,
+   "yawRad": 3.139,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -322,7 +322,7 @@
    "x": 120.61,
    "y": 0.0,
    "z": -65.34,
-   "yawRad": 6.147,
+   "yawRad": 5.688,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -334,7 +334,7 @@
    "x": 117.5,
    "y": 0.0,
    "z": -83.96,
-   "yawRad": 4.574,
+   "yawRad": 1.889,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -346,7 +346,7 @@
    "x": 106.98,
    "y": 0.0,
    "z": -98.2,
-   "yawRad": 2.758,
+   "yawRad": 4.788,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -358,7 +358,7 @@
    "x": 86.93,
    "y": 0.0,
    "z": -108.09,
-   "yawRad": 4.807,
+   "yawRad": 4.681,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -370,7 +370,7 @@
    "x": 66.03,
    "y": 0.0,
    "z": -109.45,
-   "yawRad": 3.707,
+   "yawRad": 2.188,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -382,7 +382,7 @@
    "x": 43.54,
    "y": 0.0,
    "z": -102.87,
-   "yawRad": 2.691,
+   "yawRad": 4.167,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -394,7 +394,7 @@
    "x": 13.96,
    "y": 0.0,
    "z": -101.1,
-   "yawRad": 5.524,
+   "yawRad": 5.547,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -406,7 +406,7 @@
    "x": 5.54,
    "y": 0.0,
    "z": -89.44,
-   "yawRad": 0.337,
+   "yawRad": 2.787,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -418,7 +418,7 @@
    "x": -11.1,
    "y": 0.0,
    "z": -96.3,
-   "yawRad": 1.064,
+   "yawRad": 5.731,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -430,7 +430,7 @@
    "x": -41.52,
    "y": 0.0,
    "z": -102.55,
-   "yawRad": 4.928,
+   "yawRad": 1.557,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -442,7 +442,7 @@
    "x": -54.86,
    "y": 0.0,
    "z": -111.58,
-   "yawRad": 1.059,
+   "yawRad": 0.026,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -454,7 +454,7 @@
    "x": -77.62,
    "y": 0.0,
    "z": -108.97,
-   "yawRad": 1.011,
+   "yawRad": 4.622,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -466,7 +466,7 @@
    "x": -96.03,
    "y": 0.0,
    "z": -97.97,
-   "yawRad": 0.983,
+   "yawRad": 2.221,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -478,7 +478,7 @@
    "x": -107.94,
    "y": 0.0,
    "z": -83.48,
-   "yawRad": 3.122,
+   "yawRad": 3.445,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -490,7 +490,7 @@
    "x": -108.29,
    "y": 0.0,
    "z": -71.17,
-   "yawRad": 6.006,
+   "yawRad": 0.743,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -502,7 +502,7 @@
    "x": -96.7,
    "y": 0.0,
    "z": -55.38,
-   "yawRad": 6.164,
+   "yawRad": 1.656,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -514,7 +514,7 @@
    "x": -81.91,
    "y": 0.0,
    "z": -31.82,
-   "yawRad": 1.951,
+   "yawRad": 6.229,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -526,7 +526,7 @@
    "x": -65.32,
    "y": 0.0,
    "z": -31.21,
-   "yawRad": 1.149,
+   "yawRad": 3.89,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -538,7 +538,7 @@
    "x": -55.54,
    "y": 0.0,
    "z": -17.45,
-   "yawRad": 0.306,
+   "yawRad": 5.657,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -550,7 +550,7 @@
    "x": -61.03,
    "y": 0.0,
    "z": -5.6,
-   "yawRad": 5.468,
+   "yawRad": 1.312,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -562,7 +562,7 @@
    "x": -79.15,
    "y": 0.0,
    "z": 5.6,
-   "yawRad": 1.942,
+   "yawRad": 0.064,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -574,7 +574,7 @@
    "x": -100.55,
    "y": 0.0,
    "z": 29.54,
-   "yawRad": 0.929,
+   "yawRad": 5.301,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -586,7 +586,7 @@
    "x": -114.74,
    "y": 0.0,
    "z": 34.44,
-   "yawRad": 2.604,
+   "yawRad": 1.087,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -598,7 +598,7 @@
    "x": -121.06,
    "y": 0.0,
    "z": 52.24,
-   "yawRad": 1.715,
+   "yawRad": 0.586,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -610,7 +610,7 @@
    "x": -117.39,
    "y": 0.0,
    "z": 66.56,
-   "yawRad": 4.955,
+   "yawRad": 0.623,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -622,7 +622,7 @@
    "x": -99.5,
    "y": 0.0,
    "z": 81.32,
-   "yawRad": 3.091,
+   "yawRad": 4.051,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -634,7 +634,7 @@
    "x": -78.08,
    "y": 0.0,
    "z": 88.5,
-   "yawRad": 1.527,
+   "yawRad": 4.43,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -643,22 +643,34 @@
    "model": "models/props/olive_dish.drm",
    "name": "olive_dish",
    "role": "landmark",
-   "x": -106.93,
+   "x": 102.01,
    "y": 0.0,
-   "z": 40.42,
-   "yawRad": -2.225,
+   "z": 55.65,
+   "yawRad": 1.224,
    "scale": 100.0,
    "radius": 4.83,
+   "solid": true
+  },
+  {
+   "model": "models/props/barramundi_fish.drm",
+   "name": "barramundi_fish",
+   "role": "landmark",
+   "x": -59.36,
+   "y": 0.0,
+   "z": 131.72,
+   "yawRad": 3.129,
+   "scale": 100.0,
+   "radius": 13.5,
    "solid": true
   },
   {
    "model": "models/props/mandarin_orange.drm",
    "name": "mandarin_orange",
    "role": "landmark",
-   "x": 120.03,
+   "x": 2.34,
    "y": 0.0,
-   "z": -1.13,
-   "yawRad": -2.6,
+   "z": -96.36,
+   "yawRad": 0.529,
    "scale": 100.0,
    "radius": 2.73,
    "solid": true
@@ -667,10 +679,10 @@
    "model": "models/props/avocado.drm",
    "name": "avocado",
    "role": "landmark",
-   "x": -43.01,
+   "x": -69.4,
    "y": 0.0,
-   "z": -135.37,
-   "yawRad": -0.266,
+   "z": -20.47,
+   "yawRad": 2.866,
    "scale": 100.0,
    "radius": 3.38,
    "solid": true
@@ -679,10 +691,10 @@
    "model": "models/props/teacup.drm",
    "name": "teacup",
    "role": "landmark",
-   "x": -102.24,
+   "x": -164.49,
    "y": 0.0,
-   "z": -21.16,
-   "yawRad": 0.087,
+   "z": 77.32,
+   "yawRad": 1.914,
    "scale": 100.0,
    "radius": 7.64,
    "solid": true
@@ -691,10 +703,10 @@
    "model": "models/props/water_bottle.drm",
    "name": "water_bottle",
    "role": "landmark",
-   "x": -134.31,
+   "x": 164.68,
    "y": 0.0,
-   "z": 117.15,
-   "yawRad": 2.521,
+   "z": -89.7,
+   "yawRad": -1.319,
    "scale": 100.0,
    "radius": 5.44,
    "solid": true
@@ -703,10 +715,10 @@
    "model": "models/props/vase_flowers.drm",
    "name": "vase_flowers",
    "role": "landmark",
-   "x": 14.8,
+   "x": -20.29,
    "y": 0.0,
-   "z": 2.58,
-   "yawRad": 1.492,
+   "z": 24.02,
+   "yawRad": -2.301,
    "scale": 100.0,
    "radius": 16.04,
    "solid": true
@@ -715,10 +727,10 @@
    "model": "models/props/mandarin_orange.drm",
    "name": "mandarin_orange",
    "role": "landmark",
-   "x": 113.27,
+   "x": 74.58,
    "y": 0.0,
-   "z": -61.08,
-   "yawRad": 0.974,
+   "z": -88.75,
+   "yawRad": 3.125,
    "scale": 100.0,
    "radius": 2.73,
    "solid": true
@@ -727,13 +739,116 @@
    "model": "models/props/avocado.drm",
    "name": "avocado",
    "role": "landmark",
-   "x": 53.39,
+   "x": 64.76,
    "y": 0.0,
-   "z": -82.06,
-   "yawRad": -2.7,
+   "z": 118.37,
+   "yawRad": -3.06,
    "scale": 100.0,
    "radius": 3.38,
    "solid": true
   }
- ]
+ ],
+ "decals": [
+  {
+   "texture": "textures/decals/coffee_ring.png",
+   "x": 6.86,
+   "z": 49.27,
+   "yawRad": 2.837,
+   "size": 20.4
+  },
+  {
+   "texture": "textures/decals/scuff_dust.png",
+   "x": 33.13,
+   "z": 81.42,
+   "yawRad": 3.407,
+   "size": 11.1
+  },
+  {
+   "texture": "textures/decals/coffee_ring.png",
+   "x": 13.23,
+   "z": 67.77,
+   "yawRad": 2.091,
+   "size": 21.4
+  },
+  {
+   "texture": "textures/decals/scuff_dust.png",
+   "x": -155.89,
+   "z": 14.87,
+   "yawRad": 4.304,
+   "size": 10.6
+  },
+  {
+   "texture": "textures/decals/coffee_ring.png",
+   "x": -62.17,
+   "z": -57.06,
+   "yawRad": 2.014,
+   "size": 11.0
+  },
+  {
+   "texture": "textures/decals/scuff_dust.png",
+   "x": 85.31,
+   "z": 3.45,
+   "yawRad": 5.437,
+   "size": 13.2
+  },
+  {
+   "texture": "textures/decals/coffee_ring.png",
+   "x": -105.83,
+   "z": 121.81,
+   "yawRad": 1.129,
+   "size": 20.7
+  },
+  {
+   "texture": "textures/decals/scuff_dust.png",
+   "x": -11.69,
+   "z": -121.08,
+   "yawRad": 2.529,
+   "size": 16.0
+  },
+  {
+   "texture": "textures/decals/coffee_ring.png",
+   "x": -82.92,
+   "z": -79.18,
+   "yawRad": 3.328,
+   "size": 18.2
+  },
+  {
+   "texture": "textures/decals/scuff_dust.png",
+   "x": 9.59,
+   "z": -152.52,
+   "yawRad": 0.795,
+   "size": 20.8
+  },
+  {
+   "texture": "textures/decals/coffee_ring.png",
+   "x": -16.63,
+   "z": -7.73,
+   "yawRad": 5.793,
+   "size": 16.1
+  },
+  {
+   "texture": "textures/decals/scuff_dust.png",
+   "x": -99.05,
+   "z": -19.53,
+   "yawRad": 1.547,
+   "size": 16.0
+  },
+  {
+   "texture": "textures/decals/coffee_ring.png",
+   "x": 88.04,
+   "z": -78.59,
+   "yawRad": 3.516,
+   "size": 20.2
+  },
+  {
+   "texture": "textures/decals/scuff_dust.png",
+   "x": -11.73,
+   "z": -124.78,
+   "yawRad": 1.246,
+   "size": 14.9
+  }
+ ],
+ "previewCard": "textures/ui/tracks/kitchen_counter.jpg",
+ "surfaceNormal": "textures/surfaces/marble_white_n.jpg",
+ "roadNormal": "textures/surfaces/cutting_board_n.jpg"
 }

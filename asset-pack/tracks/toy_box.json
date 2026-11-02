@@ -123,7 +123,7 @@
  "splineSubdivisionsPerSegment": 18,
  "unitsPerMetre": 100.0,
  "surfaceTexture": "textures/surfaces/rug_playroom.jpg",
- "surfaceTextureTileUnits": 60,
+ "surfaceTextureTileUnits": 150,
  "roadTexture": "textures/surfaces/road_asphalt.jpg",
  "roadTextureTileUnits": 24,
  "kerbTexture": "textures/surfaces/kerb_red_white.png",
@@ -139,7 +139,7 @@
    "x": 22.28,
    "y": 0.0,
    "z": 89.81,
-   "yawRad": 0.0,
+   "yawRad": 0.368,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -151,7 +151,7 @@
    "x": 43.62,
    "y": 0.0,
    "z": 89.68,
-   "yawRad": 1.326,
+   "yawRad": 2.23,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -163,7 +163,7 @@
    "x": 63.88,
    "y": 0.0,
    "z": 86.12,
-   "yawRad": 0.591,
+   "yawRad": 3.608,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -175,7 +175,7 @@
    "x": 85.47,
    "y": 0.0,
    "z": 78.24,
-   "yawRad": 0.335,
+   "yawRad": 2.009,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -187,7 +187,7 @@
    "x": 96.09,
    "y": 0.0,
    "z": 65.46,
-   "yawRad": 1.093,
+   "yawRad": 5.237,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -199,7 +199,7 @@
    "x": 101.01,
    "y": 0.0,
    "z": 48.6,
-   "yawRad": 0.216,
+   "yawRad": 0.945,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -211,7 +211,7 @@
    "x": 112.02,
    "y": 0.0,
    "z": 24.82,
-   "yawRad": 0.7,
+   "yawRad": 1.516,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -223,7 +223,7 @@
    "x": 122.14,
    "y": 0.0,
    "z": 4.32,
-   "yawRad": 5.347,
+   "yawRad": 4.69,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -235,7 +235,7 @@
    "x": 113.04,
    "y": 0.0,
    "z": -26.72,
-   "yawRad": 4.308,
+   "yawRad": 4.7,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -247,7 +247,7 @@
    "x": 110.43,
    "y": 0.0,
    "z": -42.37,
-   "yawRad": 4.9,
+   "yawRad": 0.434,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -259,7 +259,7 @@
    "x": 96.8,
    "y": 0.0,
    "z": -58.78,
-   "yawRad": 0.934,
+   "yawRad": 2.835,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -271,7 +271,7 @@
    "x": 2.54,
    "y": 0.0,
    "z": -33.62,
-   "yawRad": 1.108,
+   "yawRad": 1.025,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -283,7 +283,7 @@
    "x": -11.95,
    "y": 0.0,
    "z": -19.5,
-   "yawRad": 1.561,
+   "yawRad": 5.972,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -295,7 +295,7 @@
    "x": -23.49,
    "y": 0.0,
    "z": -16.77,
-   "yawRad": 2.409,
+   "yawRad": 6.123,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -307,7 +307,7 @@
    "x": -38.99,
    "y": 0.0,
    "z": -28.36,
-   "yawRad": 1.106,
+   "yawRad": 2.125,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -319,7 +319,7 @@
    "x": -44.67,
    "y": 0.0,
    "z": -47.65,
-   "yawRad": 2.748,
+   "yawRad": 4.614,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -331,7 +331,7 @@
    "x": -43.71,
    "y": 0.0,
    "z": -64.46,
-   "yawRad": 5.162,
+   "yawRad": 5.77,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -343,7 +343,7 @@
    "x": -49.32,
    "y": 0.0,
    "z": -93.68,
-   "yawRad": 5.381,
+   "yawRad": 4.162,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -355,7 +355,7 @@
    "x": -53.22,
    "y": 0.0,
    "z": -104.73,
-   "yawRad": 1.56,
+   "yawRad": 6.236,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -367,7 +367,7 @@
    "x": -63.19,
    "y": 0.0,
    "z": -114.45,
-   "yawRad": 3.318,
+   "yawRad": 4.996,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -379,7 +379,7 @@
    "x": -82.69,
    "y": 0.0,
    "z": -113.02,
-   "yawRad": 5.437,
+   "yawRad": 1.198,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -391,7 +391,7 @@
    "x": -100.63,
    "y": 0.0,
    "z": -104.16,
-   "yawRad": 2.828,
+   "yawRad": 6.271,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -403,7 +403,7 @@
    "x": -111.08,
    "y": 0.0,
    "z": -86.15,
-   "yawRad": 5.061,
+   "yawRad": 0.533,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -415,7 +415,7 @@
    "x": -113.61,
    "y": 0.0,
    "z": -67.53,
-   "yawRad": 4.503,
+   "yawRad": 3.067,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -427,7 +427,7 @@
    "x": -127.13,
    "y": 0.0,
    "z": -37.35,
-   "yawRad": 5.753,
+   "yawRad": 5.992,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -439,7 +439,7 @@
    "x": -108.69,
    "y": 0.0,
    "z": -6.57,
-   "yawRad": 2.34,
+   "yawRad": 5.348,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -451,7 +451,7 @@
    "x": -113.98,
    "y": 0.0,
    "z": 15.16,
-   "yawRad": 2.666,
+   "yawRad": 5.303,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -463,7 +463,7 @@
    "x": -111.83,
    "y": 0.0,
    "z": 38.51,
-   "yawRad": 4.813,
+   "yawRad": 1.5,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -475,7 +475,7 @@
    "x": -103.35,
    "y": 0.0,
    "z": 57.23,
-   "yawRad": 5.706,
+   "yawRad": 3.248,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -487,7 +487,7 @@
    "x": -87.64,
    "y": 0.0,
    "z": 71.19,
-   "yawRad": 5.214,
+   "yawRad": 1.176,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -499,7 +499,7 @@
    "x": -69.86,
    "y": 0.0,
    "z": 82.25,
-   "yawRad": 4.943,
+   "yawRad": 5.545,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -511,7 +511,7 @@
    "x": -43.04,
    "y": 0.0,
    "z": 88.62,
-   "yawRad": 4.772,
+   "yawRad": 4.241,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -523,7 +523,7 @@
    "x": -9.35,
    "y": 0.0,
    "z": 111.17,
-   "yawRad": 1.703,
+   "yawRad": 5.755,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -532,22 +532,46 @@
    "model": "models/props/toy_car.drm",
    "name": "toy_car",
    "role": "landmark",
-   "x": 78.18,
+   "x": -88.7,
    "y": 0.0,
-   "z": -2.07,
-   "yawRad": 1.055,
+   "z": 59.25,
+   "yawRad": -0.694,
    "scale": 100.0,
    "radius": 1.92,
+   "solid": true
+  },
+  {
+   "model": "models/props/fox_toy.drm",
+   "name": "fox_toy",
+   "role": "landmark",
+   "x": -12.86,
+   "y": 0.0,
+   "z": -125.07,
+   "yawRad": -1.064,
+   "scale": 100.0,
+   "radius": 13.71,
+   "solid": true
+  },
+  {
+   "model": "models/props/sneaker.drm",
+   "name": "sneaker",
+   "role": "landmark",
+   "x": -12.47,
+   "y": 0.0,
+   "z": -53.68,
+   "yawRad": -1.579,
+   "scale": 100.0,
+   "radius": 11.67,
    "solid": true
   },
   {
    "model": "models/props/chess_knight_w.drm",
    "name": "chess_knight_w",
    "role": "landmark",
-   "x": -23.7,
+   "x": 116.48,
    "y": 0.0,
-   "z": -46.28,
-   "yawRad": -1.434,
+   "z": 111.54,
+   "yawRad": -2.461,
    "scale": 100.0,
    "radius": 3.0,
    "solid": true
@@ -556,22 +580,34 @@
    "model": "models/props/chess_king_b.drm",
    "name": "chess_king_b",
    "role": "landmark",
-   "x": 52.01,
+   "x": -87.96,
    "y": 0.0,
-   "z": 80.15,
-   "yawRad": 0.176,
+   "z": -148.54,
+   "yawRad": 0.217,
    "scale": 100.0,
    "radius": 2.8,
+   "solid": true
+  },
+  {
+   "model": "models/props/boombox.drm",
+   "name": "boombox",
+   "role": "landmark",
+   "x": 138.31,
+   "y": 0.0,
+   "z": 14.16,
+   "yawRad": -0.945,
+   "scale": 100.0,
+   "radius": 9.28,
    "solid": true
   },
   {
    "model": "models/props/toy_car.drm",
    "name": "toy_car",
    "role": "landmark",
-   "x": -136.12,
+   "x": -140.11,
    "y": 0.0,
-   "z": 84.36,
-   "yawRad": 2.263,
+   "z": 20.5,
+   "yawRad": 1.599,
    "scale": 100.0,
    "radius": 1.92,
    "solid": true
@@ -580,25 +616,116 @@
    "model": "models/props/potted_plant.drm",
    "name": "potted_plant",
    "role": "landmark",
-   "x": -166.08,
+   "x": -54.21,
    "y": 0.0,
-   "z": -25.38,
-   "yawRad": 1.254,
+   "z": 139.31,
+   "yawRad": 3.036,
    "scale": 100.0,
    "radius": 15.88,
    "solid": true
+  }
+ ],
+ "decals": [
+  {
+   "texture": "textures/decals/sticky_blue.png",
+   "x": -35.08,
+   "z": 66.56,
+   "yawRad": 5.67,
+   "size": 20.0
   },
   {
-   "model": "models/props/lantern.drm",
-   "name": "lantern",
-   "role": "landmark",
-   "x": -45.84,
-   "y": 0.0,
-   "z": -152.95,
-   "yawRad": -0.406,
-   "scale": 100.0,
-   "radius": 13.58,
-   "solid": true
+   "texture": "textures/decals/scuff_dust.png",
+   "x": 60.15,
+   "z": 15.0,
+   "yawRad": 3.407,
+   "size": 13.3
+  },
+  {
+   "texture": "textures/decals/sticky_blue.png",
+   "x": -16.83,
+   "z": -156.54,
+   "yawRad": 1.868,
+   "size": 19.1
+  },
+  {
+   "texture": "textures/decals/scuff_dust.png",
+   "x": 30.98,
+   "z": -94.47,
+   "yawRad": 4.732,
+   "size": 14.5
+  },
+  {
+   "texture": "textures/decals/sticky_blue.png",
+   "x": -168.25,
+   "z": 46.8,
+   "yawRad": 3.21,
+   "size": 19.2
+  },
+  {
+   "texture": "textures/decals/scuff_dust.png",
+   "x": 96.98,
+   "z": -30.26,
+   "yawRad": 3.729,
+   "size": 20.3
+  },
+  {
+   "texture": "textures/decals/sticky_blue.png",
+   "x": -167.77,
+   "z": -110.81,
+   "yawRad": 0.18,
+   "size": 20.4
+  },
+  {
+   "texture": "textures/decals/scuff_dust.png",
+   "x": -91.94,
+   "z": -18.13,
+   "yawRad": 0.486,
+   "size": 15.4
+  },
+  {
+   "texture": "textures/decals/sticky_blue.png",
+   "x": 42.24,
+   "z": 9.81,
+   "yawRad": 5.23,
+   "size": 22.0
+  },
+  {
+   "texture": "textures/decals/scuff_dust.png",
+   "x": 170.68,
+   "z": -42.43,
+   "yawRad": 3.708,
+   "size": 11.2
+  },
+  {
+   "texture": "textures/decals/sticky_blue.png",
+   "x": 91.31,
+   "z": -38.77,
+   "yawRad": 2.011,
+   "size": 21.5
+  },
+  {
+   "texture": "textures/decals/scuff_dust.png",
+   "x": -73.69,
+   "z": -76.35,
+   "yawRad": 0.25,
+   "size": 13.0
+  },
+  {
+   "texture": "textures/decals/sticky_blue.png",
+   "x": -151.3,
+   "z": -108.55,
+   "yawRad": 2.86,
+   "size": 21.8
+  },
+  {
+   "texture": "textures/decals/scuff_dust.png",
+   "x": 46.78,
+   "z": -38.84,
+   "yawRad": 3.333,
+   "size": 19.3
   }
- ]
+ ],
+ "previewCard": "textures/ui/tracks/toy_box.jpg",
+ "surfaceNormal": "textures/surfaces/rug_playroom_n.jpg",
+ "roadNormal": "textures/surfaces/road_asphalt_n.jpg"
 }

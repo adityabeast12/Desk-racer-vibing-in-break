@@ -1,0 +1,72 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><style>html,body{margin:0;background:#000}canvas{display:block}</style>
+<script type="importmap">{"imports":{"three":"/render3d/node_modules/three/build/three.module.js","three/addons/":"/render3d/node_modules/three/examples/jsm/"}}</script>
+</head><body>
+<script type="module">
+import * as THREE from 'three';
+const q = new URLSearchParams(location.search);
+const A = '/assetpack_v3/';
+const W = +(q.get('w') || 1280), H = +(q.get('h') || 720);
+const tj = await (await fetch(A + 'tracks/' + q.get('t') + '.json')).json();
+const r = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); r.setSize(W, H); r.setPixelRatio(1);
+r.outputColorSpace = THREE.SRGBColorSpace; r.toneMapping = THREE.ACESFilmicToneMapping; r.toneMappingExposure = 1.0;
+r.shadowMap.enabled = true; r.shadowMap.type = THREE.PCFSoftShadowMap; document.body.appendChild(r.domElement);
+const scene = new THREE.Scene(); const TL = new THREE.TextureLoader();
+const tex = async (p, rep, srgb = true) => { const t = await TL.loadAsync(A + p); t.wrapS = t.wrapT = THREE.RepeatWrapping; if (rep) t.repeat.set(rep, rep); if (srgb) t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; return t; };
+// backdrop
+const bd = await tex(tj.backdropEquirect); bd.mapping = THREE.EquirectangularReflectionMapping; bd.wrapS = THREE.ClampToEdgeWrapping; scene.background = bd; scene.environment = bd; scene.backgroundBlurriness = 0.15; scene.environmentIntensity = 0.55;
+scene.add(new THREE.HemisphereLight(0xfff4e0, 0x3a2a20, 0.6));
+const sun = new THREE.DirectionalLight(0xffe2b8, 2.6); sun.position.set(-120, 220, 140); sun.castShadow = true; sun.shadow.mapSize.set(4096, 4096);
+Object.assign(sun.shadow.camera, { left: -220, right: 220, top: 220, bottom: -220, near: 10, far: 700 }); sun.shadow.bias = -0.0005; scene.add(sun);
+// desk
+const deskMat = new THREE.MeshStandardMaterial({ map: await tex(tj.surfaceTexture, 420 / tj.surfaceTextureTileUnits), normalMap: await tex(tj.surfaceNormal, 420 / tj.surfaceTextureTileUnits, false), roughness: 0.55 });
+const desk = new THREE.Mesh(new THREE.BoxGeometry(420, 6, 380), deskMat); desk.position.y = -3.05; desk.receiveShadow = true; scene.add(desk);
+// spline
+const cps = tj.controlPoints, n = cps.length, pts = [];
+for (let i = 0; i < n; i++) { const p0 = cps[(i - 1 + n) % n], p1 = cps[i], p2 = cps[(i + 1) % n], p3 = cps[(i + 2) % n];
+  for (let s = 0; s < 18; s++) { const t = s / 18, t2 = t * t, t3 = t2 * t; pts.push([0, 1, 2].map(k => 0.5 * ((2 * p1[k]) + (-p0[k] + p2[k]) * t + (2 * p0[k] - 5 * p1[k] + 4 * p2[k] - p3[k]) * t2 + (-p0[k] + 3 * p1[k] - 3 * p2[k] + p3[k]) * t3))); } }
+const m = pts.length, hw = tj.roadWidth / 2; const pos = [], uv = [], idx = []; let dist = 0;
+for (let i = 0; i <= m; i++) { const a = pts[i % m], b = pts[(i + 1) % m], pr = pts[(i - 1 + m) % m];
+  if (i > 0) dist += Math.hypot(a[0] - pr[0], a[2] - pr[2]);
+  let tx = b[0] - pr[0], tz = b[2] - pr[2]; const l = Math.hypot(tx, tz); tx /= l; tz /= l; const rx = -tz, rz = tx; const y = Math.max(0, a[1]) + 0.12;
+  pos.push(a[0] + rx * hw, y, a[2] + rz * hw, a[0] - rx * hw, y, a[2] - rz * hw); uv.push(0, dist / tj.roadTextureTileUnits, 1, dist / tj.roadTextureTileUnits);
+  if (i < m) { const k = i * 2; idx.push(k, k + 2, k + 1, k + 1, k + 2, k + 3); } }
+const rg = new THREE.BufferGeometry(); rg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); rg.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); rg.setIndex(idx); rg.computeVertexNormals();
+const roadTex = await tex(tj.roadTexture); roadTex.repeat.set(1, 1);
+const road = new THREE.Mesh(rg, new THREE.MeshStandardMaterial({ map: roadTex, roughness: 0.8, side: THREE.DoubleSide })); road.receiveShadow = true; scene.add(road);
+// kerb lines
+const edgeMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6 });
+// DRM loader (shared with view.html, condensed)
+const cache = {};
+async function drm(path) { if (cache[path]) return cache[path].clone();
+  const buf = await (await fetch(A + path)).arrayBuffer(); const dv = new DataView(buf); let o = 4; const magic = String.fromCharCode(...new Uint8Array(buf, 0, 4));
+  const cnt = dv.getInt32(o, true); o += 4; if (magic === 'DRM2') o += 24; const g = new THREE.Group();
+  const str = () => { const l = dv.getInt32(o, true); o += 4; const s = new TextDecoder().decode(new Uint8Array(buf, o, l)); o += l; return s; };
+  for (let i = 0; i < cnt; i++) { str(); let tx = '', base = [1, 1, 1, 1], met = 0, rou = .6, am = 0, db = 0, st = 10;
+    if (magic === 'DRM2') { tx = str(); base = [0, 1, 2, 3].map(k => dv.getFloat32(o + k * 4, true)); o += 16; met = dv.getFloat32(o, true); rou = dv.getFloat32(o + 4, true); o += 8; am = dv.getUint8(o); db = dv.getUint8(o + 1); o += 4; st = 12; }
+    const pv = [0, 1, 2].map(k => dv.getFloat32(o + k * 4, true)); o += 12; const vc = dv.getInt32(o, true); o += 4;
+    const d = new Float32Array(buf.slice(o, o + vc * st * 4)); o += vc * st * 4; const ic = dv.getInt32(o, true); o += 4; const ix = new Uint16Array(buf.slice(o, o + ic * 2)); o += ic * 2; o += (4 - o % 4) % 4;
+    const P = new Float32Array(vc * 3), N = new Float32Array(vc * 3), C = new Float32Array(vc * 3), U = new Float32Array(vc * 2);
+    for (let v = 0; v < vc; v++) { const b = v * st; P.set([d[b], d[b + 1], d[b + 2]], v * 3); N.set([d[b + 3], d[b + 4], d[b + 5]], v * 3); const ci = st === 12 ? b + 8 : b + 6;
+      C.set([d[ci], d[ci + 1], d[ci + 2]].map(x => x <= 0.04045 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4)), v * 3); if (st === 12) U.set([d[b + 6], d[b + 7]], v * 2); }
+    const ge = new THREE.BufferGeometry(); ge.setAttribute('position', new THREE.BufferAttribute(P, 3)); ge.setAttribute('normal', new THREE.BufferAttribute(N, 3)); ge.setAttribute('color', new THREE.BufferAttribute(C, 3)); if (st === 12) ge.setAttribute('uv', new THREE.BufferAttribute(U, 2)); ge.setIndex(new THREE.BufferAttribute(ix, 1));
+    const ma = new THREE.MeshStandardMaterial({ vertexColors: true, color: new THREE.Color(base[0], base[1], base[2]), metalness: met, roughness: Math.max(.05, rou), side: db ? THREE.DoubleSide : THREE.FrontSide });
+    if (tx) { const t = await TL.loadAsync(A + tx); t.flipY = false; t.colorSpace = THREE.SRGBColorSpace; ma.map = t; } if (am === 1) ma.alphaTest = .5; else if (am === 2) { ma.transparent = true; ma.opacity = Math.max(.35, base[3]); ma.depthWrite = false; }
+    const me = new THREE.Mesh(ge, ma); me.castShadow = me.receiveShadow = true; me.position.set(...pv); g.add(me); }
+  cache[path] = g; return g.clone(); }
+for (const p of tj.props) { const g = await drm(p.model); g.scale.setScalar(p.scale); g.position.set(p.x, p.y, p.z); g.rotation.y = p.yawRad; scene.add(g); }
+for (const d of tj.decals) { const t = await TL.loadAsync(A + d.texture); t.colorSpace = THREE.SRGBColorSpace;
+  const dm = new THREE.Mesh(new THREE.PlaneGeometry(d.size, d.size), new THREE.MeshStandardMaterial({ map: t, transparent: true, depthWrite: false, roughness: .8, polygonOffset: true, polygonOffsetFactor: -2 }));
+  dm.rotation.x = -Math.PI / 2; dm.rotation.z = d.yawRad; dm.position.set(d.x, 0.06, d.z); dm.receiveShadow = true; scene.add(dm); }
+// karts on the grid
+const kartFiles = ['kart_truck_red', 'kart_truck_green', 'kart_truck_purple', 'kart_truck_yellow', 'kart_motorcycle'];
+const s0 = pts[m - 8], s1 = pts[m - 7]; const hd = Math.atan2(pts[1][0] - pts[0][0], pts[1][2] - pts[0][2]);
+for (let k = 0; k < 4; k++) { const g = await drm('models/' + kartFiles[k] + '.drm'); g.scale.setScalar(0.75 * 1.0); const row = Math.floor(k / 2), col = k % 2;
+  const back = 6 + row * 6; const p = pts[(m - Math.round(back / 2.4) + m) % m]; let tx = Math.sin(hd), tz = Math.cos(hd); const rx = -tz, rz = tx; const lat = col ? 2.1 : -2.1;
+  g.position.set(p[0] + rx * lat, 0.15, p[2] + rz * lat); g.rotation.y = hd; scene.add(g); }
+// camera: chase view behind the grid or an overview
+const cam = new THREE.PerspectiveCamera(+(q.get('fov') || 55), W / H, 0.5, 3000);
+if (q.get('view') === 'top') { cam.position.set(0, 330, 260); cam.lookAt(0, 0, -10); }
+else { const p = pts[(m - 12) % m]; cam.position.set(p[0] - Math.sin(hd) * 16, 7, p[2] - Math.cos(hd) * 16); cam.lookAt(p[0] + Math.sin(hd) * 30, 1.5, p[2] + Math.cos(hd) * 30); }
+r.render(scene, cam); document.title = 'done';
+</script></body></html>

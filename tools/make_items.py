@@ -79,7 +79,8 @@ def write(name, parts):
         nb = p.name.encode(); tb = p.tex.encode()
         buf += struct.pack('<i', len(nb)) + nb + struct.pack('<i', len(tb)) + tb
         buf += struct.pack('<4f', *p.base) + struct.pack('<2f', p.metal, p.rough) + struct.pack('<4B', p.alpha, p.double, 0, 0) + struct.pack('<3f', 0, 0, 0)
-        data = np.hstack([v, n, uv, c, np.zeros((len(v), 1))]).astype('<f4')
+        uvtl = np.column_stack([uv[:, 0], 1.0 - uv[:, 1]])  # top-left origin
+        data = np.hstack([v, n, uvtl, c, np.zeros((len(v), 1))]).astype('<f4')
         buf += struct.pack('<i', len(v)) + data.tobytes()
         idx = f.astype('<u2').ravel(); tris += len(f)
         buf += struct.pack('<i', len(idx)) + idx.tobytes()
@@ -112,13 +113,13 @@ battery_label(); marble_tex((0.55, 0.85, 0.95), (0.05, 0.45, 0.85), 'marble_blue
 # ---------- BATTERY (AA style, lying along Z when used as pickup; authored upright)
 p = Part('body', 'textures/items/battery_label.jpg', rough=0.35, metal=0.2)
 prof = [(0.0, 0), (0.48, 0), (0.5, 0.03), (0.5, 1.6), (0.48, 1.65), (0.0, 1.65)]
-v, n, uv, c, f = lathe([(r * S * 0.9, y * S * 0.9) for r, y in prof], 40); p.add(v, n, uv, c, f)
+v, n, uv, c, f = lathe([(r * S * 0.9, y * S * 0.9) for r, y in prof], 40); uv[:, 0] = 1.0 - uv[:, 0]; p.add(v, n, uv, c, f)
 t = Part('terminal', base=(0.85, 0.85, 0.88, 1), metal=1.0, rough=0.25)
 v, n, uv, c, f = lathe([(0, 1.65 * S * 0.9), (0.18 * S, 1.65 * S * 0.9), (0.18 * S, 1.78 * S * 0.9), (0.0, 1.8 * S * 0.9)], 24); t.add(v, n, uv, c, f)
 write('battery', [p, t])
 
 # ---------- THUMBTACK
-head = Part('head', base=(0.85, 0.12, 0.15, 1), rough=0.3)
+head = Part('head', base=(0.70, 0.03, 0.06, 1), rough=0.25)
 v, n, uv, c, f = lathe([(0, 0.55 * S), (0.45 * S, 0.55 * S), (0.5 * S, 0.62 * S), (0.42 * S, 0.75 * S), (0.2 * S, 0.95 * S), (0.18 * S, 1.2 * S), (0.3 * S, 1.3 * S), (0.0, 1.38 * S)], 32); head.add(v, n, uv, c, f)
 pin = Part('pin', base=(0.8, 0.8, 0.82, 1), metal=1.0, rough=0.2)
 v, n, uv, c, f = lathe([(0.0, 0.0), (0.05 * S, 0.12 * S), (0.05 * S, 0.55 * S), (0.0, 0.56 * S)], 12); pin.add(v, n, uv, c, f)
@@ -126,9 +127,9 @@ write('thumbtack', [head, pin])
 
 # ---------- ERASER (pink rubber + blue paper sleeve)
 er = Part('rubber', base=(1, 1, 1, 1), rough=0.9)
-v, n, uv, c, f = rounded_box(2.2 * S, 0.8 * S, 1.2 * S, 0.1, (0.96, 0.55, 0.62)); v[:, 1] += 0.4 * S; er.add(v, n, uv, c, f)
+v, n, uv, c, f = rounded_box(2.2 * S, 0.8 * S, 1.2 * S, 0.1, (0.93, 0.36, 0.50)); v[:, 1] += 0.4 * S; er.add(v, n, uv, c, f)
 sl = Part('sleeve', base=(1, 1, 1, 1), rough=0.7)
-v, n, uv, c, f = box(1.3 * S, 0.84 * S, 1.24 * S, (0.16, 0.38, 0.78)); v[:, 0] += 0.45 * S; v[:, 1] += 0.4 * S; sl.add(v, n, uv, c, f)
+v, n, uv, c, f = box(1.3 * S, 0.84 * S, 1.24 * S, (0.06, 0.20, 0.62)); v[:, 0] += 0.45 * S; v[:, 1] += 0.4 * S; sl.add(v, n, uv, c, f)
 write('eraser', [er, sl])
 
 # ---------- MARBLES (glass sphere with swirl)
@@ -143,8 +144,9 @@ for nm, tex in (('marble', 'marble_blue'), ('marble_homing', 'marble_red')):
 # ---------- PAPER PLANE (folded)
 pp = Part('paper', 'textures/items/paper_plane.jpg', rough=0.9, double=1)
 L, W, H = 2.6 * S, 1.1 * S, 0.35 * S
-P = np.array([[0, H, L / 2], [0, 0, -L / 2], [0, H, -L / 2], [-W, H * 1.05, -L / 2], [W, H * 1.05, -L / 2], [0, H * 0.25, -L / 2]])
-F = [[0, 2, 3], [0, 4, 2], [0, 1, 5], [0, 5, 1]]
+P = np.array([[0, H, L / 2], [0, 0.05 * S, -L / 2], [0, H, -L / 2], [-W, H * 1.35, -L / 2], [W, H * 1.35, -L / 2],
+              [-W * 1.02, H * 1.35 + 0.35 * S, -L / 2], [W * 1.02, H * 1.35 + 0.35 * S, -L / 2], [-W * 0.55, H * 1.2, L * 0.05], [W * 0.55, H * 1.2, L * 0.05]])
+F = [[0, 7, 3], [0, 3, 2], [0, 2, 4], [0, 4, 8], [0, 1, 2], [3, 7, 5], [4, 6, 8]]
 for tri in F:
     a, b, c3 = P[tri]; nn = np.cross(b - a, c3 - a); nn /= np.linalg.norm(nn) + 1e-12
     uvs = np.array([[0.5, 1], [0, 0], [1, 0]])
@@ -152,7 +154,7 @@ for tri in F:
 write('paper_plane', [pp])
 
 # ---------- MAGNET (horseshoe)
-mag = Part('body', base=(0.85, 0.1, 0.12, 1), rough=0.35, metal=0.3)
+mag = Part('body', base=(0.80, 0.04, 0.06, 1), rough=0.3, metal=0.2)
 tips = Part('tips', base=(0.82, 0.82, 0.85, 1), rough=0.2, metal=1.0)
 R, r = 0.7 * S, 0.22 * S
 def torus_arc(R, r, a0, a1, seg=32, tseg=16, color=(1, 1, 1)):
@@ -177,7 +179,7 @@ for p_ in (mag, tips):
 write('magnet', [mag, tips])
 
 # ---------- STAR STICKER (extruded bevelled star)
-st = Part('star', base=(1.0, 0.82, 0.2, 1), rough=0.25, metal=0.6)
+st = Part('star', base=(1.0, 0.70, 0.05, 1), rough=0.2, metal=0.85)
 pts = []
 for k in range(10):
     a = math.pi / 2 + k * math.pi / 5; rr = (1.0 if k % 2 == 0 else 0.45) * S

@@ -108,7 +108,7 @@
  "splineSubdivisionsPerSegment": 18,
  "unitsPerMetre": 100.0,
  "surfaceTexture": "textures/surfaces/wood_walnut.jpg",
- "surfaceTextureTileUnits": 60,
+ "surfaceTextureTileUnits": 160,
  "roadTexture": "textures/surfaces/cardboard_kraft.jpg",
  "roadTextureTileUnits": 24,
  "kerbTexture": "textures/surfaces/kerb_red_white.png",
@@ -124,7 +124,7 @@
    "x": 19.07,
    "y": 0.0,
    "z": 80.22,
-   "yawRad": 4.415,
+   "yawRad": 1.766,
    "scale": 100.0,
    "radius": 2.1,
    "solid": true
@@ -136,7 +136,7 @@
    "x": 43.17,
    "y": 0.0,
    "z": 80.66,
-   "yawRad": 0.214,
+   "yawRad": 3.919,
    "scale": 100.0,
    "radius": 2.1,
    "solid": true
@@ -148,7 +148,7 @@
    "x": 62.71,
    "y": 0.0,
    "z": 77.42,
-   "yawRad": 0.585,
+   "yawRad": 5.013,
    "scale": 100.0,
    "radius": 2.1,
    "solid": true
@@ -160,7 +160,7 @@
    "x": 82.17,
    "y": 0.0,
    "z": 69.25,
-   "yawRad": 2.283,
+   "yawRad": 3.725,
    "scale": 100.0,
    "radius": 2.1,
    "solid": true
@@ -172,7 +172,7 @@
    "x": 93.32,
    "y": 0.0,
    "z": 55.43,
-   "yawRad": 2.349,
+   "yawRad": 5.707,
    "scale": 100.0,
    "radius": 2.1,
    "solid": true
@@ -184,7 +184,7 @@
    "x": 97.91,
    "y": 0.0,
    "z": 35.53,
-   "yawRad": 0.546,
+   "yawRad": 6.219,
    "scale": 100.0,
    "radius": 2.1,
    "solid": true
@@ -196,7 +196,7 @@
    "x": -91.91,
    "y": 0.0,
    "z": -31.52,
-   "yawRad": 5.216,
+   "yawRad": 2.756,
    "scale": 100.0,
    "radius": 2.1,
    "solid": true
@@ -208,7 +208,7 @@
    "x": -98.26,
    "y": 0.0,
    "z": -6.85,
-   "yawRad": 4.136,
+   "yawRad": 2.071,
    "scale": 100.0,
    "radius": 2.1,
    "solid": true
@@ -220,7 +220,7 @@
    "x": -100.25,
    "y": 0.0,
    "z": 14.27,
-   "yawRad": 4.733,
+   "yawRad": 0.559,
    "scale": 100.0,
    "radius": 2.1,
    "solid": true
@@ -232,7 +232,7 @@
    "x": -96.04,
    "y": 0.0,
    "z": 35.86,
-   "yawRad": 2.102,
+   "yawRad": 6.032,
    "scale": 100.0,
    "radius": 2.1,
    "solid": true
@@ -244,7 +244,7 @@
    "x": -85.08,
    "y": 0.0,
    "z": 54.58,
-   "yawRad": 0.511,
+   "yawRad": 5.315,
    "scale": 100.0,
    "radius": 2.1,
    "solid": true
@@ -256,7 +256,7 @@
    "x": -68.63,
    "y": 0.0,
    "z": 68.48,
-   "yawRad": 0.028,
+   "yawRad": 0.464,
    "scale": 100.0,
    "radius": 2.1,
    "solid": true
@@ -268,7 +268,7 @@
    "x": -47.21,
    "y": 0.0,
    "z": 77.77,
-   "yawRad": 0.867,
+   "yawRad": 1.473,
    "scale": 100.0,
    "radius": 2.1,
    "solid": true
@@ -280,7 +280,7 @@
    "x": -11.37,
    "y": 0.0,
    "z": 100.69,
-   "yawRad": 5.791,
+   "yawRad": 3.054,
    "scale": 100.0,
    "radius": 2.1,
    "solid": true
@@ -289,34 +289,34 @@
    "model": "models/props/lantern.drm",
    "name": "lantern",
    "role": "landmark",
-   "x": 125.12,
+   "x": -111.88,
    "y": 0.0,
-   "z": 88.23,
-   "yawRad": -2.199,
+   "z": 90.98,
+   "yawRad": 2.37,
    "scale": 100.0,
    "radius": 13.58,
    "solid": true
   },
   {
-   "model": "models/props/desk_lamp.drm",
-   "name": "desk_lamp",
+   "model": "models/props/punctual_lamp.drm",
+   "name": "punctual_lamp",
    "role": "landmark",
-   "x": 139.89,
+   "x": 13.05,
    "y": 0.0,
-   "z": 15.02,
-   "yawRad": -1.289,
+   "z": 133.88,
+   "yawRad": 3.089,
    "scale": 100.0,
-   "radius": 19.97,
+   "radius": 15.12,
    "solid": true
   },
   {
    "model": "models/props/chess_rook_w.drm",
    "name": "chess_rook_w",
    "role": "landmark",
-   "x": -132.04,
+   "x": 82.34,
    "y": 0.0,
-   "z": 61.43,
-   "yawRad": 2.038,
+   "z": 112.81,
+   "yawRad": -2.809,
    "scale": 100.0,
    "radius": 2.69,
    "solid": true
@@ -325,10 +325,10 @@
    "model": "models/props/chess_rook_b.drm",
    "name": "chess_rook_b",
    "role": "landmark",
-   "x": -87.07,
+   "x": -68.75,
    "y": 0.0,
-   "z": -24.95,
-   "yawRad": -1.868,
+   "z": -23.61,
+   "yawRad": -1.9,
    "scale": 100.0,
    "radius": 2.69,
    "solid": true
@@ -337,10 +337,10 @@
    "model": "models/props/chess_bishop_w.drm",
    "name": "chess_bishop_w",
    "role": "landmark",
-   "x": -42.74,
+   "x": 76.71,
    "y": 0.0,
-   "z": 119.22,
-   "yawRad": 3.037,
+   "z": 47.33,
+   "yawRad": 1.117,
    "scale": 100.0,
    "radius": 2.43,
    "solid": true
@@ -349,13 +349,128 @@
    "model": "models/props/potted_plant.drm",
    "name": "potted_plant",
    "role": "landmark",
-   "x": -147.1,
+   "x": 148.5,
    "y": 0.0,
-   "z": -11.84,
-   "yawRad": 1.413,
+   "z": 28.64,
+   "yawRad": -1.473,
    "scale": 100.0,
    "radius": 15.88,
    "solid": true
+  },
+  {
+   "model": "models/props/flight_helmet.drm",
+   "name": "flight_helmet",
+   "role": "landmark",
+   "x": -56.72,
+   "y": 0.0,
+   "z": 56.07,
+   "yawRad": -0.49,
+   "scale": 100.0,
+   "radius": 7.79,
+   "solid": true
   }
- ]
+ ],
+ "decals": [
+  {
+   "texture": "textures/decals/scuff_dust.png",
+   "x": -157.36,
+   "z": 37.25,
+   "yawRad": 2.158,
+   "size": 15.0
+  },
+  {
+   "texture": "textures/decals/sticky_yellow.png",
+   "x": 7.56,
+   "z": -53.62,
+   "yawRad": 1.216,
+   "size": 12.4
+  },
+  {
+   "texture": "textures/decals/scuff_dust.png",
+   "x": 24.87,
+   "z": 9.51,
+   "yawRad": 5.646,
+   "size": 20.8
+  },
+  {
+   "texture": "textures/decals/sticky_yellow.png",
+   "x": -136.29,
+   "z": -20.45,
+   "yawRad": 4.232,
+   "size": 16.1
+  },
+  {
+   "texture": "textures/decals/scuff_dust.png",
+   "x": 139.21,
+   "z": 0.47,
+   "yawRad": 5.623,
+   "size": 12.4
+  },
+  {
+   "texture": "textures/decals/sticky_yellow.png",
+   "x": 24.17,
+   "z": 16.34,
+   "yawRad": 6.081,
+   "size": 14.9
+  },
+  {
+   "texture": "textures/decals/scuff_dust.png",
+   "x": -94.08,
+   "z": -100.67,
+   "yawRad": 1.038,
+   "size": 21.2
+  },
+  {
+   "texture": "textures/decals/sticky_yellow.png",
+   "x": 29.23,
+   "z": -3.91,
+   "yawRad": 2.057,
+   "size": 13.6
+  },
+  {
+   "texture": "textures/decals/scuff_dust.png",
+   "x": -70.44,
+   "z": -100.45,
+   "yawRad": 6.246,
+   "size": 13.4
+  },
+  {
+   "texture": "textures/decals/sticky_yellow.png",
+   "x": 46.04,
+   "z": 138.78,
+   "yawRad": 3.15,
+   "size": 18.1
+  },
+  {
+   "texture": "textures/decals/scuff_dust.png",
+   "x": 141.25,
+   "z": 64.89,
+   "yawRad": 2.536,
+   "size": 17.4
+  },
+  {
+   "texture": "textures/decals/sticky_yellow.png",
+   "x": -14.95,
+   "z": -116.56,
+   "yawRad": 5.525,
+   "size": 16.8
+  },
+  {
+   "texture": "textures/decals/scuff_dust.png",
+   "x": 69.39,
+   "z": -81.96,
+   "yawRad": 2.312,
+   "size": 21.5
+  },
+  {
+   "texture": "textures/decals/sticky_yellow.png",
+   "x": 106.34,
+   "z": -23.45,
+   "yawRad": 0.884,
+   "size": 15.0
+  }
+ ],
+ "previewCard": "textures/ui/tracks/bookshelf_spiral.jpg",
+ "surfaceNormal": "textures/surfaces/wood_walnut_n.jpg",
+ "roadNormal": "textures/surfaces/cardboard_kraft_n.jpg"
 }

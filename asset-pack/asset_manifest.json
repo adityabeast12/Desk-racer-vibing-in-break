@@ -1,13 +1,35 @@
 {
- "format": "DeskRacer asset pack v3",
+ "format": "DeskRacer asset pack v4",
  "unitsPerMetre": 100,
- "notes": "DRM1 = untextured vertex-colour meshes (karts, coin, flag, block_coin, cloud). DRM2 = textured meshes (props, items). Track JSON is the single source of truth for layouts and prop placement.",
+ "colourSpace": "All textures and DRM vertex colours are sRGB. Convert to linear before lighting; apply gamma/tonemap once at output.",
+ "uvOrigin": "DRM2 UV origin is top-left: v=0 is the first (top) row of the image. Upload Android Bitmaps as-is (no flip).",
  "karts": {
-  "kart_truck_red": "models/kart_truck_red.drm",
-  "kart_truck_green": "models/kart_truck_green.drm",
-  "kart_truck_purple": "models/kart_truck_purple.drm",
-  "kart_truck_yellow": "models/kart_truck_yellow.drm",
-  "kart_motorcycle": "models/kart_motorcycle.drm"
+  "kart_truck_red": {
+   "file": "models/kart_truck_red.drm",
+   "thumb": "textures/ui/karts/kart_truck_red.png"
+  },
+  "kart_truck_green": {
+   "file": "models/kart_truck_green.drm",
+   "thumb": "textures/ui/karts/kart_truck_green.png"
+  },
+  "kart_truck_purple": {
+   "file": "models/kart_truck_purple.drm",
+   "thumb": "textures/ui/karts/kart_truck_purple.png"
+  },
+  "kart_truck_yellow": {
+   "file": "models/kart_truck_yellow.drm",
+   "thumb": "textures/ui/karts/kart_truck_yellow.png"
+  },
+  "kart_motorcycle": {
+   "file": "models/kart_motorcycle.drm",
+   "thumb": "textures/ui/karts/kart_motorcycle.png"
+  }
+ },
+ "extraKarts": {
+  "toy_car": {
+   "file": "models/props/toy_car.drm",
+   "thumb": "textures/ui/karts/toy_car.png"
+  }
  },
  "pickups": {
   "coin": "models/coin.drm",
@@ -25,6 +47,26 @@
    ],
    "triangles": 682,
    "source": "Avocado"
+  },
+  "barramundi_fish": {
+   "file": "models/props/barramundi_fish.drm",
+   "sizeMeters": [
+    0.1207,
+    0.06,
+    0.27
+   ],
+   "triangles": 3864,
+   "source": "BarramundiFish"
+  },
+  "boombox": {
+   "file": "models/props/boombox.drm",
+   "sizeMeters": [
+    0.1828,
+    0.18,
+    0.1856
+   ],
+   "triangles": 6036,
+   "source": "BoomBox"
   },
   "chair": {
    "file": "models/props/chair.drm",
@@ -156,6 +198,16 @@
    "triangles": 4000,
    "source": "ABeautifulGame"
   },
+  "damask_chair": {
+   "file": "models/props/damask_chair.drm",
+   "sizeMeters": [
+    1.085,
+    0.9,
+    0.7487
+   ],
+   "triangles": 9984,
+   "source": "ChairDamaskPurplegold"
+  },
   "desk_lamp": {
    "file": "models/props/desk_lamp.drm",
    "sizeMeters": [
@@ -165,6 +217,36 @@
    ],
    "triangles": 10203,
    "source": "AnisotropyBarnLamp"
+  },
+  "flight_helmet": {
+   "file": "models/props/flight_helmet.drm",
+   "sizeMeters": [
+    0.1534,
+    0.3,
+    0.1557
+   ],
+   "triangles": 15992,
+   "source": "FlightHelmet"
+  },
+  "fox_toy": {
+   "file": "models/props/fox_toy.drm",
+   "sizeMeters": [
+    0.0446,
+    0.14,
+    0.2741
+   ],
+   "triangles": 576,
+   "source": "Fox"
+  },
+  "iridescence_lamp": {
+   "file": "models/props/iridescence_lamp.drm",
+   "sizeMeters": [
+    0.3122,
+    0.5,
+    0.317
+   ],
+   "triangles": 9997,
+   "source": "IridescenceLamp"
   },
   "lantern": {
    "file": "models/props/lantern.drm",
@@ -206,6 +288,16 @@
    "triangles": 14105,
    "source": "DiffuseTransmissionPlant"
   },
+  "punctual_lamp": {
+   "file": "models/props/punctual_lamp.drm",
+   "sizeMeters": [
+    0.3024,
+    0.5,
+    0.1936
+   ],
+   "triangles": 6000,
+   "source": "LightsPunctualLamp"
+  },
   "scifi_helmet": {
    "file": "models/props/scifi_helmet.drm",
    "sizeMeters": [
@@ -215,6 +307,16 @@
    ],
    "triangles": 17999,
    "source": "SciFiHelmet"
+  },
+  "sneaker": {
+   "file": "models/props/sneaker.drm",
+   "sizeMeters": [
+    0.2333,
+    0.12,
+    0.0907
+   ],
+   "triangles": 10000,
+   "source": "MaterialsVariantsShoe"
   },
   "sofa": {
    "file": "models/props/sofa.drm",
@@ -276,6 +378,16 @@
    "triangles": 14036,
    "source": "GlassVaseFlowers"
   },
+  "velvet_sofa": {
+   "file": "models/props/velvet_sofa.drm",
+   "sizeMeters": [
+    2.362,
+    0.85,
+    1.1039
+   ],
+   "triangles": 4196,
+   "source": "GlamVelvetSofa"
+  },
   "water_bottle": {
    "file": "models/props/water_bottle.drm",
    "sizeMeters": [
@@ -294,7 +406,8 @@
     0.009,
     0.0162,
     0.009
-   ]
+   ],
+   "icon": "textures/ui/items/battery.png"
   },
   "eraser": {
    "file": "models/items/eraser.drm",
@@ -302,7 +415,8 @@
     0.022,
     0.0084,
     0.0124
-   ]
+   ],
+   "icon": "textures/ui/items/eraser.png"
   },
   "magnet": {
    "file": "models/items/magnet.drm",
@@ -310,7 +424,8 @@
     0.0185,
     0.0212,
     0.0045
-   ]
+   ],
+   "icon": "textures/ui/items/magnet.png"
   },
   "marble": {
    "file": "models/items/marble.drm",
@@ -318,7 +433,8 @@
     0.012,
     0.012,
     0.012
-   ]
+   ],
+   "icon": "textures/ui/items/marble.png"
   },
   "marble_homing": {
    "file": "models/items/marble_homing.drm",
@@ -326,15 +442,17 @@
     0.012,
     0.012,
     0.012
-   ]
+   ],
+   "icon": "textures/ui/items/marble_homing.png"
   },
   "paper_plane": {
    "file": "models/items/paper_plane.drm",
    "sizeMeters": [
-    0.022,
-    0.0037,
+    0.0224,
+    0.0077,
     0.026
-   ]
+   ],
+   "icon": "textures/ui/items/paper_plane.png"
   },
   "star_sticker": {
    "file": "models/items/star_sticker.drm",
@@ -342,7 +460,8 @@
     0.019,
     0.0181,
     0.008
-   ]
+   ],
+   "icon": "textures/ui/items/star_sticker.png"
   },
   "thumbtack": {
    "file": "models/items/thumbtack.drm",
@@ -350,26 +469,55 @@
     0.01,
     0.0138,
     0.01
-   ]
+   ],
+   "icon": "textures/ui/items/thumbtack.png"
   }
+ },
+ "itemIconsExtra": {
+  "triple_tacks": "textures/ui/items/triple_tacks.png",
+  "triple_battery": "textures/ui/items/triple_battery.png"
  },
  "surfaces": [
   "textures/surfaces/cardboard_kraft.jpg",
+  "textures/surfaces/cardboard_kraft_n.jpg",
   "textures/surfaces/checker_finish.png",
   "textures/surfaces/chessboard.jpg",
+  "textures/surfaces/chessboard_n.jpg",
   "textures/surfaces/cutting_board.jpg",
+  "textures/surfaces/cutting_board_n.jpg",
   "textures/surfaces/desk_mat_dark.jpg",
+  "textures/surfaces/desk_mat_dark_n.jpg",
   "textures/surfaces/kerb_red_white.png",
   "textures/surfaces/marble_white.jpg",
+  "textures/surfaces/marble_white_n.jpg",
   "textures/surfaces/paper_paint.jpg",
+  "textures/surfaces/paper_paint_n.jpg",
   "textures/surfaces/paper_ruled.jpg",
+  "textures/surfaces/paper_ruled_n.jpg",
   "textures/surfaces/road_asphalt.jpg",
+  "textures/surfaces/road_asphalt_n.jpg",
   "textures/surfaces/rug_playroom.jpg",
+  "textures/surfaces/rug_playroom_n.jpg",
   "textures/surfaces/ruler_strip.png",
   "textures/surfaces/tiles_bath.jpg",
+  "textures/surfaces/tiles_bath_n.jpg",
   "textures/surfaces/wood_oak_light.jpg",
+  "textures/surfaces/wood_oak_light_n.jpg",
   "textures/surfaces/wood_walnut.jpg",
   "textures/surfaces/wood_walnut_n.jpg"
+ ],
+ "decals": [
+  "textures/decals/boost_chevrons.png",
+  "textures/decals/coffee_ring.png",
+  "textures/decals/grid_box.png",
+  "textures/decals/paint_splat_blue.png",
+  "textures/decals/paint_splat_red.png",
+  "textures/decals/paint_splat_yellow.png",
+  "textures/decals/scuff_dust.png",
+  "textures/decals/skid_mark.png",
+  "textures/decals/sticky_blue.png",
+  "textures/decals/sticky_pink.png",
+  "textures/decals/sticky_yellow.png"
  ],
  "backdrops": [
   "textures/backdrops/city_day.jpg",
@@ -379,6 +527,19 @@
   "textures/backdrops/room_workshop.jpg",
   "textures/backdrops/window_dusk_hills.jpg"
  ],
+ "ui": {
+  "garageTurntable": "textures/ui/garage_turntable.png",
+  "trackCards": [
+   "textures/ui/tracks/art_desk.jpg",
+   "textures/ui/tracks/bathtub_rim.jpg",
+   "textures/ui/tracks/bookshelf_spiral.jpg",
+   "textures/ui/tracks/gamer_desk.jpg",
+   "textures/ui/tracks/kitchen_counter.jpg",
+   "textures/ui/tracks/midnight_office.jpg",
+   "textures/ui/tracks/study_desk.jpg",
+   "textures/ui/tracks/toy_box.jpg"
+  ]
+ },
  "tracks": [
   "tracks/art_desk.json",
   "tracks/bathtub_rim.json",

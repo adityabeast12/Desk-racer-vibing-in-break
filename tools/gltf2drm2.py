@@ -160,7 +160,8 @@ def convert(src, out_assets, name, tri_budget, tex_size=512, keep_parts=None, dr
         b = (list(p['base']) + [1, 1, 1, 1])[:4]
         buf += struct.pack('<4f', *b) + struct.pack('<2f', p['metal'], p['rough']) + struct.pack('<4B', p['alpha'], p['double'], 0, 0)
         buf += struct.pack('<3f', 0, 0, 0)
-        data = np.hstack([p['v'], p['n'], p['uv'], p['c'], np.zeros((len(p['v']), 1))]).astype('<f4')
+        uvtl = np.column_stack([p['uv'][:, 0], 1.0 - p['uv'][:, 1]])  # top-left origin: v=0 is the first image row
+        data = np.hstack([p['v'], p['n'], uvtl, p['c'], np.zeros((len(p['v']), 1))]).astype('<f4')
         buf += struct.pack('<i', len(p['v'])) + data.tobytes()
         idx = p['f'].astype('<u2').ravel(); tris += len(p['f'])
         buf += struct.pack('<i', len(idx)) + idx.tobytes()

@@ -8,21 +8,21 @@ U = 100.0  # game units per metre (1 u = 1 cm)
 
 THEMES = {
  'STUDY DESK': dict(slug='study_desk', surface='textures/surfaces/wood_walnut.jpg', road='textures/surfaces/paper_ruled.jpg', backdrop='textures/backdrops/room_apartment.jpg', light='DUSK_LAMP', music='audio/music/race_study_desk_loop.ogg',
-   hero=['desk_lamp', 'teacup', 'water_bottle', 'vase_flowers', 'lantern', 'chess_king_w', 'chess_queen_b'], pylons=['chess_pawn_w', 'chess_pawn_b'], cone=True),
+   hero=['punctual_lamp', 'teacup', 'water_bottle', 'vase_flowers', 'lantern', 'chess_king_w', 'chess_queen_b', 'flight_helmet'], pylons=['chess_pawn_w', 'chess_pawn_b'], cone=True),
  'GAMER DESK': dict(slug='gamer_desk', surface='textures/surfaces/desk_mat_dark.jpg', road='textures/surfaces/road_asphalt.jpg', backdrop='textures/backdrops/room_studio.jpg', light='NIGHT_RGB', music='audio/music/race_gamer_desk_loop.ogg',
-   hero=['scifi_helmet', 'toy_car', 'water_bottle', 'stained_glass_lamp', 'teacup', 'chess_knight_b'], pylons=['traffic_cone'], cone=True),
+   hero=['scifi_helmet', 'boombox', 'toy_car', 'water_bottle', 'iridescence_lamp', 'teacup', 'chess_knight_b'], pylons=['traffic_cone'], cone=True),
  'KITCHEN COUNTER': dict(slug='kitchen_counter', surface='textures/surfaces/marble_white.jpg', road='textures/surfaces/cutting_board.jpg', backdrop='textures/backdrops/room_lobby.jpg', light='MORNING_SUN', music='audio/music/race_kitchen_loop.ogg',
-   hero=['olive_dish', 'mandarin_orange', 'avocado', 'teacup', 'water_bottle', 'vase_flowers', 'mandarin_orange', 'avocado'], pylons=['traffic_cone'], cone=True),
+   hero=['olive_dish', 'barramundi_fish', 'mandarin_orange', 'avocado', 'teacup', 'water_bottle', 'vase_flowers', 'mandarin_orange', 'avocado'], pylons=['traffic_cone'], cone=True),
  'ART DESK': dict(slug='art_desk', surface='textures/surfaces/wood_oak_light.jpg', road='textures/surfaces/paper_paint.jpg', backdrop='textures/backdrops/room_apartment.jpg', light='SUNNY_STUDIO', music='audio/music/race_study_desk_loop.ogg',
    hero=['vase_flowers', 'potted_plant', 'teacup', 'stained_glass_lamp', 'water_bottle', 'lantern'], pylons=['traffic_cone'], cone=True),
  'BOOKSHELF SPIRAL': dict(slug='bookshelf_spiral', surface='textures/surfaces/wood_walnut.jpg', road='textures/surfaces/cardboard_kraft.jpg', backdrop='textures/backdrops/room_lobby.jpg', light='LIBRARY_WARM', music='audio/music/race_bonus_loop.ogg',
-   hero=['lantern', 'desk_lamp', 'chess_rook_w', 'chess_rook_b', 'chess_bishop_w', 'potted_plant'], pylons=['chess_pawn_w', 'chess_pawn_b'], cone=False),
+   hero=['lantern', 'punctual_lamp', 'chess_rook_w', 'chess_rook_b', 'chess_bishop_w', 'potted_plant', 'flight_helmet'], pylons=['chess_pawn_w', 'chess_pawn_b'], cone=False),
  'BATHTUB RIM': dict(slug='bathtub_rim', surface='textures/surfaces/tiles_bath.jpg', road='textures/surfaces/tiles_bath.jpg', backdrop='textures/backdrops/room_studio.jpg', light='BATHROOM_BRIGHT', music='audio/music/race_bonus_loop.ogg',
-   hero=['water_bottle', 'potted_plant', 'vase_flowers', 'teacup', 'water_bottle'], pylons=['traffic_cone'], cone=True),
+   hero=['water_bottle', 'potted_plant', 'vase_flowers', 'teacup', 'sneaker', 'water_bottle'], pylons=['traffic_cone'], cone=True),
  'TOY BOX': dict(slug='toy_box', surface='textures/surfaces/rug_playroom.jpg', road='textures/surfaces/road_asphalt.jpg', backdrop='textures/backdrops/room_apartment.jpg', light='PLAYROOM_SOFT', music='audio/music/race_kitchen_loop.ogg',
-   hero=['toy_car', 'chess_knight_w', 'chess_king_b', 'toy_car', 'potted_plant', 'lantern'], pylons=['traffic_cone'], cone=True),
+   hero=['toy_car', 'fox_toy', 'sneaker', 'chess_knight_w', 'chess_king_b', 'boombox', 'toy_car', 'potted_plant'], pylons=['traffic_cone'], cone=True),
  'MIDNIGHT OFFICE': dict(slug='midnight_office', surface='textures/surfaces/wood_walnut.jpg', road='textures/surfaces/road_asphalt.jpg', backdrop='textures/backdrops/city_day.jpg', light='MIDNIGHT_CITY', music='audio/music/race_gamer_desk_loop.ogg',
-   hero=['desk_lamp', 'stained_glass_lamp', 'scifi_helmet', 'teacup', 'water_bottle', 'potted_plant'], pylons=['traffic_cone'], cone=True),
+   hero=['iridescence_lamp', 'stained_glass_lamp', 'scifi_helmet', 'flight_helmet', 'teacup', 'water_bottle', 'potted_plant'], pylons=['traffic_cone'], cone=True),
 }
 
 def footprint(name, scale):
@@ -68,11 +68,26 @@ for name, d in T.TRACKS.items():
             yaw = math.atan2(pts[i][0] - x, pts[i][2] - z)
             if all(math.hypot(x - p['x'], z - p['z']) > 60 for p in placed if p['role'] == 'landmark') or attempt > 300:
                 put(m, x, z, yaw, 1.0, True, 'landmark'); break
-    # 3) start/finish flags (Kenney flag scaled), both sides of the line
+    # 3) decals on the desk surface (flat quads, no collision, never on the road)
+    DEC = {'study_desk': ['coffee_ring', 'sticky_yellow', 'sticky_pink', 'scuff_dust'], 'gamer_desk': ['coffee_ring', 'scuff_dust', 'sticky_blue'],
+           'kitchen_counter': ['coffee_ring', 'scuff_dust'], 'art_desk': ['paint_splat_red', 'paint_splat_blue', 'paint_splat_yellow', 'sticky_pink'],
+           'bookshelf_spiral': ['scuff_dust', 'sticky_yellow'], 'bathtub_rim': ['scuff_dust'], 'toy_box': ['sticky_blue', 'scuff_dust'],
+           'midnight_office': ['coffee_ring', 'sticky_yellow', 'sticky_blue', 'scuff_dust']}
+    decals = []
+    for k in range(14):
+        dname = DEC[th['slug']][k % len(DEC[th['slug']])]; size = float(rng.uniform(10, 22))
+        for attempt in range(200):
+            i = int(rng.integers(0, n)); side = rng.choice([-1, 1]); off = w / 2 + size * 0.75 + rng.uniform(4, 40)
+            x, z = pts[i][0] + right[i][0] * off * side, pts[i][2] + right[i][2] * off * side
+            if clearance(pts, w, x, z, size * 0.75) > 1.0 and abs(x) < 175 and abs(z) < 160 and all(math.hypot(x - p['x'], z - p['z']) > size * 0.6 + p['radius'] for p in placed):
+                decals.append(dict(texture=f'textures/decals/{dname}.png', x=round(float(x), 2), z=round(float(z), 2), yawRad=round(float(rng.uniform(0, 6.28)), 3), size=round(size, 1)))
+                break
+    # 4) start/finish flags (Kenney flag scaled), both sides of the line
     data = dict(name=name, slug=th['slug'], roadWidth=w, lengthApprox=round(float(L)), controlPoints=[list(map(float, c)) for c in d['cps']],
                 splineSubdivisionsPerSegment=18, unitsPerMetre=U,
-                surfaceTexture=th['surface'], surfaceTextureTileUnits=60, roadTexture=th['road'], roadTextureTileUnits=24,
+                surfaceTexture=th['surface'], surfaceTextureTileUnits={'tiles_bath': 70, 'rug_playroom': 150, 'desk_mat_dark': 90}.get(th['surface'].split('/')[-1][:-4], 160), roadTexture=th['road'], roadTextureTileUnits=24,
                 kerbTexture='textures/surfaces/kerb_red_white.png', finishTexture='textures/surfaces/checker_finish.png',
-                backdropEquirect=th['backdrop'], lightingPreset=th['light'], music=th['music'], props=placed)
+                backdropEquirect=th['backdrop'], lightingPreset=th['light'], music=th['music'], props=placed, decals=decals,
+                previewCard=f"textures/ui/tracks/{th['slug']}.jpg", surfaceNormal=th['surface'].replace('.jpg', '_n.jpg'), roadNormal=th['road'].replace('.jpg', '_n.jpg'))
     json.dump(data, open(f"{OUT}/tracks/{th['slug']}.json", 'w'), indent=1)
-    print(f"{name:18s} props={len(placed):3d} landmarks={sum(p['role']=='landmark' for p in placed)} pylons={sum(p['role']=='pylon' for p in placed)}")
+    print(f"{name:18s} decals={len(decals):2d} props={len(placed):3d} landmarks={sum(p['role']=='landmark' for p in placed)} pylons={sum(p['role']=='pylon' for p in placed)}")

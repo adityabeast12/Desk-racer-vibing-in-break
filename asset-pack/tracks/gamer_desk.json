@@ -143,7 +143,7 @@
  "splineSubdivisionsPerSegment": 18,
  "unitsPerMetre": 100.0,
  "surfaceTexture": "textures/surfaces/desk_mat_dark.jpg",
- "surfaceTextureTileUnits": 60,
+ "surfaceTextureTileUnits": 90,
  "roadTexture": "textures/surfaces/road_asphalt.jpg",
  "roadTextureTileUnits": 24,
  "kerbTexture": "textures/surfaces/kerb_red_white.png",
@@ -159,7 +159,7 @@
    "x": 31.72,
    "y": 0.0,
    "z": 90.05,
-   "yawRad": 4.097,
+   "yawRad": 3.221,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -171,7 +171,7 @@
    "x": 66.25,
    "y": 0.0,
    "z": 88.47,
-   "yawRad": 2.943,
+   "yawRad": 1.919,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -183,7 +183,7 @@
    "x": 88.35,
    "y": 0.0,
    "z": 86.16,
-   "yawRad": 2.587,
+   "yawRad": 2.936,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -195,7 +195,7 @@
    "x": 106.11,
    "y": 0.0,
    "z": 78.28,
-   "yawRad": 5.357,
+   "yawRad": 5.374,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -207,7 +207,7 @@
    "x": 117.78,
    "y": 0.0,
    "z": 63.37,
-   "yawRad": 2.315,
+   "yawRad": 1.108,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -219,7 +219,7 @@
    "x": 117.16,
    "y": 0.0,
    "z": 46.97,
-   "yawRad": 2.393,
+   "yawRad": 6.191,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -231,7 +231,7 @@
    "x": 107.76,
    "y": 0.0,
    "z": 33.15,
-   "yawRad": 0.966,
+   "yawRad": 3.622,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -243,7 +243,7 @@
    "x": 88.24,
    "y": 0.0,
    "z": 10.79,
-   "yawRad": 3.976,
+   "yawRad": 0.203,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -255,7 +255,7 @@
    "x": 71.97,
    "y": 0.0,
    "z": 3.71,
-   "yawRad": 3.379,
+   "yawRad": 1.158,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -267,7 +267,7 @@
    "x": 65.75,
    "y": 0.0,
    "z": -4.34,
-   "yawRad": 3.525,
+   "yawRad": 0.504,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -279,7 +279,7 @@
    "x": 74.46,
    "y": 0.0,
    "z": -19.7,
-   "yawRad": 1.627,
+   "yawRad": 4.586,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -291,7 +291,7 @@
    "x": 91.09,
    "y": 0.0,
    "z": -45.65,
-   "yawRad": 2.718,
+   "yawRad": 1.486,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -303,7 +303,7 @@
    "x": 106.07,
    "y": 0.0,
    "z": -50.73,
-   "yawRad": 1.351,
+   "yawRad": 0.328,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -315,7 +315,7 @@
    "x": 117.49,
    "y": 0.0,
    "z": -66.62,
-   "yawRad": 5.789,
+   "yawRad": 3.143,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -327,7 +327,7 @@
    "x": 116.27,
    "y": 0.0,
    "z": -82.65,
-   "yawRad": 3.741,
+   "yawRad": 4.022,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -339,7 +339,7 @@
    "x": 102.47,
    "y": 0.0,
    "z": -98.78,
-   "yawRad": 4.064,
+   "yawRad": 4.803,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -351,7 +351,7 @@
    "x": 84.35,
    "y": 0.0,
    "z": -105.25,
-   "yawRad": 0.145,
+   "yawRad": 5.031,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -363,7 +363,7 @@
    "x": 62.67,
    "y": 0.0,
    "z": -104.56,
-   "yawRad": 3.535,
+   "yawRad": 2.558,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -375,7 +375,7 @@
    "x": 46.25,
    "y": 0.0,
    "z": -94.85,
-   "yawRad": 2.75,
+   "yawRad": 2.174,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -387,7 +387,7 @@
    "x": 29.47,
    "y": 0.0,
    "z": -79.34,
-   "yawRad": 0.652,
+   "yawRad": 4.612,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -399,7 +399,7 @@
    "x": -120.57,
    "y": 0.0,
    "z": -78.52,
-   "yawRad": 4.827,
+   "yawRad": 2.015,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -411,7 +411,7 @@
    "x": -111.76,
    "y": 0.0,
    "z": -93.9,
-   "yawRad": 3.715,
+   "yawRad": 1.193,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -423,7 +423,7 @@
    "x": -96.41,
    "y": 0.0,
    "z": -104.84,
-   "yawRad": 5.028,
+   "yawRad": 4.727,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -435,7 +435,7 @@
    "x": -78.88,
    "y": 0.0,
    "z": -105.26,
-   "yawRad": 1.054,
+   "yawRad": 4.427,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -447,7 +447,7 @@
    "x": -63.03,
    "y": 0.0,
    "z": -99.1,
-   "yawRad": 1.322,
+   "yawRad": 3.18,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -459,7 +459,7 @@
    "x": -51.91,
    "y": 0.0,
    "z": -86.21,
-   "yawRad": 4.319,
+   "yawRad": 2.346,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -471,7 +471,7 @@
    "x": -53.77,
    "y": 0.0,
    "z": -77.39,
-   "yawRad": 3.337,
+   "yawRad": 4.428,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -483,7 +483,7 @@
    "x": -72.68,
    "y": 0.0,
    "z": -61.75,
-   "yawRad": 5.108,
+   "yawRad": 4.135,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -495,7 +495,7 @@
    "x": -82.42,
    "y": 0.0,
    "z": -28.39,
-   "yawRad": 4.158,
+   "yawRad": 5.395,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -507,7 +507,7 @@
    "x": -107.41,
    "y": 0.0,
    "z": -5.17,
-   "yawRad": 3.171,
+   "yawRad": 2.285,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -519,7 +519,7 @@
    "x": -116.5,
    "y": 0.0,
    "z": 13.01,
-   "yawRad": 0.62,
+   "yawRad": 2.679,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -531,7 +531,7 @@
    "x": -118.9,
    "y": 0.0,
    "z": 34.04,
-   "yawRad": 5.429,
+   "yawRad": 1.033,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -543,7 +543,7 @@
    "x": -113.74,
    "y": 0.0,
    "z": 51.95,
-   "yawRad": 4.14,
+   "yawRad": 4.386,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -555,7 +555,7 @@
    "x": -100.68,
    "y": 0.0,
    "z": 68.94,
-   "yawRad": 4.265,
+   "yawRad": 6.09,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -567,7 +567,7 @@
    "x": -83.68,
    "y": 0.0,
    "z": 79.0,
-   "yawRad": 2.29,
+   "yawRad": 6.133,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -579,7 +579,7 @@
    "x": -61.34,
    "y": 0.0,
    "z": 85.85,
-   "yawRad": 1.66,
+   "yawRad": 2.645,
    "scale": 100.0,
    "radius": 2.02,
    "solid": true
@@ -588,22 +588,34 @@
    "model": "models/props/scifi_helmet.drm",
    "name": "scifi_helmet",
    "role": "landmark",
-   "x": 8.5,
+   "x": -60.31,
    "y": 0.0,
-   "z": 54.29,
-   "yawRad": -0.037,
+   "z": -146.15,
+   "yawRad": -0.293,
    "scale": 100.0,
    "radius": 10.72,
+   "solid": true
+  },
+  {
+   "model": "models/props/boombox.drm",
+   "name": "boombox",
+   "role": "landmark",
+   "x": 98.92,
+   "y": 0.0,
+   "z": 55.52,
+   "yawRad": 1.428,
+   "scale": 100.0,
+   "radius": 9.28,
    "solid": true
   },
   {
    "model": "models/props/toy_car.drm",
    "name": "toy_car",
    "role": "landmark",
-   "x": -95.88,
+   "x": -155.84,
    "y": 0.0,
-   "z": 7.41,
-   "yawRad": -2.092,
+   "z": -107.68,
+   "yawRad": 1.051,
    "scale": 100.0,
    "radius": 1.92,
    "solid": true
@@ -612,34 +624,34 @@
    "model": "models/props/water_bottle.drm",
    "name": "water_bottle",
    "role": "landmark",
-   "x": -167.99,
+   "x": -95.85,
    "y": 0.0,
-   "z": -83.24,
-   "yawRad": 1.433,
+   "z": -76.23,
+   "yawRad": 0.635,
    "scale": 100.0,
    "radius": 5.44,
    "solid": true
   },
   {
-   "model": "models/props/stained_glass_lamp.drm",
-   "name": "stained_glass_lamp",
+   "model": "models/props/iridescence_lamp.drm",
+   "name": "iridescence_lamp",
    "role": "landmark",
-   "x": 79.08,
+   "x": 169.57,
    "y": 0.0,
-   "z": -156.97,
-   "yawRad": -0.034,
+   "z": 54.73,
+   "yawRad": -1.536,
    "scale": 100.0,
-   "radius": 17.54,
+   "radius": 15.85,
    "solid": true
   },
   {
    "model": "models/props/teacup.drm",
    "name": "teacup",
    "role": "landmark",
-   "x": 102.52,
+   "x": 142.71,
    "y": 0.0,
-   "z": 45.58,
-   "yawRad": 2.164,
+   "z": -48.54,
+   "yawRad": -2.072,
    "scale": 100.0,
    "radius": 7.64,
    "solid": true
@@ -648,13 +660,116 @@
    "model": "models/props/chess_knight_b.drm",
    "name": "chess_knight_b",
    "role": "landmark",
-   "x": 28.52,
+   "x": 82.81,
    "y": 0.0,
-   "z": -15.24,
-   "yawRad": 1.315,
+   "z": -151.58,
+   "yawRad": -0.068,
    "scale": 100.0,
    "radius": 3.0,
    "solid": true
   }
- ]
+ ],
+ "decals": [
+  {
+   "texture": "textures/decals/coffee_ring.png",
+   "x": 85.24,
+   "z": -7.01,
+   "yawRad": 0.418,
+   "size": 13.1
+  },
+  {
+   "texture": "textures/decals/scuff_dust.png",
+   "x": 11.79,
+   "z": 148.89,
+   "yawRad": 4.195,
+   "size": 13.1
+  },
+  {
+   "texture": "textures/decals/sticky_blue.png",
+   "x": -164.76,
+   "z": -130.44,
+   "yawRad": 5.77,
+   "size": 15.2
+  },
+  {
+   "texture": "textures/decals/coffee_ring.png",
+   "x": 67.45,
+   "z": -148.08,
+   "yawRad": 2.214,
+   "size": 18.6
+  },
+  {
+   "texture": "textures/decals/scuff_dust.png",
+   "x": -165.19,
+   "z": -87.2,
+   "yawRad": 6.003,
+   "size": 19.4
+  },
+  {
+   "texture": "textures/decals/sticky_blue.png",
+   "x": 2.06,
+   "z": -112.49,
+   "yawRad": 2.853,
+   "size": 16.6
+  },
+  {
+   "texture": "textures/decals/coffee_ring.png",
+   "x": -49.15,
+   "z": -35.07,
+   "yawRad": 0.416,
+   "size": 13.4
+  },
+  {
+   "texture": "textures/decals/scuff_dust.png",
+   "x": -109.4,
+   "z": 23.27,
+   "yawRad": 2.192,
+   "size": 12.4
+  },
+  {
+   "texture": "textures/decals/sticky_blue.png",
+   "x": -79.72,
+   "z": 38.59,
+   "yawRad": 0.275,
+   "size": 17.9
+  },
+  {
+   "texture": "textures/decals/coffee_ring.png",
+   "x": -100.98,
+   "z": 33.36,
+   "yawRad": 0.075,
+   "size": 15.1
+  },
+  {
+   "texture": "textures/decals/scuff_dust.png",
+   "x": -7.45,
+   "z": -131.33,
+   "yawRad": 0.226,
+   "size": 18.6
+  },
+  {
+   "texture": "textures/decals/sticky_blue.png",
+   "x": 68.62,
+   "z": -78.14,
+   "yawRad": 0.789,
+   "size": 10.1
+  },
+  {
+   "texture": "textures/decals/coffee_ring.png",
+   "x": -79.99,
+   "z": -72.0,
+   "yawRad": 0.652,
+   "size": 12.2
+  },
+  {
+   "texture": "textures/decals/scuff_dust.png",
+   "x": 41.65,
+   "z": 49.51,
+   "yawRad": 5.5,
+   "size": 16.0
+  }
+ ],
+ "previewCard": "textures/ui/tracks/gamer_desk.jpg",
+ "surfaceNormal": "textures/surfaces/desk_mat_dark_n.jpg",
+ "roadNormal": "textures/surfaces/road_asphalt_n.jpg"
 }
