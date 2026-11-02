@@ -29,7 +29,7 @@ import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.RestartAlt
-import androidx.compose.material.icons.rounded.ThreeSixty
+import androidx.compose.material.icons.rounded.Autorenew
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -227,7 +227,7 @@ fun GarageScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Icon(Icons.Rounded.ThreeSixty, contentDescription = null, tint = DR.TextLo, modifier = Modifier.size(18.dp))
+                    Icon(Icons.Rounded.Autorenew, contentDescription = null, tint = DR.TextLo, modifier = Modifier.size(18.dp))
                     Text("Drag to rotate", style = DRType.Caption, color = DR.TextLo)
                 }
             }

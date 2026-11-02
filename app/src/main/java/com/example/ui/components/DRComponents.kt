@@ -201,7 +201,7 @@ fun DRButton(
             }
             .drawBehind {
                 if (skewed && enabled && !pressed) {
-                    val outline = shape.createOutline(size, layoutDirection, this)
+                    val outline = shape.createOutline(this.size, layoutDirection, this)
                     translate(top = 3.dp.toPx()) { drawOutline(outline, Color.Black.copy(alpha = 0.35f)) }
                 }
             }
@@ -1019,14 +1019,12 @@ fun DRScreen(
             .fillMaxSize()
             .background(background)
             .tagged(testTag)
-            .androidx_safe()
+            .windowInsetsPadding(WindowInsets.safeDrawing.union(WindowInsets.displayCutout))
             .padding(horizontal = 16.dp, vertical = 12.dp),
         content = content
     )
 }
 
-private fun Modifier.androidx_safe(): Modifier =
-    this.windowInsetsPadding(WindowInsets.safeDrawing.union(WindowInsets.displayCutout))
 
 /** Kart thumbnail from textures/ui/karts/<slug>.png. Locked → greyscale + dim. */
 @Composable
