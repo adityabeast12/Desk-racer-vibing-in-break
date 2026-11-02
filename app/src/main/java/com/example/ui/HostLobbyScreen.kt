@@ -124,7 +124,21 @@ fun HostLobbyScreen(
             .testTag("host_lobby_screen")
     ) {
         Column(Modifier.fillMaxSize()) {
-            DRScreenHeader(kicker = "Host LAN", title = "Room $roomCode", onBack = { confirmClose = true }, backTestTag = "btn_lobby_back")
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                DRScreenHeader(kicker = "Host LAN", title = "Room $roomCode", onBack = { confirmClose = true }, backTestTag = "btn_lobby_back", modifier = Modifier.weight(1f))
+                DRButton(
+                    text = "Hotspot settings",
+                    icon = Icons.Rounded.WifiTethering,
+                    variant = DRButtonVariant.SECONDARY,
+                    size = DRButtonSize.S,
+                    onClick = {
+                        runCatching {
+                            context.startActivity(Intent(Settings.ACTION_WIRELESS_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                        }
+                    },
+                    testTag = "btn_open_hotspot_settings"
+                )
+            }
             Spacer(Modifier.height(10.dp))
             Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 // Left: connection + race settings
@@ -137,20 +151,6 @@ fun HostLobbyScreen(
                         Icon(Icons.Rounded.WifiTethering, contentDescription = null, tint = DR.Ok, modifier = Modifier.size(16.dp))
                         Text("$hostIpAddress:${GameConstants.TCP_CONTROL_PORT}", style = DRType.NumS.copy(fontSize = 12.5.sp), color = DR.TextMid, maxLines = 1)
                     }
-                    Spacer(Modifier.height(8.dp))
-                    DRButton(
-                        text = "Hotspot settings",
-                        icon = Icons.Rounded.WifiTethering,
-                        variant = DRButtonVariant.SECONDARY,
-                        size = DRButtonSize.S,
-                        onClick = {
-                            runCatching {
-                                context.startActivity(Intent(Settings.ACTION_WIRELESS_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        testTag = "btn_open_hotspot_settings"
-                    )
                     Box(Modifier.fillMaxWidth().padding(vertical = 10.dp).height(1.dp).background(DR.Line))
                     DRLabel("Race")
                     Row(

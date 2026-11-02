@@ -167,7 +167,7 @@ class V6ScreenshotTest {
     private val raceHud = HudState(
         phase = RacePhase.RACING, gameMode = GameMode.QUICK_RACE, trackId = 0, position = 3, totalRacers = 6, lap = 2, totalLaps = 3,
         raceTimeMs = 84381, coinsHeld = 7, speedKmh = 42, speedRatio = 0.7f, isDrifting = true, driftChargeRatio = 0.62f, sparkTier = 1,
-        heldItem = ItemType.MARBLE, toastText = "You hit ROHAN", standings = emptyList()
+        heldItem = ItemType.MARBLE, toastText = "You hit ROHAN", standings = emptyList(), countdownNumber = -1
     )
 
     @Test
@@ -219,6 +219,17 @@ class V6ScreenshotTest {
         }
     ) {
         RaceScreen(raceHud.copy(minimapDots = dots()), profile, InputState(), true, false, onPauseChanged = {}, onRestartRace = {}, onOpenSettings = {}, onQuitToMenu = {})
+    }
+
+    @Test
+    @Config(qualifiers = "w800dp-h360dp-land-xhdpi")
+    fun s15_hudSmallPhone() = shot("15_hud_small_phone", "textures/backdrops/room_studio.jpg") {
+        RaceScreen(raceHud.copy(minimapDots = dots(), standings = standings), profile, InputState(), false, true, onPauseChanged = {}, onRestartRace = {}, onOpenSettings = {}, onQuitToMenu = {})
+    }
+
+    @Test
+    fun s16_garageLivery() = shot("16_garage_livery", before = { rule.onNodeWithTag("garage_tab_2").performClick() }) {
+        GarageScreen(profile = profile, onNameChanged = {}, onColorSelected = {}, onBodySelected = {}, onBack = {})
     }
 
     @Suppress("unused")

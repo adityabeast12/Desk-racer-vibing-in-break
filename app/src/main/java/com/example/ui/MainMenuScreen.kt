@@ -135,6 +135,17 @@ fun MainMenuScreen(
                     )
                 )
         )
+        // top-left and bottom-left scrims so the logo / player chip read on bright showroom scenes
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(Brush.radialGradient(listOf(DR.Bg.copy(alpha = 0.75f), Color.Transparent), center = androidx.compose.ui.geometry.Offset(0f, 0f), radius = 900f))
+        )
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(Brush.verticalGradient(0.7f to Color.Transparent, 1f to DR.Bg.copy(alpha = 0.7f)))
+        )
         Box(
             Modifier
                 .fillMaxSize()
@@ -194,7 +205,8 @@ fun MainMenuScreen(
                 DRButton(
                     text = "How to play",
                     icon = Icons.AutoMirrored.Rounded.HelpOutline,
-                    variant = DRButtonVariant.GHOST,
+                    variant = DRButtonVariant.SECONDARY,
+                    size = DRButtonSize.S,
                     onClick = onOpenHowToConnect,
                     testTag = "btn_how_to_connect"
                 )
@@ -277,7 +289,7 @@ private fun RaceSetupScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(DR.Bg.copy(alpha = 0.96f))
+            .background(DR.Bg)
             .clickable(interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, indication = null) {}
             .windowInsetsPadding(WindowInsets.safeDrawing.union(WindowInsets.displayCutout))
             .padding(horizontal = 16.dp, vertical = 12.dp)

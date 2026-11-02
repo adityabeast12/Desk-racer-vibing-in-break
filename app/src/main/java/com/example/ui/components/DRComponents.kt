@@ -703,9 +703,13 @@ fun DRBadge(text: String, kind: DRBadgeKind = DRBadgeKind.AMBER, modifier: Modif
             .background(bg)
             .padding(horizontal = 7.dp, vertical = 2.dp)
     ) {
-        Text(text.uppercase(), style = DRType.LabelS.copy(fontSize = 9.5.sp, letterSpacing = 1.2.sp), color = fg, maxLines = 1)
+        Text(cleanLabel(text), style = DRType.LabelS.copy(fontSize = 9.5.sp, letterSpacing = 1.2.sp), color = fg, maxLines = 1)
     }
 }
+
+/** Strips decorative glyphs (★ ✓ • emoji) that Barlow/Kanit don't contain, then uppercases. */
+fun cleanLabel(text: String): String =
+    text.filter { it.isLetterOrDigit() || it in " .:/·+-%'#" }.trim().uppercase()
 
 /** Highlighter tag — max one per screen (YOUR BEST, NEW BEST, NEW). */
 @Composable
@@ -1031,8 +1035,10 @@ fun DRScreen(
 fun KartThumb(body: KartBodyType, modifier: Modifier = Modifier, locked: Boolean = false) {
     val context = LocalContext.current
     val bitmap = remember(body) {
-        val slug = body.drmAssetPath.substringAfterLast("kart_").substringBefore(".drm")
-        AssetRepository.loadUiBitmapStatic(context, "textures/ui/karts/$slug.png")?.asImageBitmap()
+        // drmAssetPath is e.g. models/kart_truck_red.drm or models/props/toy_car.drm → kart_truck_red.png / toy_car.png
+        val name = body.drmAssetPath.substringAfterLast('/').substringBeforeLast('.')
+        (AssetRepository.loadUiBitmapStatic(context, "textures/ui/karts/$name.png")
+            ?: AssetRepository.loadUiBitmapStatic(context, "textures/ui/karts/kart_$name.png"))?.asImageBitmap()
     }
     if (bitmap != null) {
         Image(

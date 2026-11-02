@@ -204,7 +204,7 @@ fun ActionButtons(
                     text = if (isRouletteSpinning) "SPIN" else "ITEM",
                     style = DRType.LabelS.copy(fontSize = 8.5.sp, shadow = HudTextShadow),
                     color = if (hasItem) DR.Amber else DR.TextLo,
-                    modifier = Modifier.align(Alignment.BottomEnd).padding(end = 8.dp, bottom = 3.dp)
+                    modifier = Modifier.align(Alignment.BottomStart).padding(start = 7.dp, bottom = 3.dp)
                 )
             }
         }

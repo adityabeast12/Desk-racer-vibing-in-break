@@ -218,7 +218,7 @@ fun RaceScreen(
             val actionsZoneEnum = if (profile.leftHandedMirror) HudZone.BOTTOM_LEFT else HudZone.BOTTOM_RIGHT
             val sorted = hudState.standings.sortedBy { it.position }
 
-            HudLayout(
+            if (!pauseMenuOpen) HudLayout(
                 applySafeInsets = applySafeInsets,
                 showDebugZones = profile.showHudDebugZones,
                 modifier = Modifier.fillMaxSize()
