@@ -85,7 +85,7 @@ fun SteerZone(
 ) {
     val density = LocalDensity.current
     val view = LocalView.current
-    val fullLockPx = with(density) { 64.dp.toPx() }
+    val fullLockPx = with(density) { 72.dp.toPx() }
     val deadZonePx = with(density) { 6.dp.toPx() }
     val exclusionHeightPx = with(density) { 200.dp.roundToPx() }
     val exclusionWidthPx = with(density) { 48.dp.roundToPx() }
@@ -165,6 +165,13 @@ fun SteerZone(
                                     pointerActive = false
                                 } else {
                                     currentX = change.position.x
+                                    // v6: floating anchor — once the thumb passes full lock, the anchor
+                                    // follows it, so reversing direction responds instantly instead of
+                                    // needing to drag all the way back past the original touch point.
+                                    val rawDx = currentX - anchorX
+                                    if (abs(rawDx) > fullLockPx) {
+                                        anchorX = currentX - sign(rawDx) * fullLockPx
+                                    }
                                     val dx = currentX - anchorX
                                     val absDx = abs(dx)
                                     targetSteer = if (absDx <= deadZonePx) {

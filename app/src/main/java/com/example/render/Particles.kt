@@ -55,7 +55,11 @@ class Particles(private val maxParticles: Int = 240) {
         celebrationConfettiActive: Boolean = false,
         focusKart: RenderKartSnapshot? = null
     ) {
+        // v6: emission was per draw call, so 90/120 Hz screens spawned 1.5-2x the particles.
+        // Gate emission to a 60 Hz-equivalent rate regardless of refresh rate.
+        val emitThisFrame = Random.nextFloat() < (dt * 60f).coerceAtMost(1f)
         for (kart in karts) {
+            if (!emitThisFrame) break
             val backX = kart.x - sin(kart.headingRad) * 1.15f
             val backZ = kart.z - cos(kart.headingRad) * 1.15f
 
@@ -134,7 +138,7 @@ class Particles(private val maxParticles: Int = 240) {
         }
 
         // 5. Finish Line Celebration Confetti (Part D5)
-        if (celebrationConfettiActive && focusKart != null) {
+        if (celebrationConfettiActive && focusKart != null && emitThisFrame) {
             repeat(if (allowFullParticles) 4 else 2) {
                 val c = confettiColors[Random.nextInt(confettiColors.size)]
                 spawn(

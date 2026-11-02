@@ -1,6 +1,7 @@
 package com.example.game
 
 import com.example.data.Prefs
+import com.example.render.RenderInterp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -42,51 +43,73 @@ class GameLoop(
     fun start() {
         if (loopJob?.isActive == true) return
         loopJob = scope.launch {
+            // v6 fix: the simulation is driven by REAL elapsed time with a fixed-step accumulator.
+            // Previously one 1/60 s step ran per loop iteration, so a 33 ms throttle (thermal step-down
+            // or LOW graphics, which the step-down also persists) made the whole game run at half speed.
+            // Throttling now only changes how often we wake, never the game speed.
+            val stepNs = (GameConstants.SIM_DT * 1_000_000_000.0).toLong()
             var hudTickCounter = 0
             var netTickCounter = 0
+            var lastNs = System.nanoTime()
+            var accNs = 0L
+            RenderInterp.reset()
             while (isActive) {
-                val frameStartNs = System.nanoTime()
+                val nowNs = System.nanoTime()
+                val frameNs = (nowNs - lastNs).coerceIn(0L, MAX_FRAME_NS)
+                lastNs = nowNs
                 val settings = prefs.state.value
 
                 if (!isPausedSolo) {
-                    val input = inputState.consumeFrameInput()
-                    raceSession.stepFixed(
-                        dt = GameConstants.SIM_DT,
-                        localInput = input,
-                        autoAccelerate = settings.autoAccelerate,
-                        smartSteering = settings.smartSteering,
-                        showRocketStartTip = !settings.hasSeenRocketStartTip
-                    )
-                    val renderSnap = raceSession.buildWorldRenderSnapshot()
-                    latestRenderSnapshot.set(renderSnap)
-
-                    // Network state channel @ 30 Hz (every 2nd 60 Hz tick)
-                    netTickCounter++
-                    if (netTickCounter >= 2) {
-                        netTickCounter = 0
-                        onSimTickForNetwork?.invoke(renderSnap)
-                    }
-
-                    // Throttled HUD StateFlow @ 15 Hz (every 4th 60 Hz tick)
-                    hudTickCounter++
-                    if (hudTickCounter >= 4) {
-                        hudTickCounter = 0
-                        _hudState.value = raceSession.buildHudState(
-                            showRocketTipPref = !settings.hasSeenRocketStartTip
+                    accNs += frameNs
+                    var steps = 0
+                    while (accNs >= stepNs && steps < MAX_STEPS_PER_WAKE) {
+                        val input = inputState.consumeFrameInput()
+                        raceSession.stepFixed(
+                            dt = GameConstants.SIM_DT,
+                            localInput = input,
+                            autoAccelerate = settings.autoAccelerate,
+                            smartSteering = settings.smartSteering,
+                            showRocketStartTip = !settings.hasSeenRocketStartTip
                         )
+                        accNs -= stepNs
+                        steps++
+
+                        val renderSnap = raceSession.buildWorldRenderSnapshot()
+                        latestRenderSnapshot.set(renderSnap)
+                        RenderInterp.publish(renderSnap, nowNs - accNs)
+
+                        // Network state channel @ 30 Hz of sim time (every 2nd step)
+                        netTickCounter++
+                        if (netTickCounter >= 2) {
+                            netTickCounter = 0
+                            onSimTickForNetwork?.invoke(renderSnap)
+                        }
+
+                        // Throttled HUD StateFlow @ 15 Hz of sim time (every 4th step)
+                        hudTickCounter++
+                        if (hudTickCounter >= 4) {
+                            hudTickCounter = 0
+                            _hudState.value = raceSession.buildHudState(
+                                showRocketTipPref = !settings.hasSeenRocketStartTip
+                            )
+                        }
                     }
+                    if (steps >= MAX_STEPS_PER_WAKE) accNs = 0L // device stalled: drop backlog, don't spiral
+                } else {
+                    accNs = 0L
                 }
 
-                val elapsedMs = (System.nanoTime() - frameStartNs) / 1_000_000L
-                val targetFrameMs = if (settings.graphicsQuality == GraphicsQuality.LOW || thermalThrottle30Fps) {
-                    33L
-                } else {
-                    16L
-                }
-                val sleepMs = (targetFrameMs - elapsedMs).coerceAtLeast(2L)
+                val throttled = settings.graphicsQuality == GraphicsQuality.LOW || thermalThrottle30Fps
+                val untilNextStepMs = ((stepNs - accNs).coerceAtLeast(0L) / 1_000_000L)
+                val sleepMs = if (throttled) 30L else untilNextStepMs.coerceIn(2L, 16L)
                 delay(sleepMs)
             }
         }
+    }
+
+    private companion object {
+        const val MAX_FRAME_NS = 250_000_000L
+        const val MAX_STEPS_PER_WAKE = 8
     }
 
     fun forceHudRefresh() {

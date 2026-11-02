@@ -26,6 +26,8 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
+import kotlin.math.PI
+import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.hypot
 import kotlin.math.sin
@@ -58,6 +60,7 @@ class GameRenderer(
 
     @Volatile
     var garageTurntableYawRad: Float = 0.55f
+    private var lastDrawFrameNs: Long = 0L
 
     @Volatile
     var garageZoomFactor: Float = 1.0f
@@ -280,7 +283,11 @@ class GameRenderer(
             clearSkidMarks()
         }
 
-        val snap = snapshotRef.get()
+        // v6: measure the real frame time and draw a snapshot interpolated between sim steps
+        val frameNowNs = System.nanoTime()
+        val frameDt = if (lastDrawFrameNs == 0L) GameConstants.SIM_DT else ((frameNowNs - lastDrawFrameNs) / 1_000_000_000f).coerceIn(0.001f, 0.05f)
+        lastDrawFrameNs = frameNowNs
+        val snap = RenderInterp.resolve(snapshotRef.get(), frameNowNs)
         if (snap == null) {
             GLES20.glClearColor(0.043f, 0.063f, 0.125f, 1f)
             GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT or GLES20.GL_DEPTH_BUFFER_BIT)
@@ -308,7 +315,7 @@ class GameRenderer(
         val effectiveShowroomAngle = if (garageActive) garageTurntableYawRad else snap.showroomCameraAngleRad
 
         camera.updateChase(
-            dt = GameConstants.SIM_DT,
+            dt = frameDt,
             targetKart = localKart,
             phase = snap.phase,
             track = track,
@@ -549,7 +556,7 @@ class GameRenderer(
 
             // 6. Draw Functional Ramps & Sticky Boost Pads (with boost_chevrons.png decal)
             for (prop in track.props) {
-                drawFunctionalTrackProp(prop)
+                drawFunctionalTrackProp(prop, track)
             }
 
             // 7. Draw Real-World Textured DRM2 Landmark Props from Track JSON (Part D4, D9, D10)
@@ -741,7 +748,7 @@ class GameRenderer(
 
             // 15. Update & Draw Pooled Unlit Particles (Sparks, Flames, Stall Smoke, Confetti, Dust)
             particles.emitForKarts(
-                dt = GameConstants.SIM_DT,
+                dt = frameDt,
                 karts = snap.karts,
                 allowFullParticles = allowHighParticles,
                 celebrationConfettiActive = snap.celebrationConfettiActive,
@@ -1125,7 +1132,27 @@ class GameRenderer(
         }
     }
 
-    private fun drawFunctionalTrackProp(prop: TrackProp) {
+    /**
+     * v6: boost pad chevrons must point in the DRIVING direction. The chevron texture points to
+     * v=0 (quad local -Z) while kart forward is local +Z, and hand-authored pad yaws didn't always
+     * match the track — so derive the yaw from the spline tangent and add PI to flip the decal.
+     */
+    private val boostPadYawCache = HashMap<Long, Float>()
+
+    private fun boostPadDecalYawDeg(prop: TrackProp, track: Track): Float {
+        val key = (track.id.toLong() shl 40) xor (java.lang.Float.floatToIntBits(prop.x).toLong() shl 20) xor java.lang.Float.floatToIntBits(prop.z).toLong()
+        val yawRad = boostPadYawCache.getOrPut(key) {
+            if (track.samples.isEmpty()) {
+                prop.yawRad + PI.toFloat()
+            } else {
+                val nearest = track.findNearestSample(prop.x, prop.z).first
+                atan2(nearest.tangentX, nearest.tangentZ) + PI.toFloat()
+            }
+        }
+        return Math.toDegrees(yawRad.toDouble()).toFloat()
+    }
+
+    private fun drawFunctionalTrackProp(prop: TrackProp, track: Track) {
         val c1 = Meshes.hexToRgb(prop.colorHex)
         val yawDeg = Math.toDegrees(prop.yawRad.toDouble()).toFloat()
         val pitchDeg = Math.toDegrees(prop.pitchRad.toDouble()).toFloat()
@@ -1168,7 +1195,7 @@ class GameRenderer(
                 drawLitMeshRotated(
                     flatQuadXZ, boostChevronTex,
                     prop.x, prop.y + prop.sy + 0.02f, prop.z,
-                    0f, yawDeg, 0f,
+                    0f, boostPadDecalYawDeg(prop, track), 0f,
                     prop.sx * 0.92f, 1f, prop.sz * 0.92f,
                     1f, 1f, 1f, 0.98f,
                     roughness = 0.20f

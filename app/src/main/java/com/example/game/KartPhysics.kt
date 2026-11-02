@@ -25,6 +25,7 @@ class KartRuntime(
     var vx: Float = 0f
     var vy: Float = 0f
     var vz: Float = 0f
+    var groundedLastTick: Boolean = true
     var headingRad: Float = 0f
     var forwardSpeed: Float = 0f
 
@@ -115,6 +116,9 @@ class KartRuntime(
     val totalRaceProgress: Float
         get() = raceDistance
 }
+
+private const val GROUND_STICK_MAX_GAP = 0.30f
+private const val EDGE_PUSHBACK_PER_TICK = 0.35f
 
 object KartPhysics {
 
@@ -567,7 +571,9 @@ object KartPhysics {
                 kart.headingRad += pullError.coerceIn(-0.6f, 0.6f) * GameConstants.SMART_STEERING_PULL * dt
                 if (abs(signedLateral) > halfRoad * 0.96f) {
                     val clampLat = if (signedLateral > 0f) halfRoad * 0.96f else -halfRoad * 0.96f
-                    val excessLat = signedLateral - clampLat
+                    // v6: soft edge correction (was an instant per-tick snap, which made karts
+                    // shudder while grinding the track edge at top speed)
+                    val excessLat = (signedLateral - clampLat) * EDGE_PUSHBACK_PER_TICK
                     kart.x -= nearestSample.rightX * excessLat
                     kart.z -= nearestSample.rightZ * excessLat
                 }
@@ -702,6 +708,15 @@ object KartPhysics {
             supportY = -12f
         }
 
+        // v6: ground-stick. A kart that was on the ground last tick and is moving down a slope stays
+        // glued to it instead of micro-hopping every few ticks (visible as shaking at top speed).
+        if (kart.groundedLastTick && supportY >= -1f && kart.vy <= 0f) {
+            val gap = kart.y - supportY
+            if (gap > 0f && gap < GROUND_STICK_MAX_GAP) {
+                kart.y = supportY
+                kart.vy = 0f
+            }
+        }
         val wasAirborne = kart.y > supportY + 0.35f
         kart.y += kart.vy * dt
         if (kart.y > supportY) {
@@ -725,6 +740,7 @@ object KartPhysics {
             kart.trickArmedInAir = false
         }
 
+        kart.groundedLastTick = supportY >= -1f && kart.vy == 0f && kart.y <= supportY + 0.001f
         if (kart.y < GameConstants.FALL_OFF_Y) {
             kart.isRespawning = true
             kart.respawnTimerSec = GameConstants.LAKITU_RESPAWN_SEC
