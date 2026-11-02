@@ -1,167 +1,150 @@
 package com.example.ui.hud
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.UTurnLeft
+import androidx.compose.material.icons.rounded.Timer
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.ui.theme.ArcadeCrimson
-import com.example.ui.theme.GasGreen
-import com.example.ui.theme.Poppins
-import com.example.ui.theme.RulerYellow
-import com.example.ui.theme.SkyCyan
+import com.example.ui.components.DRKerbStrip
+import com.example.ui.theme.DR
+import com.example.ui.theme.DRShape
+import com.example.ui.theme.DRType
 import java.util.Locale
 
+/**
+ * v6 centre overlays (the only things allowed in the centre, and only while true):
+ * countdown (amber Display numerals on a dark band), wrong-way plate, lap/final-lap banner on a
+ * kerb band, and the post-first-finish "race ends in" pill. Event toasts live in [HudEventFeed].
+ */
 @Composable
 fun CountdownOverlay(
     countdownNumber: Int,
     showRocketStartTip: Boolean,
     isWrongWay: Boolean,
     bannerText: String?,
-    toastText: String?,
+    toastText: String? = null,
     dnfCountdownSec: Int = -1,
     modifier: Modifier = Modifier
 ) {
+    val band = Brush.horizontalGradient(
+        0f to Color.Transparent,
+        0.25f to DR.Bg.copy(alpha = 0.75f),
+        0.75f to DR.Bg.copy(alpha = 0.75f),
+        1f to Color.Transparent
+    )
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically)
     ) {
-        // 0. 30-second DNF Countdown after first racer finishes (Part B4)
-        AnimatedVisibility(
-            visible = dnfCountdownSec >= 0,
-            enter = fadeIn(),
-            exit = fadeOut()
-        ) {
-            Box(
+        AnimatedVisibility(visible = dnfCountdownSec >= 0, enter = fadeIn(), exit = fadeOut()) {
+            Row(
                 modifier = Modifier
-                    .background(Color(0xD90F172A), RoundedCornerShape(10.dp))
-                    .border(1.5.dp, ArcadeCrimson, RoundedCornerShape(10.dp))
-                    .padding(horizontal = 16.dp, vertical = 4.dp)
-                    .testTag("hud_dnf_countdown")
+                    .clip(DRShape.Card)
+                    .background(DR.HudPlate2)
+                    .padding(horizontal = 14.dp, vertical = 6.dp)
+                    .testTag("hud_dnf_countdown"),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Text(
-                    text = String.format(Locale.US, "RACE ENDS IN 0:%02d", dnfCountdownSec.coerceAtLeast(0)),
-                    fontFamily = Poppins,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 13.sp,
-                    color = RulerYellow
-                )
+                Icon(Icons.Rounded.Timer, contentDescription = null, tint = DR.Bad, modifier = Modifier.size(18.dp))
+                Text("RACE ENDS IN", style = DRType.Label.copy(fontSize = 12.sp), color = DR.TextHi)
+                Text(String.format(Locale.US, "0:%02d", dnfCountdownSec.coerceAtLeast(0)), style = DRType.NumL, color = DR.Amber)
             }
         }
 
-        // 1. 3-2-1-GO Countdown
-        AnimatedVisibility(
-            visible = countdownNumber in 0..3,
-            enter = fadeIn(),
-            exit = fadeOut()
-        ) {
-            val label = if (countdownNumber == 0) "GO!" else "$countdownNumber"
-            val color = when (countdownNumber) {
-                3 -> ArcadeCrimson
-                2 -> RulerYellow
-                1 -> SkyCyan
-                else -> GasGreen
-            }
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Box(
-                    modifier = Modifier
-                        .background(Color(0xCC0F172A), RoundedCornerShape(20.dp))
-                        .border(2.5.dp, color, RoundedCornerShape(20.dp))
-                        .padding(horizontal = 32.dp, vertical = 12.dp)
-                        .testTag("hud_countdown")
-                ) {
-                    Text(
-                        text = label,
-                        fontFamily = Poppins,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 44.sp,
-                        color = color
-                    )
+        AnimatedVisibility(visible = countdownNumber in 0..3, enter = fadeIn(tween(120)), exit = fadeOut(tween(200))) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.testTag("hud_countdown")) {
+                Box(Modifier.fillMaxWidth().background(band), contentAlignment = Alignment.Center) {
+                    AnimatedContent(
+                        targetState = countdownNumber,
+                        transitionSpec = {
+                            (scaleIn(spring(0.55f, 500f), initialScale = 1.4f) + fadeIn(tween(80)))
+                                .togetherWith(fadeOut(tween(160)))
+                        },
+                        label = "countdown_num"
+                    ) { n ->
+                        Text(
+                            text = if (n == 0) "GO!" else "$n",
+                            style = DRType.DisplayXL.copy(fontSize = if (n == 0) 104.sp else 128.sp, lineHeight = 120.sp, shadow = HudTextShadow),
+                            color = if (n == 0) DR.Ok else DR.Amber,
+                            textAlign = TextAlign.Center
+                        )
+                    }
                 }
                 if (showRocketStartTip && countdownNumber in 1..3) {
                     Text(
-                        text = "TIP: Tap GAS in the 0.35s window right as '2' fades for a ROCKET START!",
-                        fontFamily = Poppins,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 11.sp,
-                        color = RulerYellow,
-                        modifier = Modifier
-                            .padding(top = 6.dp)
-                            .background(Color(0xCC0F172A), RoundedCornerShape(8.dp))
-                            .padding(horizontal = 10.dp, vertical = 4.dp)
+                        text = "HOLD GAS AS “2” FADES FOR A ROCKET START",
+                        style = DRType.LabelS.copy(fontSize = 11.sp, shadow = HudTextShadow),
+                        color = DR.TextMid,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(top = 4.dp)
                     )
                 }
             }
         }
 
-        // 2. WRONG WAY Warning
-        AnimatedVisibility(
-            visible = isWrongWay,
-            enter = fadeIn(),
-            exit = fadeOut()
-        ) {
-            Box(
+        AnimatedVisibility(visible = isWrongWay, enter = fadeIn(), exit = fadeOut()) {
+            Row(
                 modifier = Modifier
-                    .background(Color(0xD97F1D1D), RoundedCornerShape(12.dp))
-                    .border(2.dp, ArcadeCrimson, RoundedCornerShape(12.dp))
-                    .padding(horizontal = 20.dp, vertical = 8.dp)
-                    .testTag("hud_wrong_way")
+                    .clip(DRShape.Card)
+                    .background(DR.Bad.copy(alpha = 0.92f))
+                    .padding(horizontal = 18.dp, vertical = 8.dp)
+                    .testTag("hud_wrong_way"),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Text(
-                    text = "⚠ WRONG WAY!",
-                    fontFamily = Poppins,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 20.sp,
-                    color = Color.White
-                )
+                Icon(Icons.Rounded.UTurnLeft, contentDescription = null, tint = Color.White, modifier = Modifier.size(24.dp))
+                Text("WRONG WAY", style = DRType.Title.copy(fontSize = 22.sp), color = Color.White)
             }
         }
 
-        // 3. Lap / Final Lap / Finish Banner
         AnimatedVisibility(
             visible = !bannerText.isNullOrBlank(),
-            enter = fadeIn(),
-            exit = fadeOut()
+            enter = slideInHorizontally(tween(220)) { it / 2 } + fadeIn(tween(160)),
+            exit = slideOutHorizontally(tween(200)) { -it / 2 } + fadeOut(tween(160))
         ) {
-            Box(
-                modifier = Modifier
-                    .background(Color(0xCC0F172A), RoundedCornerShape(12.dp))
-                    .border(1.5.dp, RulerYellow, RoundedCornerShape(12.dp))
-                    .padding(horizontal = 20.dp, vertical = 6.dp)
-                    .testTag("hud_banner")
-            ) {
-                Text(
-                    text = bannerText.orEmpty(),
-                    fontFamily = Poppins,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp,
-                    color = RulerYellow
-                )
+            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.testTag("hud_banner")) {
+                DRKerbStrip(Modifier.padding(horizontal = 40.dp))
+                Box(Modifier.fillMaxWidth().background(band).padding(vertical = 4.dp), contentAlignment = Alignment.Center) {
+                    Text(
+                        text = bannerText.orEmpty().uppercase(),
+                        style = DRType.Display.copy(fontSize = 38.sp, shadow = HudTextShadow),
+                        color = if (bannerText.orEmpty().contains("FINAL", ignoreCase = true)) DR.Amber else DR.TextHi,
+                        textAlign = TextAlign.Center,
+                        maxLines = 1
+                    )
+                }
+                DRKerbStrip(Modifier.padding(horizontal = 40.dp))
             }
-        }
-
-        // 4. Event Toasts ("Hit by <name>!", "<name> finished 1st!", "RESPAWN")
-        AnimatedVisibility(
-            visible = !toastText.isNullOrBlank(),
-            enter = fadeIn(),
-            exit = fadeOut()
-        ) {
-            Toasts(message = toastText.orEmpty())
         }
     }
 }

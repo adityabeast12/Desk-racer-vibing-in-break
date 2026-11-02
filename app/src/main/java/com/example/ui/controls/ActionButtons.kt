@@ -55,7 +55,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.R
 import com.example.game.InputState
+import com.example.game.ItemType
 import com.example.ui.hud.HudTextShadow
+import com.example.ui.hud.ItemModelMiniGlyph
+import com.example.ui.theme.DR
+import com.example.ui.theme.DRShape
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import com.example.ui.theme.BoostCyan
 import com.example.ui.theme.DRType
 import com.example.ui.theme.DangerCoral
@@ -83,6 +90,9 @@ fun ActionButtons(
     sparkTier: Int = 0,
     opacity: Float = 0.90f,
     buttonScale: Float = 1.00f,
+    heldItem: ItemType = ItemType.NONE,
+    isRouletteSpinning: Boolean = false,
+    rouletteDisplayItem: ItemType = ItemType.NONE,
     modifier: Modifier = Modifier
 ) {
     val view = LocalView.current
@@ -111,24 +121,28 @@ fun ActionButtons(
     val clampedScale = buttonScale.coerceIn(0.85f, 1.15f)
     val clampedOpacity = opacity.coerceIn(0.30f, 1.00f)
 
-    // Visual sizes at 100% (Part F4): DRIFT 84 dp, ITEM 68 dp, BRAKE 52 dp
-    val itemVisualDp = 68.dp * clampedScale
-    val itemHitDp = (itemVisualDp * 1.25f).coerceAtLeast(64.dp)
+    // v6 visual sizes at 100%: ITEM 72, BRAKE 64x52, DRIFT 96x88, GAS 76x128 (parallelograms/chamfers)
+    val plateAlpha = (0.30f + 0.45f * clampedOpacity).coerceIn(0.3f, 0.8f)
+    val itemVisualDp = 72.dp * clampedScale
+    val itemHitDp = itemVisualDp + 10.dp
 
-    val brakeVisualDp = 52.dp * clampedScale
-    val brakeHitDp = (brakeVisualDp * 1.25f).coerceAtLeast(56.dp)
+    val brakeVisualDp = 56.dp * clampedScale
+    val brakeHitDp = brakeVisualDp + 8.dp
 
-    val driftVisualDp = 84.dp * clampedScale
-    val driftHitDp = (driftVisualDp * 1.25f).coerceAtLeast(84.dp)
+    val driftVisualDp = 92.dp * clampedScale
+    val driftHitDp = driftVisualDp + 10.dp
 
-    val gasVisualDp = 64.dp * clampedScale
-    val gasHitDp = (gasVisualDp * 1.25f).coerceAtLeast(64.dp)
+    val gasVisualDp = 76.dp * clampedScale
+    val gasHitDp = gasVisualDp + 10.dp
+    val shownItem = if (isRouletteSpinning) rouletteDisplayItem else heldItem
+    val hasItem = shownItem != ItemType.NONE || isRouletteSpinning
 
     Row(
-        modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        modifier = modifier.padding(end = 4.dp, bottom = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.Bottom
     ) {
+      Column(verticalArrangement = Arrangement.spacedBy(6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         // Left column: ITEM button (visual 68 dp, hit area 1.25x = 85 dp)
         var itemPressed by remember { mutableStateOf(false) }
         val itemDesc = stringResource(R.string.cd_item_slot)
@@ -177,53 +191,37 @@ fun ActionButtons(
                 modifier = Modifier
                     .size(itemVisualDp)
                     .scale(if (itemPressed) 0.94f else 1f)
-                    .clip(CircleShape)
-                    .background(HotPink.copy(alpha = 0.82f * clampedOpacity))
-                    .border(2.dp, Color.White.copy(alpha = 0.78f), CircleShape)
+                    .clip(DRShape.HudSkew)
+                    .background(DR.Bg.copy(alpha = plateAlpha))
+                    .border(if (hasItem) 2.dp else 1.dp, if (hasItem) DR.Amber else DR.HudLine, DRShape.HudSkew)
             ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = "ITEM",
-                        style = DRType.Label.copy(
-                            fontWeight = FontWeight.W800,
-                            fontSize = 12.sp,
-                            shadow = HudTextShadow
-                        ),
-                        color = TextPrimary,
-                        textAlign = TextAlign.Center,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Text(
-                        text = "▼ BACK",
-                        style = DRType.Caption.copy(
-                            fontSize = 8.sp,
-                            fontWeight = FontWeight.W700
-                        ),
-                        color = TextPrimary.copy(alpha = 0.85f),
-                        maxLines = 1
-                    )
+                if (hasItem) {
+                    ItemModelMiniGlyph(item = shownItem, showItemBoxWhenEmpty = true, modifier = Modifier.size(itemVisualDp * 0.72f))
+                } else {
+                    Text("EMPTY", style = DRType.LabelS.copy(fontSize = 9.sp), color = DR.TextLo, maxLines = 1)
                 }
+                Text(
+                    text = if (isRouletteSpinning) "SPIN" else "ITEM",
+                    style = DRType.LabelS.copy(fontSize = 8.5.sp, shadow = HudTextShadow),
+                    color = if (hasItem) DR.Amber else DR.TextLo,
+                    modifier = Modifier.align(Alignment.BottomEnd).padding(end = 8.dp, bottom = 3.dp)
+                )
             }
         }
 
-        // Middle column: BRAKE (52 dp visual) above DRIFT (84 dp visual)
-        Column(
-            verticalArrangement = Arrangement.spacedBy(2.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            ControlCircleButton(
-                label = "BRAKE",
-                contentDesc = stringResource(R.string.cd_brake),
-                testTag = "btn_action_brake",
-                visualSize = brakeVisualDp,
-                hitSize = brakeHitDp,
-                fontSizeSp = 10f,
-                baseColor = InkSurface.copy(alpha = 0.82f * clampedOpacity),
-                activeColor = DangerCoral,
-                view = view,
-                onPressChanged = { pressed -> inputState.brakePressed = pressed }
-            )
+        ControlPadButton(
+            label = "BRAKE",
+            contentDesc = stringResource(R.string.cd_brake),
+            testTag = "btn_action_brake",
+            width = brakeVisualDp * 1.15f,
+            height = brakeVisualDp * 0.9f,
+            hitPad = 4.dp,
+            plateAlpha = plateAlpha,
+            activeColor = DR.Bad,
+            view = view,
+            onPressChanged = { pressed -> inputState.brakePressed = pressed }
+        )
+      }
 
             // DRIFT button (84 dp visual, 1.25x hit area, tier colour fill & ready pulse)
             var driftPressed by remember { mutableStateOf(false) }
@@ -266,63 +264,47 @@ fun ActionButtons(
                 Box(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier
-                        .size(driftVisualDp)
+                        .size(width = driftVisualDp, height = driftVisualDp * 0.92f)
                         .scale(driftScale)
-                        .clip(CircleShape)
-                        .background(
-                            when {
-                                sparkTier >= 1 -> tierRingColor.copy(alpha = 0.88f)
-                                driftPressed -> LampAmber.copy(alpha = 0.92f)
-                                else -> LampAmber.copy(alpha = 0.78f * clampedOpacity)
-                            }
-                        )
+                        .clip(DRShape.HudSkew)
+                        .background(DR.Bg.copy(alpha = plateAlpha))
                         .border(
-                            width = 2.5.dp,
-                            color = if (sparkTier >= 1) Color.White else Color.White.copy(alpha = 0.75f),
-                            shape = CircleShape
+                            2.dp,
+                            if (sparkTier >= 1) DR.Boost else if (driftPressed) DR.TextHi else DR.HudLine,
+                            DRShape.HudSkew
                         )
                 ) {
-                    if (driftChargeRatio > 0.02f || sparkTier > 0) {
-                        Canvas(modifier = Modifier.matchParentSize()) {
-                            val strokeW = 5.dp.toPx()
-                            val pad = strokeW * 0.7f
-                            drawArc(
-                                color = if (sparkTier >= 1) Color.White else tierRingColor,
-                                startAngle = -90f,
-                                sweepAngle = 360f * driftChargeRatio.coerceIn(0f, 1f),
-                                useCenter = false,
-                                topLeft = Offset(pad, pad),
-                                size = Size(size.width - pad * 2f, size.height - pad * 2f),
-                                style = Stroke(width = strokeW, cap = StrokeCap.Round)
-                            )
-                        }
-                    }
+                    // charge fills from the bottom in boost cyan
+                    Box(
+                        Modifier
+                            .align(Alignment.BottomCenter)
+                            .fillMaxWidth()
+                            .fillMaxHeight(driftChargeRatio.coerceIn(0f, 1f))
+                            .background(DR.Boost.copy(alpha = if (sparkTier >= 1) 0.55f else 0.32f))
+                    )
                     Text(
-                        text = if (sparkTier >= 1) "RELEASE!" else "DRIFT",
-                        style = DRType.Label.copy(
-                            fontWeight = FontWeight.W900,
-                            fontSize = if (sparkTier >= 1) 11.sp else 14.sp
-                        ),
-                        color = NightNavy,
+                        text = if (sparkTier >= 1) "RELEASE" else "DRIFT",
+                        style = DRType.Title.copy(fontSize = if (sparkTier >= 1) 15.sp else 18.sp, shadow = HudTextShadow),
+                        color = DR.TextHi,
                         textAlign = TextAlign.Center,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        maxLines = 1
                     )
                 }
             }
-        }
 
-        // Right column: GAS / ROCKET START button
-        ControlCircleButton(
-            label = if (!autoAccelerate) "GAS" else "BOOST\nSTART",
+        // Right: tall GAS pedal (ROCKET START when auto-accelerate is on)
+        ControlPadButton(
+            label = if (!autoAccelerate) "GAS" else "ROCKET\nSTART",
             contentDesc = stringResource(R.string.cd_gas),
             testTag = "btn_action_gas",
-            visualSize = gasVisualDp,
-            hitSize = gasHitDp,
-            fontSizeSp = if (!autoAccelerate) 13f else 10f,
-            baseColor = SuccessLime.copy(alpha = 0.80f * clampedOpacity),
-            activeColor = Color(0xFFBEF264),
-            textColor = NightNavy,
+            width = gasVisualDp,
+            height = gasVisualDp * 1.62f,
+            hitPad = 5.dp,
+            plateAlpha = plateAlpha,
+            activeColor = DR.Amber,
+            idleTint = DR.Amber.copy(alpha = 0.22f + 0.18f * clampedOpacity),
+            borderIdle = DR.AmberHi.copy(alpha = 0.8f),
+            skew = true,
             view = view,
             onPressChanged = { pressed -> inputState.gasPressed = pressed }
         )
@@ -330,24 +312,27 @@ fun ActionButtons(
 }
 
 @Composable
-private fun ControlCircleButton(
+private fun ControlPadButton(
     label: String,
     contentDesc: String,
     testTag: String,
-    visualSize: Dp,
-    hitSize: Dp,
-    fontSizeSp: Float,
-    baseColor: Color,
+    width: Dp,
+    height: Dp,
+    hitPad: Dp,
+    plateAlpha: Float,
     activeColor: Color,
-    textColor: Color = TextPrimary,
     view: View,
+    idleTint: Color? = null,
+    borderIdle: Color = DR.HudLine,
+    skew: Boolean = false,
     onPressChanged: (Boolean) -> Unit
 ) {
     var pressed by remember { mutableStateOf(false) }
+    val shape = if (skew) DRShape.HudSkew else DRShape.HudPad
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
-            .size(hitSize)
+            .size(width = width + hitPad * 2, height = height + hitPad * 2)
             .semantics { contentDescription = contentDesc }
             .pointerInput(testTag) {
                 awaitEachGesture {
@@ -370,20 +355,16 @@ private fun ControlCircleButton(
         Box(
             contentAlignment = Alignment.Center,
             modifier = Modifier
-                .size(visualSize)
-                .scale(if (pressed) 0.94f else 1f)
-                .clip(CircleShape)
-                .background(if (pressed) activeColor else baseColor)
-                .border(2.dp, if (pressed) Color.White else InkBorder, CircleShape)
+                .size(width = width, height = height)
+                .scale(if (pressed) 0.95f else 1f)
+                .clip(shape)
+                .background(if (pressed) activeColor.copy(alpha = 0.85f) else (idleTint ?: DR.Bg.copy(alpha = plateAlpha)))
+                .border(if (pressed) 2.dp else 1.5.dp, if (pressed) Color.White else borderIdle, shape)
         ) {
             Text(
                 text = label,
-                style = DRType.Label.copy(
-                    fontWeight = FontWeight.W800,
-                    fontSize = fontSizeSp.sp,
-                    lineHeight = (fontSizeSp + 2f).sp
-                ),
-                color = if (pressed) NightNavy else textColor,
+                style = DRType.Label.copy(fontSize = 12.sp, lineHeight = 14.sp, shadow = HudTextShadow),
+                color = if (pressed) DR.OnAmber else DR.TextHi,
                 textAlign = TextAlign.Center,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis

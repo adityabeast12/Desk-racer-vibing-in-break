@@ -33,12 +33,12 @@ import kotlin.math.roundToInt
  * Part F1 & F5: Translucent 45% black glass (`#73000000`), 1 dp white 12% border (`#1FFFFFFF`),
  * and 1 dp black 50% text drop shadow for HUD legibility over bright desk textures.
  */
-val HudGlassBg = Color(0x73000000)
-val HudGlassBorder = Color(0x1FFFFFFF)
+val HudGlassBg = Color(0x8C0C0D10)      // v6 HudPlate2 (55% Bg)
+val HudGlassBorder = Color(0x38FFFFFF)  // 22% white
 val HudTextShadow = Shadow(
-    color = Color(0x80000000),
-    offset = Offset(0f, 1.5f),
-    blurRadius = 2.5f
+    color = Color(0x8C000000),
+    offset = Offset(0f, 2f),
+    blurRadius = 6f
 )
 
 /**
@@ -52,15 +52,17 @@ enum class HudZone(
     val bottomFrac: Float,
     val align: Alignment
 ) {
-    TOP_LEFT(0.00f, 0.00f, 0.24f, 0.20f, Alignment.TopStart),
-    TOP_CENTER(0.32f, 0.00f, 0.68f, 0.14f, Alignment.TopCenter),
-    TOP_RIGHT(0.76f, 0.00f, 1.00f, 0.20f, Alignment.TopEnd),
-    LEFT_MID(0.00f, 0.24f, 0.18f, 0.56f, Alignment.CenterStart),
-    RIGHT_MID(0.84f, 0.24f, 1.00f, 0.56f, Alignment.CenterEnd),
+    // v6 layout: position+lap+time+coins top-left, pause+minimap top-right, event feed under the
+    // position block, steer bottom-left, speed plate bottom-centre, item/brake/drift/gas bottom-right.
+    TOP_LEFT(0.00f, 0.00f, 0.30f, 0.42f, Alignment.TopStart),
+    TOP_CENTER(0.34f, 0.00f, 0.66f, 0.16f, Alignment.TopCenter),
+    TOP_RIGHT(0.76f, 0.00f, 1.00f, 0.44f, Alignment.TopEnd),
+    LEFT_MID(0.00f, 0.44f, 0.30f, 0.56f, Alignment.CenterStart),
+    RIGHT_MID(0.84f, 0.46f, 1.00f, 0.54f, Alignment.CenterEnd),
     BOTTOM_LEFT(0.00f, 0.58f, 0.40f, 1.00f, Alignment.BottomStart),
-    BOTTOM_CENTER(0.42f, 0.78f, 0.58f, 1.00f, Alignment.BottomCenter),
-    BOTTOM_RIGHT(0.60f, 0.58f, 1.00f, 1.00f, Alignment.BottomEnd),
-    CENTER(0.28f, 0.22f, 0.72f, 0.66f, Alignment.Center)
+    BOTTOM_CENTER(0.40f, 0.80f, 0.60f, 1.00f, Alignment.BottomCenter),
+    BOTTOM_RIGHT(0.60f, 0.56f, 1.00f, 1.00f, Alignment.BottomEnd),
+    CENTER(0.28f, 0.20f, 0.72f, 0.70f, Alignment.Center)
 }
 
 /**
@@ -181,9 +183,6 @@ fun HudLayout(
                 if (zone == HudZone.RIGHT_MID && isNarrow600) {
                     zoneW = 0
                     zoneH = 0
-                } else if (zone == HudZone.LEFT_MID) {
-                    zoneW = min(zoneW, minimapCapPx)
-                    zoneH = min(zoneH, minimapCapPx)
                 }
 
                 val measureMaxW = if (zoneW == 0) 0 else ((zoneW / 0.75f).roundToInt()).coerceAtLeast(zoneW)

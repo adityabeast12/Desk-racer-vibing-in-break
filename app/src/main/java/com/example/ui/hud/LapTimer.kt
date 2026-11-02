@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.sp
 import com.example.ui.theme.BoostCyan
 import com.example.ui.theme.DRType
 import com.example.ui.theme.TextPrimary
+import com.example.ui.theme.TextSecondary
 import java.util.Locale
 
 /**
@@ -31,38 +32,19 @@ fun LapTimer(
     bestLapMs: Long,
     modifier: Modifier = Modifier
 ) {
-    Column(
-        modifier = modifier
-            .widthIn(min = 98.dp, max = 164.dp)
-            .background(HudGlassBg, RoundedCornerShape(10.dp))
-            .border(1.dp, HudGlassBorder, RoundedCornerShape(10.dp))
-            .padding(horizontal = 10.dp, vertical = 3.dp)
-            .testTag("hud_lap_timer"),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
+    Column(modifier = modifier.testTag("hud_lap_timer"), horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             text = formatRaceTime(raceTimeMs),
-            style = DRType.TabularSubtitle.copy(
-                fontSize = 15.sp,
-                fontWeight = FontWeight.W800,
-                shadow = HudTextShadow
-            ),
+            style = DRType.NumL.copy(shadow = HudTextShadow),
             color = TextPrimary,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
+            maxLines = 1
         )
         if (bestLapMs > 0L) {
             Text(
                 text = "BEST ${formatRaceTime(bestLapMs)}",
-                style = DRType.Caption.copy(
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.W700,
-                    fontFeatureSettings = "tnum",
-                    shadow = HudTextShadow
-                ),
-                color = BoostCyan,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                style = DRType.NumS.copy(shadow = HudTextShadow),
+                color = TextSecondary,
+                maxLines = 1
             )
         }
     }

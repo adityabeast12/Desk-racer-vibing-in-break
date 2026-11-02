@@ -72,6 +72,7 @@ import com.example.ui.ShopScreen
 import com.example.ui.hud.HudCoverageMetrics
 import com.example.ui.hud.Toasts
 import com.example.ui.theme.DriftAmber
+import com.example.ui.bodyCoinPrice
 import com.example.ui.theme.Poppins
 import com.example.ui.theme.RulerYellow
 import kotlinx.coroutines.delay
@@ -461,6 +462,20 @@ fun DeskRacerAppRoot(
                     onResetTurntable = {
                         raceSession.updateGarageStageControls(resetView = true)
                         gameLoop.forceHudRefresh()
+                    },
+                    onPreviewLoadout = { body, colorIdx, liveryIdx, finishIdx ->
+                        raceSession.setupShowroom(
+                            playerName = prefs.state.value.playerName,
+                            colorHex = GameConstants.KART_COLORS[colorIdx],
+                            bodyType = body,
+                            trackId = selectedSoloTrackId,
+                            liveryIndex = liveryIdx,
+                            paintFinishIndex = finishIdx
+                        )
+                        gameLoop.forceHudRefresh()
+                    },
+                    onBuyBody = { body ->
+                        prefs.unlockShopItem("body_${body.id}", bodyCoinPrice(body), 0)
                     },
                     onBack = { currentScreen = Screen.MainMenu }
                 )

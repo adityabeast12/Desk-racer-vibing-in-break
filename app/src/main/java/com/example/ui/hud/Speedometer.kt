@@ -1,42 +1,34 @@
 package com.example.ui.hud
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.ui.theme.BoostCyan
+import com.example.ui.theme.DR
 import com.example.ui.theme.DRType
-import com.example.ui.theme.InkElevated
-import com.example.ui.theme.LampAmber
-import com.example.ui.theme.SuccessLime
-import com.example.ui.theme.TextPrimary
+import com.example.ui.theme.SkewShape
 
 /**
- * Part F2, F4, F5, F6:
- * - Speedometer: compact 120 x 32 dp bar + number inside BOTTOM_CENTER (43-57% w x 84-100% h).
- * - Contextual hiding (Part F5): hides the "SPEED" label after the player's first 3 completed races
- *   (still displays drift spark tier labels while drifting).
- * - Uses 45% black glass (#73000000) with 1 dp white 12% border (#1FFFFFFF) and drop shadow on text.
+ * v6 bottom-centre speed plate: italic tabular speed + KM/H, and a skewed cyan drift-charge bar.
+ * Cyan is reserved for boost/drift. Tier name appears when a mini-turbo is charged.
  */
 @Composable
 fun Speedometer(
@@ -45,91 +37,55 @@ fun Speedometer(
     isDrifting: Boolean,
     driftChargeRatio: Float,
     sparkTier: Int,
-    showSpeedLabel: Boolean = true,
     modifier: Modifier = Modifier
 ) {
-    val tierColor = when (sparkTier) {
-        3 -> Color(0xFFA855F7) // Purple Ultra Mini-Turbo
-        2 -> LampAmber         // Orange Super Mini-Turbo
-        1 -> BoostCyan         // Blue Mini-Turbo
-        else -> SuccessLime
+    val charge by animateFloatAsState(driftChargeRatio.coerceIn(0f, 1f), tween(90), label = "drift_charge")
+    val tierLabel = when (sparkTier) {
+        3 -> "ULTRA BOOST"
+        2 -> "SUPER BOOST"
+        1 -> "MINI BOOST"
+        else -> if (isDrifting) "DRIFT" else "DRIFT BOOST"
     }
-    val tierLabel: String? = when (sparkTier) {
-        3 -> "PURPLE ULTRA!"
-        2 -> "ORANGE SUPER!"
-        1 -> "BLUE TURBO!"
-        else -> when {
-            isDrifting -> "DRIFT"
-            showSpeedLabel -> "SPEED"
-            else -> null
-        }
-    }
-
     Column(
         modifier = modifier
-            .width(120.dp)
-            .heightIn(min = 32.dp)
-            .background(HudGlassBg, RoundedCornerShape(10.dp))
-            .border(1.dp, HudGlassBorder, RoundedCornerShape(10.dp))
-            .padding(horizontal = 8.dp, vertical = 4.dp)
+            .width(176.dp)
+            .clip(SkewShape(8f))
+            .background(DR.HudPlate2)
+            .padding(horizontal = 14.dp, vertical = 5.dp)
             .testTag("hud_speedometer"),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Row(
-            verticalAlignment = Alignment.Bottom,
-            horizontalArrangement = Arrangement.SpaceBetween,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Row(verticalAlignment = Alignment.Bottom) {
-                Text(
-                    text = "$speedKmh",
-                    style = DRType.HudNumber.copy(
-                        fontSize = 16.sp,
-                        lineHeight = 17.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        shadow = HudTextShadow
-                    ),
-                    color = TextPrimary,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Spacer(modifier = Modifier.width(2.dp))
-                Text(
-                    text = "KM/H",
-                    style = DRType.Caption.copy(
-                        fontSize = 8.sp,
-                        fontWeight = FontWeight.W700,
-                        shadow = HudTextShadow
-                    ),
-                    color = BoostCyan,
-                    maxLines = 1
-                )
-            }
-            if (tierLabel != null) {
-                Text(
-                    text = tierLabel,
-                    style = DRType.Caption.copy(
-                        fontSize = 8.sp,
-                        fontWeight = FontWeight.W800,
-                        shadow = HudTextShadow
-                    ),
-                    color = tierColor,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
+        Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(
+                text = "${speedKmh.coerceAtLeast(0)}",
+                style = DRType.NumXL.copy(fontSize = 28.sp, shadow = HudTextShadow),
+                color = DR.TextHi,
+                maxLines = 1
+            )
+            Text("KM/H", style = DRType.LabelS.copy(fontSize = 10.sp), color = DR.TextMid, modifier = Modifier.padding(bottom = 5.dp))
         }
-
-        Spacer(modifier = Modifier.height(3.dp))
-        LinearProgressIndicator(
-            progress = { (if (isDrifting) driftChargeRatio else speedRatio).coerceIn(0f, 1f) },
-            modifier = Modifier
+        Box(
+            Modifier
                 .fillMaxWidth()
-                .height(4.dp)
-                .clip(RoundedCornerShape(2.dp)),
-            color = tierColor,
-            trackColor = InkElevated
+                .height(5.dp)
+                .clip(SkewShape(40f))
+                .background(Color0x73)
+        ) {
+            Box(
+                Modifier
+                    .fillMaxWidth(charge)
+                    .fillMaxHeight()
+                    .background(if (sparkTier > 0) DR.Boost else DR.Boost.copy(alpha = 0.6f))
+            )
+        }
+        Text(
+            text = tierLabel,
+            style = DRType.LabelS.copy(fontSize = 9.sp),
+            color = if (sparkTier > 0 || isDrifting) DR.Boost else DR.TextLo,
+            modifier = Modifier.padding(top = 3.dp),
+            maxLines = 1
         )
     }
 }
+
+private val Color0x73 = androidx.compose.ui.graphics.Color(0x73000000)

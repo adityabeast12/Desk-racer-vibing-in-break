@@ -58,6 +58,12 @@ import com.example.ui.theme.InkBorder
 import com.example.ui.theme.InkSurface
 import com.example.ui.theme.LampAmber
 import com.example.ui.theme.TextPrimary
+import com.example.ui.theme.DR
+import com.example.ui.theme.DRShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBackIos
+import androidx.compose.material.icons.automirrored.rounded.ArrowForwardIos
+import androidx.compose.material3.Icon
 import kotlinx.coroutines.delay
 import kotlin.math.abs
 import kotlin.math.pow
@@ -196,7 +202,7 @@ fun SteerZone(
                     val alphaScale = opacity.coerceIn(0.3f, 1f)
                     if (isTouching) {
                         drawCircle(
-                            color = BoostCyan.copy(alpha = 0.28f * alphaScale),
+                            color = Color.White.copy(alpha = 0.30f * alphaScale),
                             radius = fullLockPx,
                             center = Offset(anchorX, anchorY),
                             style = Stroke(width = 2.5f)
@@ -208,7 +214,7 @@ fun SteerZone(
                             style = Stroke(width = 1.5f)
                         )
                         drawCircle(
-                            color = BoostCyan.copy(alpha = 0.72f * alphaScale),
+                            color = DR.Amber.copy(alpha = 0.85f * alphaScale),
                             radius = 24f,
                             center = Offset(
                                 currentX.coerceIn(anchorX - fullLockPx, anchorX + fullLockPx),
@@ -225,7 +231,7 @@ fun SteerZone(
                             style = Stroke(width = 2f)
                         )
                         drawCircle(
-                            color = BoostCyan.copy(alpha = 0.30f * alphaScale),
+                            color = Color.White.copy(alpha = 0.30f * alphaScale),
                             radius = 16f,
                             center = Offset(cx, cy)
                         )
@@ -296,17 +302,17 @@ fun SteerZone(
                 ) {
                     Box(
                         modifier = Modifier
-                            .background(HudGlassBg, RoundedCornerShape(10.dp))
-                            .border(1.dp, HudGlassBorder, RoundedCornerShape(10.dp))
+                            .clip(DRShape.Control)
+                            .background(HudGlassBg)
                             .padding(horizontal = 10.dp, vertical = 4.dp)
                     ) {
                         Text(
-                            text = "GYRO TILT (±22°)",
+                            text = "TILT TO STEER",
                             style = DRType.Caption.copy(
                                 fontWeight = FontWeight.W700,
                                 shadow = HudTextShadow
                             ),
-                            color = BoostCyan,
+                            color = DR.TextMid,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -314,14 +320,14 @@ fun SteerZone(
                     Box(
                         contentAlignment = Alignment.Center,
                         modifier = Modifier
-                            .size(72.dp)
-                            .scale(if (leftBrakePressed) 0.94f else 1f)
-                            .clip(CircleShape)
+                            .size(width = 84.dp, height = 64.dp)
+                            .scale(if (leftBrakePressed) 0.95f else 1f)
+                            .clip(DRShape.HudPad)
                             .background(
-                                if (leftBrakePressed) DangerCoral.copy(alpha = 0.9f)
-                                else InkSurface.copy(alpha = 0.80f * opacity)
+                                if (leftBrakePressed) DR.Bad.copy(alpha = 0.9f)
+                                else DR.Bg.copy(alpha = (0.30f + 0.45f * opacity).coerceIn(0.3f, 0.8f))
                             )
-                            .border(2.dp, DangerCoral, CircleShape)
+                            .border(1.5.dp, if (leftBrakePressed) Color.White else DR.HudLine, DRShape.HudPad)
                             .pointerInput(Unit) {
                                 awaitEachGesture {
                                     val down = awaitFirstDown(requireUnconsumed = false)
@@ -341,7 +347,7 @@ fun SteerZone(
                     ) {
                         Text(
                             text = "BRAKE",
-                            style = DRType.Label.copy(fontWeight = FontWeight.W800),
+                            style = DRType.Label,
                             color = TextPrimary,
                             maxLines = 1
                         )
@@ -360,17 +366,11 @@ private fun SteerDirButton(
     onPressChanged: (Boolean) -> Unit
 ) {
     var pressed by remember { mutableStateOf(false) }
+    val plateAlpha = (0.30f + 0.45f * opacity.coerceIn(0.3f, 1f)).coerceIn(0.3f, 0.8f)
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
             .size(84.dp)
-            .scale(if (pressed) 0.94f else 1f)
-            .clip(CircleShape)
-            .background(
-                if (pressed) LampAmber.copy(alpha = 0.90f)
-                else InkSurface.copy(alpha = 0.80f * opacity)
-            )
-            .border(2.dp, if (pressed) Color.White else InkBorder, CircleShape)
             .pointerInput(testTag) {
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
@@ -388,11 +388,21 @@ private fun SteerDirButton(
             }
             .testTag(testTag)
     ) {
-        Text(
-            text = label,
-            style = DRType.Title.copy(fontSize = 24.sp),
-            color = if (pressed) Color(0xFF0B1020) else TextPrimary,
-            maxLines = 1
-        )
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .size(76.dp)
+                .scale(if (pressed) 0.95f else 1f)
+                .clip(DRShape.HudPad)
+                .background(if (pressed) DR.Amber.copy(alpha = 0.85f) else DR.Bg.copy(alpha = plateAlpha))
+                .border(if (pressed) 2.dp else 1.5.dp, if (pressed) Color.White else DR.HudLine, DRShape.HudPad)
+        ) {
+            Icon(
+                imageVector = if (label == "◀") Icons.AutoMirrored.Rounded.ArrowBackIos else Icons.AutoMirrored.Rounded.ArrowForwardIos,
+                contentDescription = if (label == "◀") "Steer left" else "Steer right",
+                tint = if (pressed) DR.OnAmber else Color.White.copy(alpha = 0.92f),
+                modifier = Modifier.size(32.dp)
+            )
+        }
     }
 }
