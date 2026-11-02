@@ -35,6 +35,23 @@ jobs:
             grep -E "^e: |error:|What went wrong|> " build.log | head -40 | while IFS= read -r l; do echo "::error::$l"; done
             exit 1
           }
+      - name: Run unit tests (report only)
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          gradle :app:testDebugUnitTest --continue 2>&1 | tee test.log || true
+          for f in app/build/test-results/testDebugUnitTest/*.xml; do
+            [ -f "$f" ] || continue
+            python3 - "$f" <<'PY'
+import sys, xml.etree.ElementTree as ET
+r = ET.parse(sys.argv[1]).getroot()
+print(f"::notice::TESTS {r.get('name')}: tests={r.get('tests')} failures={r.get('failures')} errors={r.get('errors')} skipped={r.get('skipped')}")
+for tc in r.iter('testcase'):
+    for bad in list(tc.findall('failure')) + list(tc.findall('error')):
+        msg = (bad.get('message') or '').replace('\n', ' ')[:300]
+        print(f"::warning::FAILED {tc.get('name')[:120]} :: {msg}")
+PY
+          done
       - uses: actions/upload-artifact@v4
         with:
           name: DeskRacerLAN-debug-apk
