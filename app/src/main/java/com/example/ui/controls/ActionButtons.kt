@@ -226,12 +226,6 @@ fun ActionButtons(
             // DRIFT button (84 dp visual, 1.25x hit area, tier colour fill & ready pulse)
             var driftPressed by remember { mutableStateOf(false) }
             val driftDesc = stringResource(R.string.cd_drift)
-            val tierRingColor = when (sparkTier) {
-                3 -> Color(0xFFA855F7)
-                2 -> LampAmber
-                1 -> BoostCyan
-                else -> LampAmber.copy(alpha = 0.75f)
-            }
             val driftScale = when {
                 driftPressed && sparkTier >= 1 -> readyPulse
                 driftPressed -> 0.94f

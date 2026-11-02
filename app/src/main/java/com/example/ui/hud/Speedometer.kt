@@ -69,7 +69,7 @@ fun Speedometer(
                 .fillMaxWidth()
                 .height(5.dp)
                 .clip(SkewShape(40f))
-                .background(Color0x73)
+                .background(DR.Bg.copy(alpha = 0.45f))
         ) {
             Box(
                 Modifier
@@ -88,4 +88,3 @@ fun Speedometer(
     }
 }
 
-private val Color0x73 = androidx.compose.ui.graphics.Color(0x73000000)
