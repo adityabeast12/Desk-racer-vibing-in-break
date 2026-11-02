@@ -54,6 +54,12 @@ import com.example.ui.components.DRButtonVariant
 import com.example.ui.components.DRCard
 import com.example.ui.components.DRChip
 import com.example.ui.components.DRTopBar
+import com.example.ui.components.DRTabs
+import com.example.ui.components.DRProgress
+import com.example.ui.components.DRWallet
+import com.example.ui.theme.DR
+import com.example.ui.theme.DRShape
+import androidx.compose.ui.draw.clip
 import com.example.ui.hud.ItemModelMiniGlyph
 import com.example.ui.theme.DRColors
 import com.example.ui.theme.DRRadius
@@ -84,7 +90,8 @@ fun ShopScreen(
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             DRTopBar(
-                title = "STATIONERY SHOP",
+                title = "Shop",
+                kicker = "Season 1 · Paper Cup",
                 onBack = onBack,
                 backTestTag = "btn_shop_back",
                 rightContent = {
@@ -106,26 +113,11 @@ fun ShopScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                DRChip(
-                    text = "FEATURED & PRO BUNDLES (₹)",
-                    selected = selectedTab == 0,
-                    accentColor = DRColors.KartGold,
-                    onClick = { selectedTab = 0 },
-                    testTag = "shop_tab_bundles"
-                )
-                DRChip(
-                    text = "COSMETICS & LIVERIES (COINS)",
-                    selected = selectedTab == 1,
-                    accentColor = DRColors.ElectricBlue,
-                    onClick = { selectedTab = 1 },
-                    testTag = "shop_tab_cosmetics"
-                )
-                DRChip(
-                    text = "DAILY GIFT & OPT-IN BONUS",
-                    selected = selectedTab == 2,
-                    accentColor = DRColors.MintFinish,
-                    onClick = { selectedTab = 2 },
-                    testTag = "shop_tab_free"
+                DRTabs(
+                    items = listOf("Bundles", "Cosmetics", "Free rewards"),
+                    selected = selectedTab,
+                    onSelect = { selectedTab = it },
+                    testTagPrefix = "shop_tab"
                 )
 
                 val msg = bannerMessage
@@ -452,7 +444,8 @@ fun DeskPassScreen(
             verticalArrangement = Arrangement.SpaceBetween
         ) {
             DRTopBar(
-                title = "DESK PASS • SEASON 1",
+                title = "Desk Pass",
+                kicker = "Season 1 · 40 tiers",
                 onBack = onBack,
                 backTestTag = "btn_desk_pass_back",
                 rightContent = {
@@ -493,13 +486,9 @@ fun DeskPassScreen(
                         style = DRType.CardTitle,
                         color = DRColors.KartGold
                     )
-                    LinearProgressIndicator(
-                        progress = { progressToNext },
-                        color = DRColors.ElectricBlue,
-                        trackColor = DRColors.StrokeHairline,
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(10.dp)
+                    DRProgress(
+                        value = progressToNext,
+                        modifier = Modifier.weight(1f)
                     )
                     Text(
                         text = statusText ?: "${200 - (profile.deskPassXp % 200)} XP to next tier",
@@ -558,20 +547,21 @@ private fun DeskPassTierCard(
     isPremiumActive: Boolean,
     onClaim: () -> Unit
 ) {
-    Surface(
-        shape = RoundedCornerShape(DRRadius.Card),
-        color = DRColors.SlateCard,
-        border = androidx.compose.foundation.BorderStroke(
-            width = if (unlocked && !claimed) 2.dp else 1.dp,
-            color = when {
-                claimed -> DRColors.MintFinish
-                unlocked -> DRColors.KartGold
-                else -> DRColors.StrokeHairline
-            }
-        ),
+    Box(
         modifier = Modifier
             .width(172.dp)
             .fillMaxHeight()
+            .clip(DRShape.Card)
+            .background(if (unlocked && !claimed) DR.AmberTint else DR.S1)
+            .border(
+                if (unlocked && !claimed) 1.5.dp else 1.dp,
+                when {
+                    claimed -> DR.Ok
+                    unlocked -> DR.Amber
+                    else -> DR.Line
+                },
+                DRShape.Card
+            )
             .testTag("desk_pass_tier_${tier.tier}")
     ) {
         Column(
@@ -601,7 +591,7 @@ private fun DeskPassTierCard(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(DRColors.ElevatedCard, RoundedCornerShape(8.dp))
+                    .background(DRColors.ElevatedCard, DRShape.Control)
                     .padding(8.dp),
                 verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
@@ -623,11 +613,11 @@ private fun DeskPassTierCard(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(DRColors.ElevatedCard, RoundedCornerShape(8.dp))
+                    .background(DRColors.ElevatedCard, DRShape.Control)
                     .border(
                         1.dp,
                         if (isPremiumActive) DRColors.KartGold else DRColors.StrokeHairline,
-                        RoundedCornerShape(8.dp)
+                        DRShape.Control
                     )
                     .padding(8.dp),
                 verticalArrangement = Arrangement.spacedBy(2.dp)
@@ -668,52 +658,10 @@ fun CurrencyHeaderPills(
     gems: Int,
     onRestore: (() -> Unit)? = null
 ) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Surface(
-            shape = RoundedCornerShape(DRRadius.Pill),
-            color = DRColors.ElevatedCard,
-            border = androidx.compose.foundation.BorderStroke(1.dp, DRColors.KartGold)
-        ) {
-            Text(
-                text = "🪙 ${ShopCatalog.formatCount(coins)}",
-                style = DRType.TabularTimer,
-                color = DRColors.KartGold,
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
-            )
-        }
-        Surface(
-            shape = RoundedCornerShape(DRRadius.Pill),
-            color = DRColors.ElevatedCard,
-            border = androidx.compose.foundation.BorderStroke(1.dp, DRColors.ElectricBlue)
-        ) {
-            Text(
-                text = "💎 ${ShopCatalog.formatCount(gems)}",
-                style = DRType.TabularTimer,
-                color = DRColors.ElectricBlue,
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
-            )
-        }
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        DRWallet(coins = coins, gems = gems)
         if (onRestore != null) {
-            Surface(
-                shape = RoundedCornerShape(DRRadius.Pill),
-                color = DRColors.SlateCard,
-                border = androidx.compose.foundation.BorderStroke(1.dp, DRColors.StrokeHairline),
-                modifier = Modifier
-                    .height(36.dp)
-                    .clickable(onClick = onRestore)
-                    .testTag("btn_restore_purchases")
-            ) {
-                Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 10.dp)) {
-                    Text(
-                        text = "RESTORE",
-                        style = DRType.MicroTag,
-                        color = DRColors.CrispWhite
-                    )
-                }
-            }
+            DRButton(text = "Restore", onClick = onRestore, variant = DRButtonVariant.GHOST, testTag = "btn_restore_purchases")
         }
     }
 }

@@ -101,9 +101,9 @@ object DRColors {
     val KartGold = DR.Amber
     val DriftOrange = DR.Amber
     val MintFinish = DR.Ok
-    val ElectricBlue = DR.Line2
+    val ElectricBlue = DR.TextMid
     val DangerRed = DR.Bad
-    val RoyalPurple = DR.Line2
+    val RoyalPurple = DR.TextMid
     val CrispWhite = DR.TextHi
     val MutedSlate = DR.TextMid
 }

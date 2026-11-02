@@ -2,200 +2,148 @@ package com.example.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.displayCutout
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.union
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.SportsEsports
+import androidx.compose.material.icons.rounded.WifiTethering
+import androidx.compose.material.icons.rounded.Inventory2
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.game.ControlSchemeType
 import com.example.game.ItemType
+import com.example.ui.components.DRButton
+import com.example.ui.components.DRButtonSize
+import com.example.ui.components.DRButtonVariant
+import com.example.ui.components.DRLabel
+import com.example.ui.components.DRPanel
+import com.example.ui.components.DRTabs
 import com.example.ui.hud.ItemModelMiniGlyph
 import com.example.ui.hud.shortLabel
-import com.example.ui.theme.DriftAmber
-import com.example.ui.theme.HostEmerald
-import com.example.ui.theme.Poppins
-import com.example.ui.theme.RulerYellow
-import com.example.ui.theme.SkyCyan
-import com.example.ui.theme.SlateAbyss
-import com.example.ui.theme.SlateBorder
-import com.example.ui.theme.SlateSurface
+import com.example.ui.theme.DR
+import com.example.ui.theme.DRShape
+import com.example.ui.theme.DRType
 
-/**
- * Part D5: Tutorial / How-to-Play overlay displaying the 3 control scheme cards AND the
- * 6 official v4 PNG item icons (`textures/ui/items/<item>.png`).
- */
+/** v6 How To Play: three indexed pages (Steer & drift · Items · LAN hotspot). */
 @Composable
 fun HowToPlayOverlay(
     selectedScheme: ControlSchemeType = ControlSchemeType.SMART,
     onSelectScheme: (ControlSchemeType) -> Unit = {},
     onDismiss: () -> Unit
 ) {
+    var page by remember { mutableIntStateOf(0) }
     BackHandler(onBack = onDismiss)
 
     Box(
-        contentAlignment = Alignment.Center,
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xE60B1020))
+            .background(DR.Scrim)
+            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {}
             .windowInsetsPadding(WindowInsets.safeDrawing.union(WindowInsets.displayCutout))
-            .padding(20.dp)
+            .padding(horizontal = 28.dp, vertical = 16.dp)
             .testTag("how_to_play_overlay")
     ) {
-        Surface(
-            modifier = Modifier.fillMaxSize(),
-            shape = RoundedCornerShape(20.dp),
-            color = SlateAbyss,
-            border = androidx.compose.foundation.BorderStroke(1.5.dp, SkyCyan)
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.SpaceBetween
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column {
-                        Text(
-                            text = "CHOOSE YOUR DRIVING STYLE, ITEMS & HOTSPOT SETUP",
-                            fontFamily = Poppins,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 16.sp,
-                            color = SkyCyan
-                        )
-                        Text(
-                            text = "Tap any control card below to activate it • 100% Offline Wi-Fi Hotspot",
-                            fontFamily = Poppins,
-                            fontSize = 11.sp,
-                            color = Color(0xFF94A3B8)
-                        )
-                    }
-                    IconButton(
-                        onClick = onDismiss,
-                        modifier = Modifier
-                            .size(48.dp)
-                            .background(SlateSurface, RoundedCornerShape(12.dp))
-                            .testTag("btn_close_how_to")
-                    ) {
-                        Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White)
-                    }
-                }
-
-                // 3 Interactive Control Cards (Smart / Pro / Tilt)
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    StepCard(
-                        stepNum = "1",
-                        title = "SMART (DEFAULT)",
-                        desc = "Auto-gas + floating thumb steer (64dp full lock). Hold DRIFT around corners to charge Blue & Orange Mini-Turbos!",
-                        accent = RulerYellow,
-                        selected = selectedScheme == ControlSchemeType.SMART,
-                        onClick = { onSelectScheme(ControlSchemeType.SMART) },
-                        modifier = Modifier.weight(1f)
-                    )
-                    StepCard(
-                        stepNum = "2",
-                        title = "PRO MANUAL",
-                        desc = "Manual GAS + BRAKE/DRIFT pedals + Purple Ultra Mini-Turbos. Full off-road shortcut freedom.",
-                        accent = HostEmerald,
-                        selected = selectedScheme == ControlSchemeType.PRO,
-                        onClick = { onSelectScheme(ControlSchemeType.PRO) },
-                        modifier = Modifier.weight(1f)
-                    )
-                    StepCard(
-                        stepNum = "3",
-                        title = "TILT & HOTSPOT LAN",
-                        desc = "Steer by tilting your phone (±22°)! For 2–8 player LAN: one friend turns ON Wi-Fi Hotspot, others tap JOIN RACE.",
-                        accent = DriftAmber,
-                        selected = selectedScheme == ControlSchemeType.TILT,
-                        onClick = { onSelectScheme(ControlSchemeType.TILT) },
-                        modifier = Modifier.weight(1f)
+        DRPanel(Modifier.fillMaxSize(), padding = androidx.compose.foundation.layout.PaddingValues(horizontal = 20.dp, vertical = 12.dp)) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    DRLabel("How to play", color = DR.Amber)
+                    Text(
+                        listOf("STEER & DRIFT", "ITEMS", "PLAY WITH FRIENDS")[page],
+                        style = DRType.Display.copy(fontSize = 30.sp, lineHeight = 30.sp),
+                        color = DR.TextHi
                     )
                 }
-
-                // Part D5: Desk Item Guide Row using PNG item icons (`textures/ui/items/<item>.png`)
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = SlateSurface,
-                    border = androidx.compose.foundation.BorderStroke(1.dp, SlateBorder),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        val tutorialItems = listOf(
-                            ItemType.MARBLE to "Ricochet Shot",
-                            ItemType.PAPER_PLANE to "Homing Strike",
-                            ItemType.BATTERY to "1.5s Turbo",
-                            ItemType.ERASER to "Spin Hazard",
-                            ItemType.TRIPLE_TACKS to "3x Orbit Shield",
-                            ItemType.MAGNET to "Pull Leader"
+                DRButton("Skip", onClick = onDismiss, variant = DRButtonVariant.GHOST, testTag = "btn_how_to_skip")
+            }
+            DRTabs(listOf("Drive", "Items", "LAN"), page, { page = it }, Modifier.fillMaxWidth(), testTagPrefix = "how_to_tab")
+            Spacer(Modifier.height(10.dp))
+            Box(Modifier.weight(1f).fillMaxWidth()) {
+                when (page) {
+                    0 -> Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        SchemeCard("Smart", "Auto-gas. Drag anywhere on the left to steer. Hold DRIFT in corners, release for a boost.", selectedScheme == ControlSchemeType.SMART, Modifier.weight(1f)) { onSelectScheme(ControlSchemeType.SMART) }
+                        SchemeCard("Pro", "Manual GAS and BRAKE, bigger drift boosts. For players who want full control.", selectedScheme == ControlSchemeType.PRO, Modifier.weight(1f)) { onSelectScheme(ControlSchemeType.PRO) }
+                        SchemeCard("Tilt", "Tilt the phone to steer. Brake sits on the left.", selectedScheme == ControlSchemeType.TILT, Modifier.weight(1f)) { onSelectScheme(ControlSchemeType.TILT) }
+                        SchemeCard("Buttons", "Big left / right buttons with a smooth ramp.", selectedScheme == ControlSchemeType.BUTTONS, Modifier.weight(1f)) { onSelectScheme(ControlSchemeType.BUTTONS) }
+                    }
+                    1 -> {
+                        val items = listOf(
+                            ItemType.MARBLE to "Bounces off walls",
+                            ItemType.PAPER_PLANE to "Homes in on the kart ahead",
+                            ItemType.BATTERY to "Turbo boost",
+                            ItemType.ERASER to "Drop it behind you",
+                            ItemType.TRIPLE_TACKS to "Orbiting shield",
+                            ItemType.MAGNET to "Pulls you toward the leader"
                         )
-                        tutorialItems.forEach { (item, desc) ->
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                ItemModelMiniGlyph(
-                                    item = item,
-                                    modifier = Modifier.size(28.dp)
-                                )
-                                Column {
-                                    Text(
-                                        text = item.shortLabel,
-                                        fontFamily = Poppins,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 9.sp,
-                                        color = Color.White,
-                                        maxLines = 1
-                                    )
-                                    Text(
-                                        text = desc,
-                                        fontFamily = Poppins,
-                                        fontSize = 8.sp,
-                                        color = RulerYellow,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text("Drive through item boxes. Tap ITEM to fire forward, swipe down on it to fire back, hold it to keep a shield.", style = DRType.Body, color = DR.TextMid)
+                            items.chunked(3).forEach { row ->
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    row.forEach { (item, desc) ->
+                                        Row(
+                                            Modifier
+                                                .weight(1f)
+                                                .height(56.dp)
+                                                .clip(DRShape.Card)
+                                                .background(DR.S2)
+                                                .padding(horizontal = 10.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                        ) {
+                                            ItemModelMiniGlyph(item = item, modifier = Modifier.size(38.dp))
+                                            Column {
+                                                Text(item.shortLabel, style = DRType.Label, color = DR.TextHi)
+                                                Text(desc, style = DRType.Caption.copy(fontSize = 10.5.sp, lineHeight = 13.sp), color = DR.TextMid, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
                     }
+                    else -> Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        StepCard(1, Icons.Rounded.WifiTethering, "Host turns on hotspot", "Mobile data can stay off. No internet needed.", Modifier.weight(1f))
+                        StepCard(2, Icons.Rounded.SportsEsports, "Friends join it", "Connect to the host's hotspot in Wi-Fi settings.", Modifier.weight(1f))
+                        StepCard(3, Icons.Rounded.Inventory2, "Host → Join", "Host taps Host LAN race. Friends tap Join and pick the room.", Modifier.weight(1f))
+                    }
+                }
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                if (page < 2) {
+                    DRButton("Next", onClick = { page++ }, size = DRButtonSize.M, testTag = "btn_how_to_next")
+                } else {
+                    DRButton("Got it", icon = Icons.Rounded.Check, onClick = onDismiss, size = DRButtonSize.M, testTag = "btn_how_to_done")
                 }
             }
         }
@@ -203,61 +151,42 @@ fun HowToPlayOverlay(
 }
 
 @Composable
-private fun StepCard(
-    stepNum: String,
-    title: String,
-    desc: String,
-    accent: Color,
-    selected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Surface(
-        modifier = modifier.clickable(onClick = onClick),
-        shape = RoundedCornerShape(14.dp),
-        color = if (selected) accent.copy(alpha = 0.16f) else SlateSurface,
-        border = androidx.compose.foundation.BorderStroke(
-            width = if (selected) 2.dp else 1.dp,
-            color = if (selected) accent else accent.copy(alpha = 0.55f)
-        )
+private fun SchemeCard(title: String, desc: String, selected: Boolean, modifier: Modifier, onClick: () -> Unit) {
+    Column(
+        modifier = modifier
+            .fillMaxHeight()
+            .clip(DRShape.Card)
+            .background(if (selected) DR.AmberTint else DR.S2)
+            .border(if (selected) 1.5.dp else 1.dp, if (selected) DR.Amber else DR.Line, DRShape.Card)
+            .clickable(role = Role.RadioButton, onClick = onClick)
+            .padding(12.dp)
+            .testTag("how_to_scheme_$title")
     ) {
-        Column(
-            modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier
-                        .size(26.dp)
-                        .background(accent, CircleShape)
-                ) {
-                    Text(
-                        text = stepNum,
-                        fontFamily = Poppins,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 12.sp,
-                        color = SlateAbyss
-                    )
-                }
-                Text(
-                    text = if (selected) "$title ✓" else title,
-                    fontFamily = Poppins,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 12.sp,
-                    color = Color.White
-                )
-            }
-            Text(
-                text = desc,
-                fontFamily = Poppins,
-                fontSize = 10.sp,
-                lineHeight = 14.sp,
-                color = Color(0xFFCBD5E1)
-            )
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(title, style = DRType.Title.copy(fontSize = 18.sp), color = DR.TextHi)
+            if (selected) Icon(Icons.Rounded.Check, contentDescription = "Selected", tint = DR.Amber, modifier = Modifier.size(18.dp))
         }
+        Spacer(Modifier.height(6.dp))
+        Text(desc, style = DRType.Caption, color = DR.TextMid)
     }
 }
+
+@Composable
+private fun StepCard(n: Int, icon: androidx.compose.ui.graphics.vector.ImageVector, title: String, desc: String, modifier: Modifier) {
+    Column(
+        modifier = modifier
+            .fillMaxHeight()
+            .clip(DRShape.Card)
+            .background(DR.S2)
+            .padding(12.dp)
+    ) {
+        Text(String.format(java.util.Locale.US, "%02d", n), style = DRType.NumS, color = DR.Amber)
+        Icon(icon, contentDescription = null, tint = DR.TextHi, modifier = Modifier.padding(vertical = 6.dp).size(24.dp))
+        Text(title, style = DRType.Title.copy(fontSize = 16.sp), color = DR.TextHi)
+        Spacer(Modifier.height(4.dp))
+        Text(desc, style = DRType.Caption, color = DR.TextMid)
+    }
+}
+
+@Suppress("unused")
+private val unusedWidth = 0.dp.let { Modifier.width(it) }

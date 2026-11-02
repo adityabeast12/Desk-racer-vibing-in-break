@@ -10,6 +10,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
@@ -917,33 +918,22 @@ private fun SplashScreenOverlay() {
         contentAlignment = Alignment.Center,
         modifier = Modifier
             .fillMaxSize()
-            .background(
-                Brush.radialGradient(
-                    colors = listOf(Color(0xFF141C33), Color(0xFF0B1020))
-                )
-            )
+            .background(com.example.ui.theme.DR.Bg)
             .testTag("splash_screen")
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
-                text = stringResource(R.string.splash_title),
-                fontFamily = Poppins,
-                fontWeight = FontWeight.Black,
-                fontSize = 42.sp,
-                color = RulerYellow,
-                letterSpacing = 3.sp
+                text = stringResource(R.string.splash_title).uppercase(),
+                style = com.example.ui.theme.DRType.Display.copy(fontSize = 44.sp, lineHeight = 44.sp),
+                color = com.example.ui.theme.DR.TextHi
             )
-            Spacer(modifier = Modifier.height(6.dp))
+            Spacer(modifier = Modifier.height(8.dp))
+            com.example.ui.components.DRKerbStrip(Modifier.width(160.dp))
+            Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = stringResource(R.string.splash_subtitle),
-                fontFamily = Poppins,
-                fontWeight = FontWeight.Bold,
-                fontSize = 15.sp,
-                color = DriftAmber,
-                letterSpacing = 2.sp
+                text = stringResource(R.string.splash_subtitle).uppercase(),
+                style = com.example.ui.theme.DRType.Label,
+                color = com.example.ui.theme.DR.TextMid
             )
         }
     }
