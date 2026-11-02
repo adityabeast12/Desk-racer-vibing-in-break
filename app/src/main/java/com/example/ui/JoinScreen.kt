@@ -2,7 +2,6 @@ package com.example.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -23,17 +22,14 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Wifi
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material.icons.automirrored.rounded.Login
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Lan
+import androidx.compose.material.icons.rounded.NetworkWifi
+import androidx.compose.material.icons.rounded.WifiFind
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -42,12 +38,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.game.CcClass
@@ -56,15 +51,19 @@ import com.example.game.ItemMode
 import com.example.game.Tracks
 import com.example.net.DiscoveredRoomBeacon
 import com.example.net.LobbySlotInfo
-import com.example.ui.theme.DriftAmber
-import com.example.ui.theme.HostEmerald
-import com.example.ui.theme.JoinBlue
-import com.example.ui.theme.Poppins
-import com.example.ui.theme.RulerYellow
-import com.example.ui.theme.SkyCyan
-import com.example.ui.theme.SlateAbyss
-import com.example.ui.theme.SlateBorder
-import com.example.ui.theme.SlateSurface
+import com.example.ui.components.DRBadge
+import com.example.ui.components.DRBadgeKind
+import com.example.ui.components.DRButton
+import com.example.ui.components.DRButtonSize
+import com.example.ui.components.DRLabel
+import com.example.ui.components.DRPanel
+import com.example.ui.components.DRScreenHeader
+import com.example.ui.components.DRStatusDot
+import com.example.ui.components.DRTextField
+import com.example.ui.theme.DR
+import com.example.ui.theme.DRShape
+import com.example.ui.theme.DRType
+import androidx.compose.foundation.border
 
 @Composable
 fun JoinScreen(
@@ -88,135 +87,101 @@ fun JoinScreen(
 ) {
     BackHandler(onBack = onBack)
     var ipInput by remember(defaultGatewayIp) { mutableStateOf(defaultGatewayIp) }
+    var selectedRoomIp by remember { mutableStateOf<String?>(null) }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xD9090D16))
+            .background(DR.Bg.copy(alpha = 0.88f))
             .windowInsetsPadding(WindowInsets.safeDrawing.union(WindowInsets.displayCutout))
             .padding(horizontal = 16.dp, vertical = 12.dp)
             .testTag("join_screen")
     ) {
-        Row(
-            modifier = Modifier.fillMaxSize(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            // Left Column: Auto-Discovered Rooms List
-            Surface(
-                modifier = Modifier
-                    .weight(1.05f)
-                    .fillMaxHeight(),
-                shape = RoundedCornerShape(16.dp),
-                color = SlateAbyss,
-                border = androidx.compose.foundation.BorderStroke(1.dp, SlateBorder)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(14.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        IconButton(
-                            onClick = onBack,
-                            modifier = Modifier
-                                .size(48.dp)
-                                .background(SlateSurface, RoundedCornerShape(10.dp))
-                                .testTag("btn_join_back")
-                        ) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+        Column(Modifier.fillMaxSize()) {
+            DRScreenHeader(
+                kicker = "Join LAN",
+                title = if (isConnectedToLobby) "Room $roomCode" else "Find a room",
+                onBack = onBack,
+                backTestTag = "btn_join_back"
+            )
+            Spacer(Modifier.height(10.dp))
+            Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column(Modifier.weight(1f).fillMaxHeight()) {
+                    if (!isConnectedToLobby) {
+                        Row(Modifier.fillMaxWidth().height(28.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            DRStatusDot(DR.Ok)
+                            DRLabel("Scanning this Wi-Fi")
+                            Spacer(Modifier.weight(1f))
+                            Text(statusMessage, style = DRType.Caption.copy(fontSize = 11.sp), color = DR.TextLo, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1.4f))
                         }
-                        Column {
-                            Text(
-                                text = "AUTO-DISCOVERED ROOMS (UDP 47777)",
-                                fontFamily = Poppins,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 14.sp,
-                                color = SkyCyan
-                            )
-                            Text(
-                                text = statusMessage,
-                                fontSize = 11.sp,
-                                color = RulerYellow,
-                                modifier = Modifier.testTag("join_status_text")
-                            )
-                        }
-                    }
-
-                    if (discoveredRooms.isEmpty()) {
-                        Box(
-                            contentAlignment = Alignment.Center,
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(SlateSurface, RoundedCornerShape(12.dp))
-                                .padding(16.dp)
-                        ) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Icon(
-                                    imageVector = Icons.Default.Wifi,
-                                    contentDescription = null,
-                                    tint = SkyCyan,
-                                    modifier = Modifier.size(32.dp)
-                                )
-                                Spacer(modifier = Modifier.height(6.dp))
+                        Spacer(Modifier.height(6.dp))
+                        if (discoveredRooms.isEmpty()) {
+                            DRPanel(Modifier.fillMaxWidth().weight(1f)) {
+                                Spacer(Modifier.weight(1f))
+                                Icon(Icons.Rounded.WifiFind, contentDescription = null, tint = DR.TextLo, modifier = Modifier.size(32.dp).align(Alignment.CenterHorizontally))
+                                Spacer(Modifier.height(8.dp))
+                                Text("No rooms yet", style = DRType.Title.copy(fontSize = 18.sp), color = DR.TextHi, modifier = Modifier.align(Alignment.CenterHorizontally))
                                 Text(
-                                    text = "Scanning local Wi-Fi / Hotspot subnet...",
-                                    fontFamily = Poppins,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 12.sp,
-                                    color = Color.White
+                                    "Join the host phone's hotspot, then ask them to open the lobby. Rooms appear here automatically.",
+                                    style = DRType.Caption,
+                                    color = DR.TextMid,
+                                    modifier = Modifier.align(Alignment.CenterHorizontally).padding(horizontal = 24.dp, vertical = 4.dp)
                                 )
-                                Text(
-                                    text = "Make sure you joined the Host phone's Wi-Fi Hotspot.",
-                                    fontSize = 11.sp,
-                                    color = Color(0xFF94A3B8)
-                                )
+                                Spacer(Modifier.weight(1f))
+                            }
+                        } else {
+                            LazyColumn(Modifier.fillMaxWidth().weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                items(discoveredRooms) { room ->
+                                    val sel = selectedRoomIp == room.hostIp
+                                    val full = room.playerCount >= room.maxPlayers
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(60.dp)
+                                            .clip(DRShape.Card)
+                                            .background(if (sel) DR.AmberTint else DR.S2)
+                                            .border(if (sel) 1.5.dp else 1.dp, if (sel) DR.Amber else DR.Line, DRShape.Card)
+                                            .clickable(enabled = !full && !room.raceInProgress, role = Role.Button) {
+                                                selectedRoomIp = room.hostIp
+                                                onConnectIp(room.hostIp)
+                                            }
+                                            .padding(horizontal = 14.dp)
+                                            .testTag("discovered_room_${room.roomCode}"),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                    ) {
+                                        Icon(Icons.Rounded.NetworkWifi, contentDescription = null, tint = if (room.pingMs < 80) DR.Ok else DR.Amber, modifier = Modifier.size(22.dp))
+                                        Column(Modifier.weight(1f)) {
+                                            Text("${room.hostName} · ${room.roomCode}", style = DRType.BodyStrong.copy(fontSize = 14.sp), color = if (full) DR.TextLo else DR.TextHi, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                            Text(Tracks.byId(room.trackId).name, style = DRType.Caption, color = DR.TextMid, maxLines = 1)
+                                        }
+                                        Text("${room.playerCount}/${room.maxPlayers}", style = DRType.NumL, color = if (full) DR.TextLo else DR.TextHi)
+                                        when {
+                                            room.raceInProgress -> DRBadge("Racing", DRBadgeKind.MUTED)
+                                            full -> DRBadge("Full", DRBadgeKind.MUTED)
+                                            else -> DRBadge("Lobby", DRBadgeKind.OK)
+                                        }
+                                    }
+                                }
                             }
                         }
                     } else {
-                        LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            items(discoveredRooms) { room ->
-                                val track = Tracks.byId(room.trackId)
-                                Surface(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable { onConnectIp(room.hostIp) }
-                                        .testTag("discovered_room_${room.roomCode}"),
-                                    shape = RoundedCornerShape(12.dp),
-                                    color = SlateSurface,
-                                    border = androidx.compose.foundation.BorderStroke(1.dp, HostEmerald)
-                                ) {
-                                    Row(
-                                        modifier = Modifier.padding(12.dp),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Column {
-                                            Text(
-                                                text = "ROOM ${room.roomCode} • ${room.hostName}",
-                                                fontFamily = Poppins,
-                                                fontWeight = FontWeight.Bold,
-                                                fontSize = 13.sp,
-                                                color = RulerYellow
-                                            )
-                                            Text(
-                                                text = "${track.name} • ${room.hostIp}",
-                                                fontSize = 11.sp,
-                                                color = Color(0xFFCBD5E1)
-                                            )
-                                        }
-                                        Text(
-                                            text = "${room.playerCount}/${room.maxPlayers} • TAP TO JOIN",
-                                            fontFamily = Poppins,
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 11.sp,
-                                            color = HostEmerald
+                        DRPanel(Modifier.fillMaxWidth().weight(1f), padding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 8.dp)) {
+                            Row(Modifier.fillMaxWidth().height(26.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                DRLabel("Players ${slots.count { it.isHuman }}/$LOBBY_MAX_SLOTS")
+                                DRLabel("${slots.count { it.isReady || it.slotIndex == 0 }} ready", color = DR.Ok)
+                            }
+                            for (row in 0 until LOBBY_MAX_SLOTS / 2) {
+                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                    for (col in 0 until 2) {
+                                        val idx = row * 2 + col
+                                        LobbySlotRow(
+                                            slotIdx = idx,
+                                            info = slots.firstOrNull { it.slotIndex == idx },
+                                            cpuFill = cpuFill,
+                                            onKick = null,
+                                            localSlot = -1,
+                                            modifier = Modifier.weight(1f)
                                         )
                                     }
                                 }
@@ -224,146 +189,64 @@ fun JoinScreen(
                         }
                     }
                 }
-            }
 
-            // Right Column: Manual Gateway/Host IP Entry OR Connected Client Lobby View
-            Surface(
-                modifier = Modifier
-                    .weight(0.95f)
-                    .fillMaxHeight(),
-                shape = RoundedCornerShape(16.dp),
-                color = SlateAbyss,
-                border = androidx.compose.foundation.BorderStroke(1.dp, SlateBorder)
-            ) {
-                if (!isConnectedToLobby) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(16.dp),
-                        verticalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text(
-                                text = "DIRECT HOST IP CONNECT",
-                                fontFamily = Poppins,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 14.sp,
-                                color = SkyCyan
-                            )
-                            Text(
-                                text = "Pre-filled with your detected Wi-Fi Hotspot gateway IP:",
-                                fontSize = 11.sp,
-                                color = Color(0xFF94A3B8)
-                            )
-                            BasicTextField(
+                Column(Modifier.width(300.dp).fillMaxHeight()) {
+                    if (!isConnectedToLobby) {
+                        DRPanel(Modifier.fillMaxWidth().weight(1f)) {
+                            DRLabel("Join by address")
+                            Spacer(Modifier.height(8.dp))
+                            DRTextField(
                                 value = ipInput,
-                                onValueChange = { ipInput = it },
-                                singleLine = true,
-                                textStyle = TextStyle(
-                                    fontFamily = FontFamily.Monospace,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 16.sp,
-                                    color = Color.White
-                                ),
-                                cursorBrush = SolidColor(SkyCyan),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(48.dp)
-                                    .background(SlateSurface, RoundedCornerShape(10.dp))
-                                    .border(1.dp, SlateBorder, RoundedCornerShape(10.dp))
-                                    .padding(horizontal = 14.dp, vertical = 12.dp)
-                                    .testTag("join_ip_input")
+                                onValueChange = { ipInput = it.trim() },
+                                leadingIcon = Icons.Rounded.Lan,
+                                placeholder = "192.168.43.1",
+                                testTag = "join_ip_input",
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                "Pre-filled with your hotspot's gateway. Only needed if the room doesn't show up on the left.",
+                                style = DRType.Caption,
+                                color = DR.TextMid
                             )
                         }
-
-                        Button(
-                            onClick = { onConnectIp(ipInput) },
-                            colors = ButtonDefaults.buttonColors(containerColor = JoinBlue),
-                            shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(54.dp)
-                                .testTag("btn_join_connect_ip")
-                        ) {
+                        Spacer(Modifier.height(10.dp))
+                        DRButton(
+                            text = "Join room",
+                            icon = Icons.AutoMirrored.Rounded.Login,
+                            size = DRButtonSize.L,
+                            enabled = ipInput.isNotBlank(),
+                            onClick = { onConnectIp(selectedRoomIp ?: ipInput) },
+                            modifier = Modifier.fillMaxWidth(),
+                            testTag = "btn_join_connect_ip"
+                        )
+                    } else {
+                        val track = Tracks.byId(trackId)
+                        DRPanel(Modifier.fillMaxWidth().weight(1f)) {
+                            DRLabel("Race")
+                            Text(track.name.uppercase(), style = DRType.Title, color = DR.TextHi, maxLines = 1, modifier = Modifier.padding(top = 4.dp))
+                            Spacer(Modifier.height(6.dp))
                             Text(
-                                text = "JOIN HOST ($ipInput)",
-                                fontFamily = Poppins,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 14.sp,
-                                color = Color.White
+                                "$laps laps · items ${itemMode.label.lowercase()} · ${ccClass.label}" +
+                                    if (cpuFill) " · $botCount ${botDifficulty.label.lowercase()} bots" else "",
+                                style = DRType.Caption,
+                                color = DR.TextMid
                             )
+                            Spacer(Modifier.weight(1f))
+                            Text(statusMessage, style = DRType.Caption, color = DR.TextLo, maxLines = 2, overflow = TextOverflow.Ellipsis)
                         }
-                    }
-                } else {
-                    val track = Tracks.byId(trackId)
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(16.dp),
-                        verticalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Text(
-                                text = "LOBBY ROOM $roomCode",
-                                fontFamily = Poppins,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 16.sp,
-                                color = RulerYellow
-                            )
-                            Text(
-                                text = "${track.name} • $laps LAPS • Waiting for Host...",
-                                fontFamily = Poppins,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 11.sp,
-                                color = SkyCyan
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            slots.forEach { s ->
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .background(SlateSurface, RoundedCornerShape(8.dp))
-                                        .padding(horizontal = 10.dp, vertical = 6.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Text(
-                                        text = s.playerName,
-                                        fontFamily = Poppins,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 11.sp,
-                                        color = Color.White
-                                    )
-                                    Text(
-                                        text = if (s.isReady) "READY ✓" else "NOT READY",
-                                        fontFamily = Poppins,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 11.sp,
-                                        color = if (s.isReady) HostEmerald else DriftAmber
-                                    )
-                                }
-                            }
-                        }
-
-                        Button(
+                        Spacer(Modifier.height(10.dp))
+                        DRButton(
+                            text = if (isClientReady) "Ready ✓" else "I'm ready",
+                            icon = if (isClientReady) null else Icons.Rounded.Check,
+                            size = DRButtonSize.L,
                             onClick = onToggleReady,
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = if (isClientReady) HostEmerald else DriftAmber
-                            ),
-                            shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(54.dp)
-                                .testTag("btn_client_ready")
-                        ) {
-                            Icon(Icons.Default.Check, contentDescription = null)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = if (isClientReady) "READY! (TAP TO UNREADY)" else "TAP WHEN READY",
-                                fontFamily = Poppins,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 13.sp,
-                                color = SlateAbyss
-                            )
+                            modifier = Modifier.fillMaxWidth(),
+                            testTag = "btn_client_ready"
+                        )
+                        if (isClientReady) {
+                            Text("Tap again to un-ready. The host starts the race.", style = DRType.Caption.copy(fontSize = 10.5.sp), color = DR.TextLo, modifier = Modifier.padding(top = 4.dp))
                         }
                     }
                 }

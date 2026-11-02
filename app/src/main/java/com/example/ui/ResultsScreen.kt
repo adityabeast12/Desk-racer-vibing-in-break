@@ -1,11 +1,16 @@
 package com.example.ui
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateIntAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInHorizontally
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -16,47 +21,73 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.union
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Surface
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowForward
+import androidx.compose.material.icons.rounded.Groups
+import androidx.compose.material.icons.rounded.Home
+import androidx.compose.material.icons.rounded.OndemandVideo
+import androidx.compose.material.icons.rounded.Replay
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.game.GameMode
 import com.example.game.RacerStanding
+import com.example.ui.components.DRBadge
+import com.example.ui.components.DRBadgeKind
+import com.example.ui.components.DRButton
+import com.example.ui.components.DRButtonSize
+import com.example.ui.components.DRButtonVariant
+import com.example.ui.components.DRCoin
+import com.example.ui.components.DRKerbStrip
+import com.example.ui.components.DRLabel
+import com.example.ui.components.DRMarkerTag
+import com.example.ui.components.DRPanel
+import com.example.ui.components.DRProgress
+import com.example.ui.components.KartThumb
 import com.example.ui.hud.formatRaceTime
-import com.example.ui.theme.ArcadeCrimson
+import com.example.ui.theme.DR
 import com.example.ui.theme.DRType
-import com.example.ui.theme.DriftAmber
-import com.example.ui.theme.HostEmerald
-import com.example.ui.theme.JoinBlue
-import com.example.ui.theme.Poppins
-import com.example.ui.theme.RulerYellow
-import com.example.ui.theme.SkyCyan
-import com.example.ui.theme.SlateAbyss
-import com.example.ui.theme.SlateBorder
-import com.example.ui.theme.SlateSurface
+import kotlinx.coroutines.delay
+
+private fun ordinal(p: Int): String = when {
+    p % 100 in 11..13 -> "${p}TH"
+    p % 10 == 1 -> "${p}ST"
+    p % 10 == 2 -> "${p}ND"
+    p % 10 == 3 -> "${p}RD"
+    else -> "${p}TH"
+}
+
+private fun gapText(r: RacerStanding, leaderMs: Long): String = when {
+    r.isDnf -> ""
+    r.position == 1 || leaderMs <= 0L -> "—"
+    else -> {
+        val d = (r.totalTimeMs - leaderMs).coerceAtLeast(0L)
+        String.format(java.util.Locale.US, "+%d.%03d", d / 1000L, d % 1000L)
+    }
+}
 
 /**
- * Part C4:
- * - DNF racers placed after finishers, ordered by `raceDistance`.
- * - Times formatted `m:ss.mmm` or `"DNF"`.
- * - Best lap marked with `★` per racer; `"NEW BEST"` only on a personal record.
+ * v6 Results: kerb strip on top, Display headline, standings table (rows enter 6th→1st),
+ * rewards panel that counts up, actions bottom-right (one primary).
  */
 @Composable
 fun ResultsScreen(
@@ -78,318 +109,147 @@ fun ResultsScreen(
     val isCupFinale = isGrandPrix && cupRaceIndex >= 3
     var doubledCoinsClaimed by remember { mutableStateOf(false) }
 
-    // Ensure finishers come first by position, followed by DNF racers ordered by position (which host sorted by raceDistance)
-    val orderedStandings = remember(standings) {
-        val finishers = standings.filter { !it.isDnf }.sortedBy { it.position }
-        val dnfs = standings.filter { it.isDnf }.sortedBy { it.position }
-        finishers + dnfs
+    val ordered = remember(standings) {
+        standings.filter { !it.isDnf }.sortedBy { it.position } + standings.filter { it.isDnf }.sortedBy { it.position }
     }
-    val fastestLapOverallMs = remember(orderedStandings) {
-        orderedStandings.mapNotNull { it.bestLapMs.takeIf { ms -> ms > 0L } }.minOrNull() ?: 0L
+    val leaderMs = ordered.firstOrNull { !it.isDnf }?.totalTimeMs ?: 0L
+    val fastestLap = ordered.mapNotNull { it.bestLapMs.takeIf { ms -> ms > 0L } }.minOrNull() ?: 0L
+    val me = ordered.firstOrNull { it.isLocal }
+    val myPos = me?.position ?: 0
+
+    var revealed by remember { mutableStateOf(0) }
+    LaunchedEffect(ordered.size) {
+        revealed = 0
+        for (i in 1..ordered.size) {
+            delay(60)
+            revealed = i
+        }
     }
+    val coinsTarget = if (doubledCoinsClaimed) coinsEarnedThisRace * 2 else coinsEarnedThisRace
+    val coinsShown by animateIntAsState(if (revealed >= ordered.size) coinsTarget else 0, tween(500), label = "coins")
+    val xpShown by animateIntAsState(if (revealed >= ordered.size) xpEarnedThisRace else 0, tween(600), label = "xp")
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xD90B1020))
-            .windowInsetsPadding(WindowInsets.safeDrawing.union(WindowInsets.displayCutout))
-            .padding(horizontal = 20.dp, vertical = 12.dp)
+            .background(DR.Bg.copy(alpha = 0.90f))
             .testTag("results_screen")
     ) {
-        Row(
-            modifier = Modifier.fillMaxSize(),
-            horizontalArrangement = Arrangement.spacedBy(14.dp)
+        DRKerbStrip(Modifier.align(Alignment.TopCenter))
+        Box(
+            Modifier
+                .fillMaxSize()
+                .windowInsetsPadding(WindowInsets.safeDrawing.union(WindowInsets.displayCutout))
+                .padding(start = 20.dp, end = 16.dp, top = 16.dp, bottom = 14.dp)
         ) {
-            // Left Column: Podium 1st / 2nd / 3rd + Coins/XP Summary + Action Buttons
-            Column(
-                modifier = Modifier
-                    .weight(0.95f)
-                    .fillMaxHeight(),
-                verticalArrangement = Arrangement.SpaceBetween
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column {
+            Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                // Left: headline + table
+                Column(Modifier.weight(1f).fillMaxHeight()) {
+                    DRLabel(
+                        if (isGrandPrix) "$trackName · Race ${cupRaceIndex + 1}/4" else trackName,
+                        color = DR.Amber
+                    )
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         Text(
-                            text = if (isCupFinale) "CUP TROPHY CEREMONY" else "RACE RESULTS",
-                            fontFamily = Poppins,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 20.sp,
-                            color = RulerYellow
+                            text = when {
+                                isCupFinale -> "CUP COMPLETE"
+                                myPos == 1 -> "WINNER!"
+                                myPos > 0 -> "${ordinal(myPos)} PLACE"
+                                else -> "RESULTS"
+                            },
+                            style = DRType.Display.copy(fontSize = 40.sp, lineHeight = 42.sp),
+                            color = if (myPos == 1) DR.Gold else DR.TextHi,
+                            maxLines = 1
                         )
-                        Text(
-                            text = if (isGrandPrix) "$trackName • RACE ${cupRaceIndex + 1}/4" else trackName,
-                            fontFamily = Poppins,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 11.sp,
-                            color = SkyCyan
-                        )
+                        if (me != null && me.isNewRecord && me.bestLapMs > 0L) {
+                            DRMarkerTag("New best ${formatRaceTime(me.bestLapMs)}")
+                        }
                     }
-
-                    Surface(
-                        shape = RoundedCornerShape(999.dp),
-                        color = SlateSurface,
-                        border = androidx.compose.foundation.BorderStroke(1.dp, RulerYellow)
+                    Spacer(Modifier.height(8.dp))
+                    DRPanel(
+                        modifier = Modifier.fillMaxWidth().weight(1f),
+                        padding = androidx.compose.foundation.layout.PaddingValues(0.dp)
                     ) {
-                        val effectiveCoins = if (doubledCoinsClaimed) coinsEarnedThisRace * 2 else coinsEarnedThisRace
-                        Text(
-                            text = "+$effectiveCoins COINS  •  +$xpEarnedThisRace XP",
-                            fontFamily = Poppins,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 10.sp,
-                            color = RulerYellow,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
-                        )
+                        Row(
+                            Modifier.fillMaxWidth().height(28.dp).padding(horizontal = 14.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            DRLabel("Pos", color = DR.TextLo, modifier = Modifier.width(30.dp))
+                            DRLabel("Driver", color = DR.TextLo, modifier = Modifier.weight(1f).padding(start = 50.dp))
+                            DRLabel(if (isGrandPrix) "Pts" else "Best lap", color = DR.TextLo, modifier = Modifier.width(72.dp))
+                            DRLabel("Time", color = DR.TextLo, modifier = Modifier.width(76.dp))
+                            DRLabel("Gap", color = DR.TextLo, modifier = Modifier.width(56.dp))
+                        }
+                        LazyColumn(Modifier.fillMaxSize()) {
+                            itemsIndexed(ordered) { idx, r ->
+                                // rows reveal from last place up to the winner
+                                val visible = revealed >= ordered.size - idx
+                                AnimatedVisibility(visible = visible, enter = slideInHorizontally(tween(180)) { it / 8 } + fadeIn(tween(180))) {
+                                    ResultRow(r, leaderMs, fastestLap, isGrandPrix)
+                                }
+                            }
+                        }
                     }
                 }
 
-                // Visual 3-Step Podium (2nd, 1st, 3rd)
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.Bottom
-                ) {
-                    val first = orderedStandings.getOrNull(0)
-                    val second = orderedStandings.getOrNull(1)
-                    val third = orderedStandings.getOrNull(2)
-
-                    PodiumStep(
-                        place = "2ND",
-                        racer = second,
-                        stepHeight = 76.dp,
-                        medalColor = Color(0xFFE2E8F0),
-                        modifier = Modifier.weight(1f)
-                    )
-                    PodiumStep(
-                        place = "1ST",
-                        racer = first,
-                        stepHeight = 102.dp,
-                        medalColor = RulerYellow,
-                        modifier = Modifier.weight(1f)
-                    )
-                    PodiumStep(
-                        place = "3RD",
-                        racer = third,
-                        stepHeight = 62.dp,
-                        medalColor = DriftAmber,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-
-                // Bottom Action Buttons + Solo Opt-In 2x Coins Rewarded Button
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                // Right: rewards + actions
+                Column(Modifier.width(300.dp).fillMaxHeight()) {
+                    Spacer(Modifier.height(54.dp))
+                    DRPanel(Modifier.fillMaxWidth()) {
+                        DRLabel("Rewards")
+                        RewardRow("Finish · ${if (myPos > 0) ordinal(myPos).lowercase() else "—"}", "+$coinsShown")
+                        Spacer(Modifier.height(12.dp))
+                        DRProgress(value = (xpShown / 200f).coerceIn(0f, 1f), label = "Desk Pass XP", trailing = "+$xpShown XP")
+                    }
                     if (!isMultiplayer && onWatchAdDoubleCoins != null && !doubledCoinsClaimed) {
-                        Button(
+                        Spacer(Modifier.height(8.dp))
+                        DRButton(
+                            text = "Watch clip · 2× coins",
+                            icon = Icons.Rounded.OndemandVideo,
+                            variant = DRButtonVariant.SECONDARY,
                             onClick = {
                                 doubledCoinsClaimed = true
                                 onWatchAdDoubleCoins()
                             },
-                            colors = ButtonDefaults.buttonColors(containerColor = RulerYellow),
-                            shape = RoundedCornerShape(10.dp),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(38.dp)
-                                .testTag("btn_results_double_coins")
-                        ) {
-                            Text(
-                                text = "WATCH CLIP FOR 2× COINS (+$coinsEarnedThisRace BONUS)",
-                                fontFamily = Poppins,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 11.sp,
-                                color = SlateAbyss
-                            )
-                        }
+                            modifier = Modifier.fillMaxWidth(),
+                            testTag = "btn_results_double_coins"
+                        )
                     }
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Button(
-                            onClick = onRematch,
-                            colors = ButtonDefaults.buttonColors(containerColor = HostEmerald),
-                            shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(44.dp)
-                                .testTag("btn_results_rematch")
-                        ) {
-                            Text(
-                                text = if (!isMultiplayer || isHost) "REMATCH" else "READY",
-                                fontFamily = Poppins,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 11.sp
-                            )
-                        }
-                        if (!isMultiplayer || isHost) {
-                            Button(
-                                onClick = onNextRace,
-                                colors = ButtonDefaults.buttonColors(containerColor = DriftAmber),
-                                shape = RoundedCornerShape(12.dp),
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(44.dp)
-                                    .testTag("btn_results_next_race")
-                            ) {
-                                Text(
-                                    text = if (isGrandPrix && !isCupFinale) "NEXT CUP RACE ▶" else "NEXT TRACK ▶",
-                                    fontFamily = Poppins,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 11.sp,
-                                    color = SlateAbyss
-                                )
-                            }
-                        }
-                    }
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
+                    Spacer(Modifier.weight(1f))
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End), verticalAlignment = Alignment.CenterVertically) {
                         if (isMultiplayer) {
-                            Button(
-                                onClick = onBackToLobby,
-                                colors = ButtonDefaults.buttonColors(containerColor = JoinBlue),
-                                shape = RoundedCornerShape(12.dp),
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(42.dp)
-                                    .testTag("btn_results_lobby")
-                            ) {
-                                Text("LOBBY", fontFamily = Poppins, fontWeight = FontWeight.Bold, fontSize = 11.sp)
-                            }
+                            DRButton("Lobby", onClick = onBackToLobby, variant = DRButtonVariant.GHOST, icon = Icons.Rounded.Groups, testTag = "btn_results_lobby")
+                        } else {
+                            DRButton("Menu", onClick = onMainMenu, variant = DRButtonVariant.GHOST, icon = Icons.Rounded.Home, testTag = "btn_results_menu")
                         }
-                        Button(
-                            onClick = onMainMenu,
-                            colors = ButtonDefaults.buttonColors(containerColor = SlateSurface),
-                            shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(42.dp)
-                                .border(1.dp, SlateBorder, RoundedCornerShape(12.dp))
-                                .testTag("btn_results_menu")
-                        ) {
-                            Text("MAIN MENU", fontFamily = Poppins, fontWeight = FontWeight.Bold, fontSize = 11.sp)
-                        }
+                        DRButton(
+                            text = if (!isMultiplayer || isHost) "Rematch" else "Ready",
+                            onClick = onRematch,
+                            variant = DRButtonVariant.SECONDARY,
+                            icon = Icons.Rounded.Replay,
+                            testTag = "btn_results_rematch"
+                        )
                     }
-                }
-            }
-
-            // Right Column: Full 8-Racer Standings Table (Tabular Poppins tnum)
-            Surface(
-                modifier = Modifier
-                    .weight(1.05f)
-                    .fillMaxHeight(),
-                shape = RoundedCornerShape(16.dp),
-                color = SlateAbyss,
-                border = androidx.compose.foundation.BorderStroke(1.dp, SlateBorder)
-            ) {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    items(orderedStandings) { r ->
-                        Surface(
-                            shape = RoundedCornerShape(10.dp),
-                            color = if (r.isLocal) SkyCyan.copy(alpha = 0.18f) else SlateSurface,
-                            border = androidx.compose.foundation.BorderStroke(
-                                1.dp,
-                                if (r.isLocal) SkyCyan else Color(0xFF334155)
-                            ),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    Text(
-                                        text = "#${r.position}",
-                                        style = DRType.TabularTimer,
-                                        color = if (r.position == 1) RulerYellow else Color.White
-                                    )
-                                    Box(
-                                        modifier = Modifier
-                                            .size(12.dp)
-                                            .background(Color(r.colorHex), CircleShape)
-                                    )
-                                    Text(
-                                        text = r.name,
-                                        fontFamily = Poppins,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 12.sp,
-                                        color = Color.White
-                                    )
-                                    // Part C4: "NEW BEST" only on a personal record
-                                    if (r.isNewRecord) {
-                                        Surface(
-                                            shape = RoundedCornerShape(6.dp),
-                                            color = RulerYellow
-                                        ) {
-                                            Text(
-                                                text = "NEW BEST",
-                                                fontFamily = Poppins,
-                                                fontWeight = FontWeight.Bold,
-                                                fontSize = 8.sp,
-                                                color = SlateAbyss,
-                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                            )
-                                        }
-                                    }
-                                    if (r.isDnf) {
-                                        Surface(
-                                            shape = RoundedCornerShape(6.dp),
-                                            color = ArcadeCrimson
-                                        ) {
-                                            Text(
-                                                text = "DNF",
-                                                fontFamily = Poppins,
-                                                fontWeight = FontWeight.Bold,
-                                                fontSize = 8.sp,
-                                                color = Color.White,
-                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                            )
-                                        }
-                                    }
-                                }
-
-                                Column(horizontalAlignment = Alignment.End) {
-                                    Text(
-                                        text = if (r.isDnf) "DNF" else formatRaceTime(r.totalTimeMs),
-                                        style = DRType.TabularTimer,
-                                        fontSize = 12.sp,
-                                        color = if (r.isDnf) ArcadeCrimson else Color.White
-                                    )
-                                    // Part C4: Best lap marked with ★ per racer
-                                    val bestLapPart = if (r.bestLapMs > 0L) {
-                                        "★ ${formatRaceTime(r.bestLapMs)}"
-                                    } else {
-                                        "★ --:--.---"
-                                    }
-                                    val subText = if (isGrandPrix) {
-                                        "$bestLapPart  •  +${r.cupPointsEarned} PTS (${r.cupTotalPoints})"
-                                    } else {
-                                        bestLapPart
-                                    }
-                                    val isOverallFastest = fastestLapOverallMs > 0L && r.bestLapMs == fastestLapOverallMs
-                                    Text(
-                                        text = subText,
-                                        style = DRType.MicroTag,
-                                        color = if (isOverallFastest || isGrandPrix) RulerYellow else SkyCyan
-                                    )
-                                }
-                            }
-                        }
+                    if (!isMultiplayer || isHost) {
+                        Spacer(Modifier.height(8.dp))
+                        DRButton(
+                            text = if (isGrandPrix && !isCupFinale) "Next cup race" else "Next track",
+                            icon = Icons.AutoMirrored.Rounded.ArrowForward,
+                            onClick = onNextRace,
+                            size = DRButtonSize.L,
+                            modifier = Modifier.fillMaxWidth(),
+                            testTag = "btn_results_next_race"
+                        )
+                    } else {
+                        Spacer(Modifier.height(8.dp))
+                        DRButton(
+                            text = "Main menu",
+                            onClick = onMainMenu,
+                            variant = DRButtonVariant.SECONDARY,
+                            modifier = Modifier.fillMaxWidth(),
+                            testTag = "btn_results_menu_client"
+                        )
                     }
                 }
             }
@@ -398,51 +258,62 @@ fun ResultsScreen(
 }
 
 @Composable
-private fun PodiumStep(
-    place: String,
-    racer: RacerStanding?,
-    stepHeight: androidx.compose.ui.unit.Dp,
-    medalColor: Color,
-    modifier: Modifier = Modifier
-) {
-    Column(
-        modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(4.dp)
+private fun RewardRow(label: String, value: String) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .height(40.dp)
+            .drawBehind { drawRect(DR.Line, topLeft = Offset(0f, size.height - 1.dp.toPx()), size = Size(size.width, 1.dp.toPx())) },
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        if (racer != null) {
-            Box(
-                modifier = Modifier
-                    .size(18.dp)
-                    .background(Color(racer.colorHex), CircleShape)
-                    .border(1.5.dp, Color.White, CircleShape)
-            )
-            Text(
-                text = racer.name,
-                fontFamily = Poppins,
-                fontWeight = FontWeight.Bold,
-                fontSize = 11.sp,
-                color = Color.White,
-                maxLines = 1
-            )
-        }
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(stepHeight),
-            shape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp),
-            color = medalColor.copy(alpha = 0.24f),
-            border = androidx.compose.foundation.BorderStroke(1.5.dp, medalColor)
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Text(
-                    text = place,
-                    fontFamily = Poppins,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp,
-                    color = medalColor
-                )
+        DRCoin(18.dp)
+        Text(label, style = DRType.BodyStrong.copy(fontSize = 13.sp), color = DR.TextHi, modifier = Modifier.weight(1f))
+        Text(value, style = DRType.NumL, color = DR.Amber)
+    }
+}
+
+@Composable
+private fun ResultRow(r: RacerStanding, leaderMs: Long, fastestLap: Long, isGrandPrix: Boolean) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(40.dp)
+            .background(if (r.isLocal) DR.YouWash else Color.Transparent)
+            .drawBehind {
+                drawRect(DR.Line, topLeft = Offset(0f, size.height - 1.dp.toPx()), size = Size(size.width, 1.dp.toPx()))
+                if (r.isLocal) drawRect(DR.You, size = Size(3.dp.toPx(), size.height))
             }
+            .padding(horizontal = 14.dp)
+            .testTag("result_row_${r.slotIndex}"),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Text("${r.position}", style = DRType.Title.copy(fontSize = 22.sp), color = DR.podium(r.position), modifier = Modifier.width(30.dp), textAlign = TextAlign.Start)
+        KartThumb(r.bodyType, Modifier.size(width = 42.dp, height = 28.dp))
+        Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(r.name, style = DRType.BodyStrong, color = DR.TextHi, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+            if (r.isLocal) DRBadge("You", DRBadgeKind.YOU)
+            if (r.isDnf) DRBadge("DNF", DRBadgeKind.MUTED)
         }
+        Text(
+            text = when {
+                isGrandPrix -> "+${r.cupPointsEarned} (${r.cupTotalPoints})"
+                r.bestLapMs > 0L -> formatRaceTime(r.bestLapMs)
+                else -> "—"
+            },
+            style = DRType.NumS.copy(fontSize = 12.5.sp),
+            color = if (!isGrandPrix && r.bestLapMs > 0L && r.bestLapMs == fastestLap) DR.Amber else DR.TextMid,
+            modifier = Modifier.width(72.dp),
+            maxLines = 1
+        )
+        Text(
+            text = if (r.isDnf) "DNF" else formatRaceTime(r.totalTimeMs),
+            style = DRType.NumM,
+            color = if (r.isDnf) DR.TextLo else DR.TextHi,
+            modifier = Modifier.width(76.dp),
+            maxLines = 1
+        )
+        Text(gapText(r, leaderMs), style = DRType.NumS, color = DR.TextLo, modifier = Modifier.width(56.dp), maxLines = 1)
     }
 }
