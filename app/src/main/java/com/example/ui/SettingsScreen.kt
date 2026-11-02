@@ -2,12 +2,12 @@ package com.example.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -18,36 +18,38 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.union
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.Science
+import androidx.compose.material.icons.rounded.SportsEsports
+import androidx.compose.material.icons.rounded.Tune
+import androidx.compose.material.icons.rounded.VolumeUp
+import androidx.compose.material.icons.rounded.Dashboard
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.UserProfileAndSettings
@@ -57,22 +59,33 @@ import com.example.game.GraphicsQuality
 import com.example.game.HeadlessRaceTest
 import com.example.game.TrackQaResult
 import com.example.render.AssetRepository
+import com.example.ui.components.DRButton
+import com.example.ui.components.DRButtonVariant
+import com.example.ui.components.DRCloseButton
+import com.example.ui.components.DRLabel
+import com.example.ui.components.DRPanel
+import com.example.ui.components.DRScreenHeader
+import com.example.ui.components.DRSegmented
+import com.example.ui.components.DRSlider
+import com.example.ui.components.DRToggle
 import com.example.ui.hud.HudCoverageMetrics
-import com.example.ui.theme.ArcadeCrimson
-import com.example.ui.theme.DriftAmber
-import com.example.ui.theme.HostEmerald
-import com.example.ui.theme.JoinBlue
-import com.example.ui.theme.Poppins
-import com.example.ui.theme.RulerYellow
-import com.example.ui.theme.SkyCyan
-import com.example.ui.theme.SlateAbyss
-import com.example.ui.theme.SlateBorder
-import com.example.ui.theme.SlateSurface
+import com.example.ui.theme.DR
+import com.example.ui.theme.DRType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.Locale
 import kotlin.math.roundToInt
+
+private data class SettingsCat(val title: String, val icon: ImageVector)
+
+private val CATS = listOf(
+    SettingsCat("Controls", Icons.Rounded.SportsEsports),
+    SettingsCat("HUD", Icons.Rounded.Dashboard),
+    SettingsCat("Graphics", Icons.Rounded.Tune),
+    SettingsCat("Audio & feel", Icons.Rounded.VolumeUp),
+    SettingsCat("About", Icons.Rounded.Info)
+)
 
 @Composable
 fun SettingsScreen(
@@ -97,484 +110,197 @@ fun SettingsScreen(
     latestHudCoverage: HudCoverageMetrics? = null,
     onBack: () -> Unit
 ) {
-    BackHandler(onBack = onBack)
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    var cat by remember { mutableIntStateOf(0) }
     var qaRunning by remember { mutableStateOf(false) }
     var qaResults by remember { mutableStateOf<List<TrackQaResult>?>(null) }
-    var showCreditsModal by remember { mutableStateOf(false) }
+    var showCredits by remember { mutableStateOf(false) }
     val creditsText = remember { AssetRepository.readCreditsText(context) }
+
+    BackHandler {
+        when {
+            showCredits -> showCredits = false
+            qaResults != null -> qaResults = null
+            else -> onBack()
+        }
+    }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xEB0B1020))
+            .background(DR.Bg.copy(alpha = 0.95f))
             .windowInsetsPadding(WindowInsets.safeDrawing.union(WindowInsets.displayCutout))
-            .padding(horizontal = 18.dp, vertical = 10.dp)
+            .padding(horizontal = 16.dp, vertical = 12.dp)
             .testTag("settings_screen")
     ) {
-        Row(
-            modifier = Modifier.fillMaxSize(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            // Left Card: Controls, Customizer, Driving Assists + Developer QA
-            Surface(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight(),
-                shape = RoundedCornerShape(16.dp),
-                color = SlateAbyss,
-                border = androidx.compose.foundation.BorderStroke(1.dp, SlateBorder)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(12.dp)
-                        .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        IconButton(
-                            onClick = onBack,
-                            modifier = Modifier
-                                .size(44.dp)
-                                .background(SlateSurface, RoundedCornerShape(10.dp))
-                                .testTag("btn_settings_back")
-                        ) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
-                        }
-                        Text(
-                            text = "CONTROLS & HUD CUSTOMIZER",
-                            fontFamily = Poppins,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp,
-                            color = SkyCyan
-                        )
-                    }
-
-                    // 4 Control Schemes: SMART, PRO, TILT, BUTTONS
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(
-                            text = "CONTROL SCHEME",
-                            fontFamily = Poppins,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 10.sp,
-                            color = RulerYellow
-                        )
+        Column(Modifier.fillMaxSize()) {
+            DRScreenHeader(kicker = "Settings", title = CATS[cat].title, onBack = onBack, backTestTag = "btn_settings_back")
+            Spacer(Modifier.height(12.dp))
+            Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(18.dp)) {
+                DRPanel(Modifier.width(210.dp).fillMaxHeight(), padding = androidx.compose.foundation.layout.PaddingValues(vertical = 8.dp)) {
+                    CATS.forEachIndexed { i, c ->
+                        val sel = i == cat
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(48.dp)
+                                .background(if (sel) DR.AmberTint else Color.Transparent)
+                                .drawBehind { if (sel) drawRect(DR.Amber, size = Size(3.dp.toPx(), size.height)) }
+                                .clickable(role = Role.Tab) { cat = i }
+                                .padding(horizontal = 14.dp)
+                                .testTag("settings_cat_$i"),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
-                            ControlSchemeType.entries.forEach { scheme ->
-                                val active = settings.controlScheme == scheme
-                                Surface(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .height(38.dp)
-                                        .clickable { onControlSchemeChanged(scheme) }
-                                        .testTag("settings_scheme_${scheme.id}"),
-                                    shape = RoundedCornerShape(8.dp),
-                                    color = if (active) SkyCyan else SlateSurface
-                                ) {
-                                    Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(2.dp)) {
-                                        Text(
-                                            text = scheme.title.uppercase(),
-                                            fontFamily = Poppins,
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 9.sp,
-                                            color = if (active) SlateAbyss else Color.White,
-                                            maxLines = 1
-                                        )
-                                    }
-                                }
+                            Text(String.format(Locale.US, "%02d", i + 1), style = DRType.NumS.copy(fontSize = 10.sp), color = if (sel) DR.Amber else DR.TextDis)
+                            Icon(c.icon, contentDescription = null, tint = if (sel) DR.TextHi else DR.TextLo, modifier = Modifier.size(20.dp))
+                            Text(c.title, style = DRType.BodyStrong, color = if (sel) DR.TextHi else DR.TextMid, maxLines = 1)
+                        }
+                    }
+                }
+
+                Column(
+                    Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    when (cat) {
+                        0 -> {
+                            SettingRow("Steering") {
+                                val opts = ControlSchemeType.entries
+                                DRSegmented(
+                                    options = listOf("Smart", "Pro", "Tilt", "Buttons"),
+                                    selected = opts.indexOf(settings.controlScheme).coerceAtLeast(0),
+                                    onSelect = { onControlSchemeChanged(opts[it]) },
+                                    modifier = Modifier.width(280.dp),
+                                    testTagPrefix = "settings_scheme"
+                                )
+                            }
+                            Text(settings.controlScheme.description, style = DRType.Caption, color = DR.TextLo, modifier = Modifier.padding(bottom = 4.dp))
+                            DRSlider(
+                                label = "Steering sensitivity",
+                                value = settings.steerSensitivity,
+                                onValueChange = onSensitivityChanged,
+                                valueRange = 0.5f..1.8f,
+                                valueText = "${(settings.steerSensitivity * 100).roundToInt()}%",
+                                testTag = "settings_sensitivity"
+                            )
+                            DRToggle("Auto-accelerate", settings.autoAccelerate, onAutoAccelerateChanged, subtitle = "Hold brake to slow down", testTag = "settings_auto_gas")
+                            DRToggle("Smart steering", settings.smartSteering, onSmartSteeringChanged, subtitle = "Gently keeps you off the track edge", testTag = "settings_smart_steer")
+                            DRToggle("Left-handed layout", settings.swapHands, onSwapHandsChanged, subtitle = "Steer on the right, pedals on the left", testTag = "settings_swap_hands")
+                            SettingRow("Bot skill (solo)") {
+                                val opts = CpuDifficulty.entries
+                                DRSegmented(listOf("Rookie", "Pro", "Champ", "Mixed"), opts.indexOf(settings.cpuDifficulty), { onDifficultyChanged(opts[it]) }, Modifier.width(280.dp), testTagPrefix = "settings_skill")
                             }
                         }
-                    }
-
-                    // Sensitivity + Button Size + HUD Opacity Sliders
-                    Column {
-                        Text(
-                            text = "STEER SENSITIVITY: ${(settings.steerSensitivity * 100).roundToInt()}%",
-                            fontFamily = Poppins,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 10.sp,
-                            color = Color.White
-                        )
-                        Slider(
-                            value = settings.steerSensitivity,
-                            onValueChange = onSensitivityChanged,
-                            valueRange = 0.5f..1.8f,
-                            colors = SliderDefaults.colors(thumbColor = SkyCyan, activeTrackColor = SkyCyan),
-                            modifier = Modifier.height(26.dp)
-                        )
-                    }
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "BUTTON SIZE: ${(settings.buttonScale * 100).roundToInt()}%",
-                                fontFamily = Poppins,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 9.sp,
-                                color = Color.White
-                            )
-                            Slider(
+                        1 -> {
+                            DRSlider(
+                                label = "Button size",
                                 value = settings.buttonScale,
                                 onValueChange = onButtonScaleChanged,
-                                valueRange = 0.85f..1.25f,
-                                colors = SliderDefaults.colors(thumbColor = RulerYellow, activeTrackColor = RulerYellow),
-                                modifier = Modifier.height(24.dp)
+                                valueRange = 0.85f..1.15f,
+                                valueText = "${(settings.buttonScale * 100).roundToInt()}%",
+                                testTag = "settings_button_size"
                             )
-                        }
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "HUD OPACITY: ${(settings.hudOpacity * 100).roundToInt()}%",
-                                fontFamily = Poppins,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 9.sp,
-                                color = Color.White
-                            )
-                            Slider(
+                            DRSlider(
+                                label = "Control opacity",
                                 value = settings.hudOpacity,
                                 onValueChange = onHudOpacityChanged,
-                                valueRange = 0.50f..1.0f,
-                                colors = SliderDefaults.colors(thumbColor = HostEmerald, activeTrackColor = HostEmerald),
-                                modifier = Modifier.height(24.dp)
+                                valueRange = 0.3f..1.0f,
+                                valueText = "${(settings.hudOpacity * 100).roundToInt()}%",
+                                testTag = "settings_opacity"
                             )
-                        }
-                    }
-
-                    SettingToggleRow("Auto-Accelerate (Hands-Free Gas)", settings.autoAccelerate, onAutoAccelerateChanged)
-                    SettingToggleRow("Smart Steering (Track Edge Assist)", settings.smartSteering, onSmartSteeringChanged)
-                    SettingToggleRow("Left-Handed Swap (Steer Right / Actions Left)", settings.swapHands, onSwapHandsChanged)
-
-                    // Developer -> Run Track QA
-                    Button(
-                        onClick = {
-                            if (!qaRunning) {
-                                qaRunning = true
-                                scope.launch {
-                                    val res = withContext(Dispatchers.Default) {
-                                        HeadlessRaceTest.runAllTracksQa()
-                                    }
-                                    qaResults = res
-                                    qaRunning = false
-                                }
+                            DRToggle("Show minimap", settings.showMinimap, onShowMinimapChanged, testTag = "settings_minimap")
+                            DRToggle("Show HUD layout zones", settings.showDebugHudZones, onShowDebugHudZonesChanged, subtitle = "Developer overlay", testTag = "settings_debug_zones")
+                            latestHudCoverage?.let {
+                                Text(
+                                    String.format(Locale.US, "HUD coverage: %.0f%% opaque · %.0f%% total", it.opaqueFraction * 100f, it.totalTranslucentFraction * 100f),
+                                    style = DRType.NumS,
+                                    color = DR.TextLo,
+                                    modifier = Modifier.padding(top = 8.dp)
+                                )
                             }
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = JoinBlue),
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(38.dp)
-                            .testTag("btn_run_track_qa")
-                    ) {
-                        Text(
-                            text = if (qaRunning) "RUNNING 8-TRACK BOT QA..." else "DEV: RUN TRACK QA (8 BOTS × 3 LAPS)",
-                            fontFamily = Poppins,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 10.sp,
-                            color = Color.White
-                        )
-                    }
-                }
-            }
-
-            // Right Card: Graphics Quality, Post FX, Audio/Haptics, Developer HUD Zones & Credits
-            Surface(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight(),
-                shape = RoundedCornerShape(16.dp),
-                color = SlateAbyss,
-                border = androidx.compose.foundation.BorderStroke(1.dp, SlateBorder)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(12.dp)
-                        .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "GRAPHICS, AUDIO & CREDITS",
-                            fontFamily = Poppins,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp,
-                            color = SkyCyan
-                        )
-                        Button(
-                            onClick = { showCreditsModal = true },
-                            colors = ButtonDefaults.buttonColors(containerColor = SlateSurface),
-                            shape = RoundedCornerShape(8.dp),
-                            modifier = Modifier
-                                .height(34.dp)
-                                .testTag("btn_open_credits")
-                        ) {
+                        }
+                        2 -> {
+                            SettingRow("Quality") {
+                                val opts = GraphicsQuality.entries
+                                DRSegmented(listOf("Low", "Medium", "High"), opts.indexOf(settings.graphicsQuality), { onGraphicsChanged(opts[it]) }, Modifier.width(240.dp), testTagPrefix = "settings_quality")
+                            }
+                            Text(settings.graphicsQuality.label, style = DRType.Caption, color = DR.TextLo, modifier = Modifier.padding(bottom = 4.dp))
+                            DRToggle("Post FX", settings.postFxEnabled, onPostFxChanged, subtitle = "Bloom + anti-aliasing", testTag = "settings_postfx")
+                            DRToggle("Contact shadows", settings.contactShadowsEnabled, onContactShadowsChanged, subtitle = "Soft shadows under karts and props", testTag = "settings_shadows")
                             Text(
-                                text = "CREDITS & LICENSES",
-                                fontFamily = Poppins,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 9.sp,
-                                color = RulerYellow
+                                "If the phone gets hot, the game lowers quality automatically. Game speed is never affected.",
+                                style = DRType.Caption,
+                                color = DR.TextLo,
+                                modifier = Modifier.padding(top = 10.dp)
                             )
                         }
-                    }
-
-                    // Graphics Quality
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(
-                            text = "GRAPHICS QUALITY",
-                            fontFamily = Poppins,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 10.sp,
-                            color = RulerYellow
-                        )
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            GraphicsQuality.entries.forEach { q ->
-                                val active = settings.graphicsQuality == q
-                                Surface(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .height(36.dp)
-                                        .clickable { onGraphicsChanged(q) }
-                                        .testTag("settings_gfx_${q.id}"),
-                                    shape = RoundedCornerShape(8.dp),
-                                    color = if (active) HostEmerald else SlateSurface
-                                ) {
-                                    Box(contentAlignment = Alignment.Center) {
-                                        Text(
-                                            text = q.name,
-                                            fontFamily = Poppins,
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 10.sp,
-                                            color = if (active) SlateAbyss else Color.White
-                                        )
-                                    }
-                                }
+                        3 -> {
+                            DRToggle("Music & sound effects", settings.soundEnabled, onSoundChanged, testTag = "settings_sound")
+                            DRToggle("Haptics", settings.hapticsEnabled, onHapticsChanged, subtitle = "Bumps, hits and boosts", testTag = "settings_haptics")
+                        }
+                        else -> {
+                            Text("DESK RACER LAN", style = DRType.Title, color = DR.TextHi)
+                            Text("Offline hotspot kart racing. Fonts: Poppins, Kanit, Barlow Semi Condensed (SIL OFL).", style = DRType.Caption, color = DR.TextMid, modifier = Modifier.padding(top = 4.dp, bottom = 12.dp))
+                            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                DRButton("Credits & licenses", onClick = { showCredits = true }, variant = DRButtonVariant.SECONDARY, icon = Icons.Rounded.Info, testTag = "btn_credits")
+                            }
+                            Spacer(Modifier.height(18.dp))
+                            DRLabel("Developer")
+                            Spacer(Modifier.height(8.dp))
+                            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                DRButton(
+                                    text = if (qaRunning) "Running QA…" else "Run track QA",
+                                    icon = Icons.Rounded.Science,
+                                    variant = DRButtonVariant.SECONDARY,
+                                    enabled = !qaRunning,
+                                    onClick = {
+                                        qaRunning = true
+                                        scope.launch {
+                                            val res = withContext(Dispatchers.Default) { HeadlessRaceTest.runAllTracksQa() }
+                                            qaResults = res
+                                            qaRunning = false
+                                        }
+                                    },
+                                    testTag = "btn_run_track_qa"
+                                )
+                                DRButton("Test track loop", onClick = onLaunchTestTrackLoop, variant = DRButtonVariant.GHOST, testTag = "btn_test_track_loop")
                             }
                         }
                     }
-
-                    // CPU Difficulty
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(
-                            text = "CPU DIFFICULTY",
-                            fontFamily = Poppins,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 10.sp,
-                            color = RulerYellow
-                        )
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            CpuDifficulty.entries.forEach { d ->
-                                val active = settings.cpuDifficulty == d
-                                Surface(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .height(36.dp)
-                                        .clickable { onDifficultyChanged(d) }
-                                        .testTag("settings_cpu_${d.id}"),
-                                    shape = RoundedCornerShape(8.dp),
-                                    color = if (active) DriftAmber else SlateSurface
-                                ) {
-                                    Box(contentAlignment = Alignment.Center) {
-                                        Text(
-                                            text = d.label.uppercase(),
-                                            fontFamily = Poppins,
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 10.sp,
-                                            color = if (active) SlateAbyss else Color.White
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    SettingToggleRow("Music & Sound Effects", settings.soundEnabled, onSoundChanged)
-                    SettingToggleRow("Haptic Vibration Feedback", settings.hapticsEnabled, onHapticsChanged)
-                    SettingToggleRow("Show Track Minimap", settings.showMinimap, onShowMinimapChanged)
-                    SettingToggleRow("PBR Contact Shadows & Post FX", settings.contactShadowsEnabled, onContactShadowsChanged)
-                    SettingToggleRow("Developer: Show HUD Layout Zones", settings.showDebugHudZones, onShowDebugHudZonesChanged)
+                    Spacer(Modifier.height(12.dp))
                 }
             }
         }
 
-        // About / Credits Modal (Part B7 & G6: reads assets/CREDITS.txt verbatim)
-        if (showCreditsModal) {
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color(0xEB0B1020))
-                    .testTag("credits_modal")
-            ) {
-                Surface(
-                    shape = RoundedCornerShape(16.dp),
-                    color = SlateAbyss,
-                    border = androidx.compose.foundation.BorderStroke(1.5.dp, RulerYellow),
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(16.dp),
-                        verticalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "ABOUT DESK RACER LAN v3 • OPEN ASSET CREDITS",
-                                fontFamily = Poppins,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 14.sp,
-                                color = RulerYellow
-                            )
-                            Button(
-                                onClick = { showCreditsModal = false },
-                                colors = ButtonDefaults.buttonColors(containerColor = SlateSurface),
-                                shape = RoundedCornerShape(8.dp),
-                                modifier = Modifier
-                                    .height(36.dp)
-                                    .testTag("btn_close_credits")
-                            ) {
-                                Text("CLOSE", fontFamily = Poppins, fontWeight = FontWeight.Bold, fontSize = 10.sp)
-                            }
-                        }
-
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxWidth()
-                                .padding(vertical = 8.dp)
-                                .background(SlateSurface, RoundedCornerShape(10.dp))
-                                .padding(12.dp)
-                                .verticalScroll(rememberScrollState())
-                        ) {
-                            Text(
-                                text = creditsText,
-                                fontFamily = FontFamily.Monospace,
-                                fontSize = 11.sp,
-                                color = Color.White
-                            )
-                        }
-                    }
-                }
+        if (showCredits) {
+            SheetOverlay(title = "Credits & licenses", onClose = { showCredits = false }, tag = "credits_modal") {
+                Text(creditsText, style = DRType.Caption.copy(fontSize = 11.sp), color = DR.TextMid, modifier = Modifier.verticalScroll(rememberScrollState()))
             }
         }
-
-        // Track QA Report Modal
-        val report = qaResults
-        if (report != null) {
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color(0xE6090D16))
-                    .testTag("track_qa_modal")
-            ) {
-                Surface(
-                    shape = RoundedCornerShape(16.dp),
-                    color = SlateAbyss,
-                    border = androidx.compose.foundation.BorderStroke(1.5.dp, SkyCyan),
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(14.dp),
-                        verticalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "HEADLESS TRACK QA REPORT (8 BOTS × 3 LAPS @ 60 HZ)",
-                                fontFamily = Poppins,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 14.sp,
-                                color = RulerYellow
-                            )
-                            Button(
-                                onClick = { qaResults = null },
-                                colors = ButtonDefaults.buttonColors(containerColor = SlateSurface),
-                                shape = RoundedCornerShape(8.dp),
-                                modifier = Modifier.height(36.dp)
-                            ) {
-                                Text("CLOSE", fontFamily = Poppins, fontWeight = FontWeight.Bold, fontSize = 10.sp)
-                            }
-                        }
-
-                        LazyColumn(
-                            modifier = Modifier
-                                .weight(1f)
+        qaResults?.let { report ->
+            SheetOverlay(title = "Track QA report", onClose = { qaResults = null }, tag = "qa_modal") {
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    items(report) { r ->
+                        Column(
+                            Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = 8.dp),
-                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                                .drawBehind { drawRect(if (r.passed) DR.Ok else DR.Bad, size = Size(3.dp.toPx(), size.height)) }
+                                .padding(start = 12.dp, top = 4.dp, bottom = 4.dp)
                         ) {
-                            items(report) { r ->
-                                Surface(
-                                    shape = RoundedCornerShape(8.dp),
-                                    color = SlateSurface,
-                                    border = androidx.compose.foundation.BorderStroke(
-                                        1.dp,
-                                        if (r.passed) HostEmerald else ArcadeCrimson
-                                    ),
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(horizontal = 12.dp, vertical = 8.dp),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Text(
-                                            text = "${r.trackName} (${if (r.passed) "PASS" else "FAIL"})",
-                                            fontFamily = Poppins,
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 11.sp,
-                                            color = if (r.passed) HostEmerald else ArcadeCrimson
-                                        )
-                                        Text(
-                                            text = String.format(
-                                                Locale.US,
-                                                "Finished: %d/%d  •  Avg Lap: %.1fs  •  Slowest: %.1fs  •  Watchdogs: %d",
-                                                r.finishedCount,
-                                                r.totalBots,
-                                                r.averageLapMs / 1000f,
-                                                r.slowestBotTimeMs / 1000f,
-                                                r.totalWatchdogCount
-                                            ),
-                                            fontFamily = FontFamily.Monospace,
-                                            fontSize = 10.sp,
-                                            color = Color.White
-                                        )
-                                    }
-                                }
-                            }
+                            Text("${r.trackName} · ${if (r.passed) "PASS" else "FAIL"}", style = DRType.BodyStrong, color = if (r.passed) DR.Ok else DR.Bad)
+                            Text(
+                                String.format(
+                                    Locale.US,
+                                    "Finished %d/%d · avg lap %.1fs · slowest %.1fs · watchdogs %d",
+                                    r.finishedCount, r.totalBots, r.averageLapMs / 1000f, r.slowestBotTimeMs / 1000f, r.totalWatchdogCount
+                                ),
+                                style = DRType.NumS,
+                                color = DR.TextMid
+                            )
                         }
                     }
                 }
@@ -584,25 +310,35 @@ fun SettingsScreen(
 }
 
 @Composable
-private fun SettingToggleRow(
-    label: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
-) {
+private fun SettingRow(label: String, control: @Composable () -> Unit) {
     Row(
-        modifier = Modifier
+        Modifier
             .fillMaxWidth()
-            .height(32.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+            .height(52.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Text(
-            text = label,
-            fontFamily = Poppins,
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Medium,
-            color = Color.White
-        )
-        Switch(checked = checked, onCheckedChange = onCheckedChange)
+        Text(label, style = DRType.BodyStrong.copy(fontSize = 13.sp), color = DR.TextHi, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+        control()
+    }
+}
+
+@Composable
+private fun SheetOverlay(title: String, onClose: () -> Unit, tag: String, content: @Composable () -> Unit) {
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .fillMaxSize()
+            .background(DR.Scrim)
+            .testTag(tag)
+    ) {
+        DRPanel(Modifier.fillMaxSize().padding(8.dp)) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(title.uppercase(), style = DRType.Title, color = DR.TextHi, modifier = Modifier.weight(1f))
+                DRCloseButton(onClick = onClose, testTag = "btn_close_${tag}")
+            }
+            Spacer(Modifier.height(8.dp))
+            Box(Modifier.weight(1f).fillMaxWidth()) { content() }
+        }
     }
 }
