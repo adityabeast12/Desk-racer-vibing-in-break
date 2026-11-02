@@ -40,6 +40,7 @@ jobs:
         run: |
           gradle :app:testDebugUnitTest --continue > test.log 2>&1 || true
           tail -5 test.log
+          grep -E "^e: |What went wrong" test.log | head -20 | sed 's/^/::error::/' || true
           python3 tools/junit_report.py
       - name: Publish UI screenshots to screens branch
         if: always()
