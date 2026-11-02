@@ -114,7 +114,10 @@ data class UserProfileAndSettings(
     val deskPassPremium: Boolean get() = hasDeskPassPremium
     val unlockedCosmetics: Set<String> get() = ownedShopIds
     val unlockedBodies: Set<Int>
-        get() = (0..5).filter { it < 5 || hasProUpgrade || "body_$it" in ownedShopIds }.toSet()
+        get() = KartBodyType.entries
+            .filter { it.unlockCoins == 0 || hasProUpgrade || "body_${it.id}" in ownedShopIds }
+            .map { it.id }
+            .toSet()
     val claimedPassTiers: Set<Int> get() = claimedFreePassTiers + claimedPremiumPassTiers
 }
 

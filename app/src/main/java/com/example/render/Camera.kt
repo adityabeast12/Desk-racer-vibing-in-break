@@ -46,7 +46,8 @@ class Camera {
             shakeTimerSec = 0.22f
         }
 
-        currentLensShiftX = if (isGarageStage && phase == RacePhase.SHOWROOM_MENU) {
+        // v6: keep the showroom kart in the left stage (menu column / garage panel own the right side)
+        currentLensShiftX = if (phase == RacePhase.SHOWROOM_MENU) {
             val w = viewportWidth.coerceAtLeast(1).toFloat()
             computeLensShiftX(stageCenterX = w * 0.30f, screenWidth = w)
         } else {
@@ -173,7 +174,7 @@ class Camera {
 
         fun computeGarageCameraDistance(
             kartVisualHeight: Float = 2.45f,
-            targetFillFraction: Float = 0.70f,
+            targetFillFraction: Float = 0.52f,
             fovYDeg: Float = 46f
         ): Float {
             val halfFovRad = Math.toRadians((fovYDeg * 0.5).toDouble())

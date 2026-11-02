@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
@@ -90,7 +91,9 @@ private fun KartBodyType.weightFrac() = ((mass - 0.7f) / 0.65f).coerceIn(0.05f, 
 private fun fmt10(f: Float) = String.format(Locale.US, "%.1f", f * 10f)
 
 fun bodyCoinPrice(body: KartBodyType): Int =
-    ShopCatalog.cosmeticOffers.firstOrNull { it.unlocksBodyId == body.id }?.coinPrice ?: 600
+    ShopCatalog.cosmeticOffers.firstOrNull { it.unlocksBodyId == body.id }?.coinPrice
+        ?: body.unlockCoins.takeIf { it > 0 }
+        ?: 600
 
 @Composable
 fun GarageScreen(
@@ -183,65 +186,70 @@ fun GarageScreen(
                 .testTag("garage_turntable_drag")
         )
 
-        Box(
+        androidx.compose.foundation.layout.BoxWithConstraints(
             Modifier
                 .fillMaxSize()
                 .windowInsetsPadding(WindowInsets.safeDrawing.union(WindowInsets.displayCutout))
                 .padding(start = 16.dp, end = 14.dp, top = 12.dp, bottom = 14.dp)
         ) {
-            DRScreenHeader(kicker = "Garage", title = "Customise", onBack = { handleBack() }, backTestTag = "btn_garage_back")
+            // v6.1 layout: name/subtitle under the header (above the kart), stats in two columns at
+            // the bottom-left (below the kart); the 3D kart sits in the clear band between them.
+            val panelW = if (maxWidth < 860.dp) 316.dp else 344.dp
+            val stageW = maxWidth - panelW - 12.dp
+            val compact = maxHeight < 380.dp
+            Row(Modifier.width(stageW), verticalAlignment = Alignment.CenterVertically) {
+                DRScreenHeader(kicker = "Garage", title = "Customise", onBack = { handleBack() }, backTestTag = "btn_garage_back", modifier = Modifier.weight(1f))
+                DRWallet(coins = profile.coinsBalance)
+            }
 
-            // Left info column
-            Column(Modifier.align(Alignment.TopStart).padding(top = 80.dp, start = 6.dp)) {
-                Text(
+            Column(Modifier.align(Alignment.TopStart).padding(top = 58.dp, start = 4.dp).width(stageW - 8.dp)) {
+                com.example.ui.components.AutoSizeText(
                     text = draftBody.title.uppercase(),
-                    style = DRType.Display.copy(fontSize = 31.sp, lineHeight = 31.sp),
+                    style = DRType.Display.copy(fontSize = if (compact) 22.sp else 26.sp, lineHeight = 28.sp),
                     color = DR.TextHi,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.width(300.dp)
+                    minFontSize = 16.sp
                 )
                 Text(
                     text = when (tab) {
-                        1 -> "${KART_COLOR_NAMES.getOrElse(draftColor) { "Custom" }} ${FINISH_NAMES[draftFinish.coerceIn(0, 3)].lowercase()}"
+                        1 -> "${KART_COLOR_NAMES.getOrElse(draftColor) { "Custom" }} · ${FINISH_NAMES[draftFinish.coerceIn(0, 3)].lowercase()}"
                         2 -> "${LIVERY_NAMES.getOrElse(draftLivery) { "Stock" }} livery"
                         else -> draftBody.subtitle
                     },
                     style = DRType.Caption,
                     color = DR.TextMid,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.width(260.dp).padding(top = 4.dp, bottom = 12.dp)
+                    overflow = TextOverflow.Ellipsis
                 )
-                val eq = profile.kartBody
-                val cmp = draftBody != eq
-                DRStatBar("Speed", draftBody.speedFrac(), fmt10(draftBody.speedFrac()), compare = if (cmp) eq.speedFrac() else null)
-                DRStatBar("Accel", draftBody.accelFrac(), fmt10(draftBody.accelFrac()), compare = if (cmp) eq.accelFrac() else null)
-                DRStatBar("Handling", draftBody.handlingFrac(), fmt10(draftBody.handlingFrac()), compare = if (cmp) eq.handlingFrac() else null)
-                DRStatBar("Weight", draftBody.weightFrac(), fmt10(draftBody.weightFrac()), compare = if (cmp) eq.weightFrac() else null)
             }
 
-            if (!hasDragged) {
-                Row(
-                    Modifier.align(Alignment.BottomStart).padding(start = 6.dp, bottom = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Icon(Icons.Rounded.Autorenew, contentDescription = null, tint = DR.TextLo, modifier = Modifier.size(18.dp))
-                    Text("Drag to rotate", style = DRType.Caption, color = DR.TextLo)
+            val eq = profile.kartBody
+            val cmp = draftBody != eq
+            val barW = ((stageW - 16.dp) / 2 - 112.dp).coerceIn(48.dp, 112.dp)
+            Row(
+                Modifier
+                    .align(Alignment.BottomStart)
+                    .width(stageW)
+                    .clip(DRShape.Card)
+                    .background(DR.Bg.copy(alpha = 0.62f))
+                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Column(Modifier.weight(1f)) {
+                    DRStatBar("Speed", draftBody.speedFrac(), fmt10(draftBody.speedFrac()), compare = if (cmp) eq.speedFrac() else null, barWidth = barW)
+                    DRStatBar("Accel", draftBody.accelFrac(), fmt10(draftBody.accelFrac()), compare = if (cmp) eq.accelFrac() else null, barWidth = barW)
+                }
+                Column(Modifier.weight(1f)) {
+                    DRStatBar("Handling", draftBody.handlingFrac(), fmt10(draftBody.handlingFrac()), compare = if (cmp) eq.handlingFrac() else null, barWidth = barW)
+                    DRStatBar("Weight", draftBody.weightFrac(), fmt10(draftBody.weightFrac()), compare = if (cmp) eq.weightFrac() else null, barWidth = barW)
                 }
             }
-
-            DRWallet(
-                coins = profile.coinsBalance,
-                modifier = Modifier.align(Alignment.TopEnd).padding(end = 356.dp, top = 6.dp)
-            )
 
             // Right customisation panel
             DRPanel(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
-                    .width(344.dp)
+                    .width(panelW)
                     .fillMaxHeight(),
                 padding = androidx.compose.foundation.layout.PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 12.dp)
             ) {
@@ -319,7 +327,10 @@ fun GarageScreen(
 @Composable
 private fun BodyGrid(profile: UserProfileAndSettings, selected: KartBodyType, onPick: (KartBodyType) -> Unit) {
     val bodies = KartBodyType.entries
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(
+        modifier = Modifier.verticalScroll(androidx.compose.foundation.rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
         bodies.chunked(3).forEach { row ->
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 row.forEach { body ->
@@ -347,7 +358,7 @@ private fun BodyGrid(profile: UserProfileAndSettings, selected: KartBodyType, on
                         )
                         if (equipped) DRBadge("On", DRBadgeKind.AMBER, Modifier.align(Alignment.TopEnd).padding(6.dp))
                         Column(Modifier.align(Alignment.BottomStart).padding(start = 9.dp, bottom = 7.dp, end = 6.dp)) {
-                            Text(body.title, style = DRType.BodyStrong.copy(fontSize = 11.5.sp, lineHeight = 14.sp), color = DR.TextHi, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            com.example.ui.components.AutoSizeText(body.title, style = DRType.BodyStrong.copy(fontSize = 11.5.sp), color = DR.TextHi, minFontSize = 9.sp)
                             if (locked) {
                                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                                     DRCoin(11.dp)
@@ -358,6 +369,7 @@ private fun BodyGrid(profile: UserProfileAndSettings, selected: KartBodyType, on
                             }
                         }
                     }
+                    repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
                 }
             }
         }

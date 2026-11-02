@@ -31,3 +31,7 @@ Room backdrops: Poly Haven HDRIs via the pmndrs/assets package (CC0 1.0), tone-m
 Fonts: Poppins — © 2020 The Poppins Project Authors, SIL Open Font License 1.1.
 Music, jingles, surface textures, item models (battery, thumbtack, eraser, marbles, paper plane,
 magnet, star sticker), decals, UI icons and track preview cards: original works created for Desk Racer LAN.
+
+Car Kit by Kenney (www.kenney.nl) — License: CC0 1.0 Universal (public domain).
+  Used for: Formula Racer, Hyperion X, Street Sprint, Hot Hatch, Interceptor, Cab Rush, Summit SUV
+  (models/kart_car_*.drm, converted to DRM1; thumbnails rendered from the same models).

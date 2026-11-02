@@ -146,12 +146,15 @@ fun MainMenuScreen(
                 .fillMaxSize()
                 .background(Brush.verticalGradient(0.7f to Color.Transparent, 1f to DR.Bg.copy(alpha = 0.7f)))
         )
-        Box(
+        BoxWithConstraints(
             Modifier
                 .fillMaxSize()
                 .windowInsetsPadding(WindowInsets.safeDrawing.union(WindowInsets.displayCutout))
                 .padding(start = 22.dp, end = 18.dp, top = 14.dp, bottom = 14.dp)
         ) {
+            // short screens (most 20:9 phones at large display size): host/join share one row, no subtitles
+            val compact = maxHeight < 400.dp
+            val colW = if (maxWidth < 760.dp) 288.dp else 316.dp
             // Logo
             Column(Modifier.align(Alignment.TopStart)) {
                 Text("DESK RACER", style = DRType.Display.copy(fontSize = 34.sp, lineHeight = 34.sp, shadow = com.example.ui.hud.HudTextShadow), color = DR.TextHi)
@@ -216,7 +219,7 @@ fun MainMenuScreen(
             Column(
                 Modifier
                     .align(Alignment.BottomEnd)
-                    .width(316.dp)
+                    .width(colW)
             ) {
                 DRLabel("${selectedTrack.name} · $bots · ${profile.selectedCcClass.label}", color = DR.TextMid)
                 Spacer(Modifier.height(6.dp))
@@ -228,15 +231,22 @@ fun MainMenuScreen(
                     modifier = Modifier.fillMaxWidth(),
                     testTag = "btn_menu_quick_race"
                 )
-                Spacer(Modifier.height(6.dp))
-                DRMenuRow(2, Icons.Rounded.Tune, "Race setup", "Track · Grand Prix · Time Trial · Battle", onClick = {
+                Spacer(Modifier.height(if (compact) 2.dp else 6.dp))
+                DRMenuRow(2, Icons.Rounded.Tune, "Race setup", if (compact) "" else "Track · Grand Prix · Time Trial · Battle", onClick = {
                     setupMode = GameMode.QUICK_RACE
                     showRaceSetup = true
                 }, testTag = "btn_open_race_setup")
-                DRMenuRow(3, Icons.Rounded.WifiTethering, "Host LAN race", "Start a room on your hotspot", onClick = onHostRace, testTag = "btn_menu_host_race")
-                DRMenuRow(4, Icons.Rounded.Wifi, "Join LAN race", "Find rooms on this Wi-Fi", onClick = onJoinRace, testTag = "btn_menu_join_race")
-                DRMenuRow(5, Icons.Rounded.DirectionsCar, "Garage", "Body · Paint · Livery · Driver", onClick = onOpenGarage, testTag = "btn_menu_garage")
-                DRMenuRow(6, Icons.Rounded.Storefront, "Shop & Desk Pass", "Cosmetics only · Tier ${profile.deskPassLevel}", onClick = onOpenShop, testTag = "btn_menu_shop")
+                if (compact) {
+                    Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        MenuTile(Icons.Rounded.WifiTethering, "Host LAN", onHostRace, "btn_menu_host_race", Modifier.weight(1f))
+                        MenuTile(Icons.Rounded.Wifi, "Join LAN", onJoinRace, "btn_menu_join_race", Modifier.weight(1f))
+                    }
+                } else {
+                    DRMenuRow(3, Icons.Rounded.WifiTethering, "Host LAN race", "Start a room on your hotspot", onClick = onHostRace, testTag = "btn_menu_host_race")
+                    DRMenuRow(4, Icons.Rounded.Wifi, "Join LAN race", "Find rooms on this Wi-Fi", onClick = onJoinRace, testTag = "btn_menu_join_race")
+                }
+                DRMenuRow(if (compact) 4 else 5, Icons.Rounded.DirectionsCar, "Garage", if (compact) "" else "Body · Paint · Livery · Driver", onClick = onOpenGarage, testTag = "btn_menu_garage")
+                DRMenuRow(if (compact) 5 else 6, Icons.Rounded.Storefront, "Shop & Desk Pass", if (compact) "" else "Cosmetics only · Tier ${profile.deskPassLevel}", onClick = onOpenShop, testTag = "btn_menu_shop")
             }
         }
         DRKerbStrip(Modifier.align(Alignment.BottomCenter))
@@ -253,6 +263,25 @@ fun MainMenuScreen(
                 onDismiss = { showRaceSetup = false }
             )
         }
+    }
+}
+
+@Composable
+private fun MenuTile(icon: androidx.compose.ui.graphics.vector.ImageVector, title: String, onClick: () -> Unit, tag: String, modifier: Modifier) {
+    Row(
+        modifier = modifier
+            .height(48.dp)
+            .clip(DRShape.Card)
+            .background(DR.S2.copy(alpha = 0.9f))
+            .border(1.dp, DR.Line2, DRShape.Card)
+            .clickable(role = Role.Button, onClick = onClick)
+            .padding(horizontal = 12.dp)
+            .testTag(tag),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Icon(icon, contentDescription = null, tint = DR.TextMid, modifier = Modifier.size(20.dp))
+        Text(title, style = DRType.BodyStrong, color = DR.TextHi, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 

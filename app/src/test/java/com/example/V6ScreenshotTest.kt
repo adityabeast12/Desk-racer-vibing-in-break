@@ -64,7 +64,11 @@ import org.robolectric.annotation.GraphicsMode
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(qualifiers = "w915dp-h412dp-land-xhdpi", sdk = [34])
-class V6ScreenshotTest {
+open class V6ScreenshotTest {
+    /** Device profile label + system font scale (the app theme clamps it). */
+    open val profileTag: String = "L"
+    open val systemFontScale: Float = 1.0f
+
     @get:Rule
     val rule = createAndroidComposeRule<ComponentActivity>()
 
@@ -88,9 +92,40 @@ class V6ScreenshotTest {
         }
     }
 
-    private fun shot(name: String, backdrop: String? = "textures/backdrops/room_workshop.jpg", before: () -> Unit = {}, content: @Composable () -> Unit) {
+    /** Text-vs-text overlaps, clipped/ellipsized text and off-screen text, from the unmerged semantics tree. */
+    private fun visualQa(w: Float, h: Float): List<String> {
+        val nodes = rule.onAllNodes(
+            androidx.compose.ui.test.SemanticsMatcher.keyIsDefined(androidx.compose.ui.semantics.SemanticsProperties.Text),
+            useUnmergedTree = true
+        ).fetchSemanticsNodes()
+        data class T(val text: String, val r: androidx.compose.ui.geometry.Rect, val clipped: Boolean)
+        val ts = nodes.mapNotNull { n ->
+            val text = n.config.getOrNull(androidx.compose.ui.semantics.SemanticsProperties.Text)?.joinToString(" ") { it.text }.orEmpty()
+            val r = n.boundsInRoot
+            if (text.isBlank() || r.width < 1f || r.height < 1f) return@mapNotNull null
+            val layouts = mutableListOf<androidx.compose.ui.text.TextLayoutResult>()
+            n.config.getOrNull(androidx.compose.ui.semantics.SemanticsActions.GetTextLayoutResult)?.action?.invoke(layouts)
+            val clipped = layouts.any { it.hasVisualOverflow || (it.lineCount > 0 && it.isLineEllipsized(it.lineCount - 1)) }
+            T(text, r, clipped)
+        }
+        val out = mutableListOf<String>()
+        for (i in ts.indices) for (j in i + 1 until ts.size) {
+            val a = ts[i]; val b = ts[j]
+            val inter = a.r.intersect(b.r)
+            if (inter.width > 3f && inter.height > 3f) out += "OVERLAP '${a.text.take(30)}' x '${b.text.take(30)}'"
+        }
+        ts.filter { it.clipped }.forEach { out += "CLIPPED '${it.text.take(40)}'" }
+        ts.filter { it.r.left < -2f || it.r.top < -2f || it.r.right > w + 2f || it.r.bottom > h + 2f }.forEach { out += "OFFSCREEN '${it.text.take(30)}'" }
+        return out
+    }
+
+    private fun shot(name: String, backdrop: String? = "textures/backdrops/room_workshop.jpg", qa: Boolean = true, before: () -> Unit = {}, content: @Composable () -> Unit) {
         rule.mainClock.autoAdvance = false
         rule.setContent {
+          val baseDensity = androidx.compose.ui.platform.LocalDensity.current
+          androidx.compose.runtime.CompositionLocalProvider(
+              androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(baseDensity.density, systemFontScale)
+          ) {
             MyApplicationTheme {
                 Box(Modifier.fillMaxSize().background(Color(0xFF2A2622))) {
                     if (backdrop != null) {
@@ -103,6 +138,7 @@ class V6ScreenshotTest {
                     content()
                 }
             }
+          }
         }
         rule.mainClock.advanceTimeBy(400)
         before()
@@ -111,7 +147,13 @@ class V6ScreenshotTest {
         val bmp = Bitmap.createBitmap(view.width.coerceAtLeast(1), view.height.coerceAtLeast(1), Bitmap.Config.ARGB_8888)
         rule.runOnUiThread { view.draw(android.graphics.Canvas(bmp)) }
         val dir = File("build/screens").apply { mkdirs() }
-        FileOutputStream(File(dir, "$name.png")).use { bmp.compress(Bitmap.CompressFormat.PNG, 100, it) }
+        FileOutputStream(File(dir, "${profileTag}_$name.png")).use { bmp.compress(Bitmap.CompressFormat.PNG, 100, it) }
+        if (qa) {
+            val issues = visualQa(view.width.toFloat(), view.height.toFloat())
+            File(dir, "${profileTag}_$name.qa.txt").writeText(issues.joinToString("\n"))
+            val hard = issues.filter { it.startsWith("OVERLAP") || it.startsWith("OFFSCREEN") }
+            org.junit.Assert.assertTrue("${profileTag}_$name: " + hard.joinToString(" | ").take(700), hard.isEmpty())
+        }
     }
 
     @Test
@@ -211,7 +253,7 @@ class V6ScreenshotTest {
 
     @Test
     fun s14_leaveDialog() = shot(
-        "14_leave_dialog", "textures/backdrops/room_studio.jpg",
+        "14_leave_dialog", "textures/backdrops/room_studio.jpg", qa = false,
         before = {
             rule.onNodeWithTag("hud_pause_button").performClick()
             rule.mainClock.advanceTimeBy(400)
@@ -222,16 +264,17 @@ class V6ScreenshotTest {
     }
 
     @Test
-    @Config(qualifiers = "w800dp-h360dp-land-xhdpi")
-    fun s15_hudSmallPhone() = shot("15_hud_small_phone", "textures/backdrops/room_studio.jpg") {
-        RaceScreen(raceHud.copy(minimapDots = dots(), standings = standings), profile, InputState(), false, true, onPauseChanged = {}, onRestartRace = {}, onOpenSettings = {}, onQuitToMenu = {})
-    }
-
-    @Test
     fun s16_garageLivery() = shot("16_garage_livery", before = { rule.onNodeWithTag("garage_tab_2").performClick() }) {
         GarageScreen(profile = profile, onNameChanged = {}, onColorSelected = {}, onBodySelected = {}, onBack = {})
     }
 
     @Suppress("unused")
     private val keep = listOf(CcClass.CC_150, CpuDifficulty.PRO)
+}
+
+/** Same screens on a compact 20:9 phone at large display + font size (the reported device). */
+@Config(qualifiers = "w800dp-h360dp-land-xxhdpi", sdk = [34])
+class V6ScreenshotSmallTest : V6ScreenshotTest() {
+    override val profileTag: String = "S"
+    override val systemFontScale: Float = 1.3f
 }

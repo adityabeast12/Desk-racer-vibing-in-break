@@ -30,7 +30,7 @@ private val DeskRacerColorScheme = darkColorScheme(
 
 @Composable
 fun MyApplicationTheme(
-    maxFontScale: Float = 1.30f,
+    maxFontScale: Float = 1.15f,
     content: @Composable () -> Unit
 ) {
     val curDensity = LocalDensity.current

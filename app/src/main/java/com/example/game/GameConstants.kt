@@ -160,7 +160,8 @@ enum class KartBodyType(
     val statSpeed: Int = 3,
     val statAccel: Int = 3,
     val statHandling: Int = 3,
-    val statWeight: Int = 3
+    val statWeight: Int = 3,
+    val unlockCoins: Int = 0
 ) {
     CLASSIC(
         id = 0,
@@ -246,7 +247,111 @@ enum class KartBodyType(
         statSpeed = 4,
         statAccel = 2,
         statHandling = 3,
+        statWeight = 3,
+        unlockCoins = 600
+    ),
+    // v6: Kenney Car Kit (CC0) bodies
+    FORMULA_RACER(
+        id = 6,
+        title = "Formula Racer",
+        subtitle = "Open-wheel speedster — top speed king, twitchy at the limit",
+        drmAssetPath = "models/kart_car_race.drm",
+        mass = 0.86f,
+        topSpeedFactor = 1.05f,
+        accelFactor = 1.06f,
+        handlingFactor = 1.04f,
+        statSpeed = 5,
+        statAccel = 4,
+        statHandling = 4,
+        statWeight = 2
+    ),
+    HYPERION_X(
+        id = 7,
+        title = "Hyperion X",
+        subtitle = "Concept hyper-racer — best launch on the desk",
+        drmAssetPath = "models/kart_car_race_future.drm",
+        mass = 0.84f,
+        topSpeedFactor = 1.04f,
+        accelFactor = 1.12f,
+        handlingFactor = 1.00f,
+        statSpeed = 5,
+        statAccel = 5,
+        statHandling = 3,
+        statWeight = 2,
+        unlockCoins = 900
+    ),
+    STREET_SPRINT(
+        id = 8,
+        title = "Street Sprint",
+        subtitle = "Spoilered sport sedan — balanced and grippy",
+        drmAssetPath = "models/kart_car_sedan_sports.drm",
+        mass = 1.00f,
+        topSpeedFactor = 1.02f,
+        accelFactor = 1.02f,
+        handlingFactor = 1.05f,
+        statSpeed = 4,
+        statAccel = 4,
+        statHandling = 4,
         statWeight = 3
+    ),
+    HOT_HATCH(
+        id = 9,
+        title = "Hot Hatch",
+        subtitle = "Small and light — corners like it's on rails",
+        drmAssetPath = "models/kart_car_hatchback_sports.drm",
+        mass = 0.90f,
+        topSpeedFactor = 0.99f,
+        accelFactor = 1.08f,
+        handlingFactor = 1.10f,
+        statSpeed = 3,
+        statAccel = 5,
+        statHandling = 5,
+        statWeight = 2,
+        unlockCoins = 500
+    ),
+    INTERCEPTOR(
+        id = 10,
+        title = "Interceptor",
+        subtitle = "Pursuit cruiser — heavy hitter with a strong top end",
+        drmAssetPath = "models/kart_car_police.drm",
+        mass = 1.22f,
+        topSpeedFactor = 1.04f,
+        accelFactor = 0.94f,
+        handlingFactor = 0.95f,
+        statSpeed = 5,
+        statAccel = 2,
+        statHandling = 3,
+        statWeight = 4,
+        unlockCoins = 700
+    ),
+    CAB_RUSH(
+        id = 11,
+        title = "Cab Rush",
+        subtitle = "Yellow cab — tough, forgiving, always on time",
+        drmAssetPath = "models/kart_car_taxi.drm",
+        mass = 1.12f,
+        topSpeedFactor = 1.00f,
+        accelFactor = 0.98f,
+        handlingFactor = 1.00f,
+        statSpeed = 3,
+        statAccel = 3,
+        statHandling = 4,
+        statWeight = 4
+    ),
+    SUMMIT_SUV(
+        id = 12,
+        title = "Summit SUV",
+        subtitle = "Luxury SUV — shrugs off bumps and items",
+        drmAssetPath = "models/kart_car_suv_luxury.drm",
+        mass = 1.28f,
+        topSpeedFactor = 1.03f,
+        accelFactor = 0.92f,
+        handlingFactor = 0.94f,
+        statSpeed = 4,
+        statAccel = 2,
+        statHandling = 3,
+        statWeight = 5,
+        unlockCoins = 800
     );
 
     companion object {

@@ -48,7 +48,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           if [ -d app/build/screens ] && ls app/build/screens/*.png >/dev/null 2>&1; then
-            mkdir -p /tmp/screens && cp app/build/screens/*.png /tmp/screens/
+            mkdir -p /tmp/screens && cp app/build/screens/*.png /tmp/screens/ && cp app/build/screens/*.txt /tmp/screens/ 2>/dev/null || true
             cd /tmp/screens && git init -q -b screens && git add . 
             git -c user.name=ci -c user.email=ci@users.noreply.github.com commit -q -m "screens from ${GITHUB_SHA::7}"
             git push -f "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" screens

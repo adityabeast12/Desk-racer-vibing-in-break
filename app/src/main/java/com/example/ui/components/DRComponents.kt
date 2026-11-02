@@ -871,7 +871,9 @@ fun DRMenuRow(
         Icon(icon, contentDescription = null, tint = DR.TextMid, modifier = Modifier.size(20.dp))
         Column(Modifier.weight(1f)) {
             Text(title, style = DRType.BodyStrong, color = DR.TextHi, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(subtitle, style = DRType.Caption.copy(fontSize = 10.5.sp, lineHeight = 13.sp), color = DR.TextLo, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (subtitle.isNotBlank()) {
+                Text(subtitle, style = DRType.Caption.copy(fontSize = 10.5.sp, lineHeight = 13.sp), color = DR.TextLo, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
         }
         Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null, tint = DR.TextDis, modifier = Modifier.size(20.dp))
     }
