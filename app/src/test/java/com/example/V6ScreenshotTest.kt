@@ -13,7 +13,8 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.test.captureToImage
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
@@ -65,7 +66,7 @@ import org.robolectric.annotation.GraphicsMode
 @Config(qualifiers = "w915dp-h412dp-land-xhdpi", sdk = [34])
 class V6ScreenshotTest {
     @get:Rule
-    val rule = createComposeRule()
+    val rule = createAndroidComposeRule<ComponentActivity>()
 
     private val profile = UserProfileAndSettings(playerName = "ADITYA", coinsBalance = 2450, gemsBalance = 120, deskPassXp = 2700)
 
@@ -88,6 +89,7 @@ class V6ScreenshotTest {
     }
 
     private fun shot(name: String, backdrop: String? = "textures/backdrops/room_workshop.jpg", before: () -> Unit = {}, content: @Composable () -> Unit) {
+        rule.mainClock.autoAdvance = false
         rule.setContent {
             MyApplicationTheme {
                 Box(Modifier.fillMaxSize().background(Color(0xFF2A2622))) {
@@ -102,11 +104,12 @@ class V6ScreenshotTest {
                 }
             }
         }
-        rule.waitForIdle()
+        rule.mainClock.advanceTimeBy(400)
         before()
-        rule.mainClock.advanceTimeBy(1500)
-        rule.waitForIdle()
-        val bmp = rule.onRoot().captureToImage().asAndroidBitmap()
+        rule.mainClock.advanceTimeBy(1600)
+        val view = rule.activity.window.decorView
+        val bmp = Bitmap.createBitmap(view.width.coerceAtLeast(1), view.height.coerceAtLeast(1), Bitmap.Config.ARGB_8888)
+        rule.runOnUiThread { view.draw(android.graphics.Canvas(bmp)) }
         val dir = File("build/screens").apply { mkdirs() }
         FileOutputStream(File(dir, "$name.png")).use { bmp.compress(Bitmap.CompressFormat.PNG, 100, it) }
     }

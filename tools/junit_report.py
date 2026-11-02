@@ -6,3 +6,7 @@ for f in sorted(glob.glob('app/build/test-results/testDebugUnitTest/*.xml')):
         for bad in list(tc.findall('failure')) + list(tc.findall('error')):
             msg = (bad.get('message') or '').replace('\n', ' ')[:300]
             print(f"::warning::FAILED {tc.get('name')[:120]} :: {msg}")
+            body = (bad.text or '')
+            frames = [l.strip() for l in body.splitlines() if l.strip().startswith('at ') and ('com.example' in l or 'compose.ui.test' in l)][:4]
+            if frames:
+                print("::warning::  " + " | ".join(frames)[:900])
