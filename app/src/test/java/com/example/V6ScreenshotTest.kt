@@ -269,6 +269,11 @@ open class V6ScreenshotTest {
         GarageScreen(profile = profile, onNameChanged = {}, onColorSelected = {}, onBodySelected = {}, onBack = {})
     }
 
+    @Test
+    fun s17_garageNewCars() = shot("17_garage_new_cars") {
+        GarageScreen(profile = profile.copy(kartBody = KartBodyType.FORMULA_RACER), onNameChanged = {}, onColorSelected = {}, onBodySelected = {}, onBack = {})
+    }
+
     @Suppress("unused")
     private val keep = listOf(CcClass.CC_150, CpuDifficulty.PRO)
 }
