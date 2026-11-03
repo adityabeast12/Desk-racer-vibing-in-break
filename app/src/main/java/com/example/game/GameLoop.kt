@@ -99,9 +99,10 @@ class GameLoop(
                     accNs = 0L
                 }
 
-                val throttled = settings.graphicsQuality == GraphicsQuality.LOW || thermalThrottle30Fps
+                // v6.2: always wake for the next 60 Hz step (cheap) so render interpolation never runs
+                // dry between bursts; thermal savings come from the renderer/refresh-rate cap instead.
                 val untilNextStepMs = ((stepNs - accNs).coerceAtLeast(0L) / 1_000_000L)
-                val sleepMs = if (throttled) 30L else untilNextStepMs.coerceIn(2L, 16L)
+                val sleepMs = untilNextStepMs.coerceIn(1L, 16L)
                 delay(sleepMs)
             }
         }

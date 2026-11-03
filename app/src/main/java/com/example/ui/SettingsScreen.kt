@@ -107,6 +107,7 @@ fun SettingsScreen(
     onContactShadowsChanged: (Boolean) -> Unit = {},
     onShowDebugHudZonesChanged: (Boolean) -> Unit = {},
     onLaunchTestTrackLoop: () -> Unit = {},
+    onFpsModeChanged: (Int) -> Unit = {},
     latestHudCoverage: HudCoverageMetrics? = null,
     onBack: () -> Unit
 ) {
@@ -229,6 +230,19 @@ fun SettingsScreen(
                                 DRSegmented(listOf("Low", "Medium", "High"), opts.indexOf(settings.graphicsQuality), { onGraphicsChanged(opts[it]) }, Modifier.width(240.dp), testTagPrefix = "settings_quality")
                             }
                             Text(settings.graphicsQuality.label, style = DRType.Caption, color = DR.TextLo, modifier = Modifier.padding(bottom = 4.dp))
+                            SettingRow("Frame rate") {
+                                DRSegmented(listOf("Max", "60", "30"), settings.fpsMode.coerceIn(0, 2), { onFpsModeChanged(it) }, Modifier.width(240.dp), testTagPrefix = "settings_fps")
+                            }
+                            Text(
+                                when (settings.fpsMode) {
+                                    1 -> "Locked to 60 fps."
+                                    2 -> "30 fps battery saver."
+                                    else -> "Uses your screen's highest refresh rate (90 / 120 / 144 Hz). Drops to 60 while the phone is hot."
+                                },
+                                style = DRType.Caption,
+                                color = DR.TextLo,
+                                modifier = Modifier.padding(bottom = 4.dp)
+                            )
                             DRToggle("Post FX", settings.postFxEnabled, onPostFxChanged, subtitle = "Bloom + anti-aliasing", testTag = "settings_postfx")
                             DRToggle("Contact shadows", settings.contactShadowsEnabled, onContactShadowsChanged, subtitle = "Soft shadows under karts and props", testTag = "settings_shadows")
                             Text(

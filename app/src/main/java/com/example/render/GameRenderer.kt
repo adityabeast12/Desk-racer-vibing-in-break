@@ -62,6 +62,14 @@ class GameRenderer(
     var garageTurntableYawRad: Float = 0.55f
     private var lastDrawFrameNs: Long = 0L
 
+    /** v6.2: 0 = render every vsync (max device refresh); otherwise minimum ns between frames. */
+    @Volatile
+    var minFrameIntervalNs: Long = 0L
+
+    /** Measured render rate (EMA), exposed for the Settings readout. */
+    @Volatile
+    var measuredFps: Float = 0f
+
     @Volatile
     var garageZoomFactor: Float = 1.0f
 
@@ -283,10 +291,22 @@ class GameRenderer(
             clearSkidMarks()
         }
 
+        // v6.2: optional pacing for the 30 fps battery mode (max mode renders on every vsync)
+        val cap = minFrameIntervalNs
+        if (cap > 0L && lastDrawFrameNs != 0L) {
+            val waitNs = lastDrawFrameNs + cap - System.nanoTime() - 1_500_000L
+            if (waitNs > 0L) {
+                try {
+                    Thread.sleep(waitNs / 1_000_000L, (waitNs % 1_000_000L).toInt())
+                } catch (_: InterruptedException) {
+                }
+            }
+        }
         // v6: measure the real frame time and draw a snapshot interpolated between sim steps
         val frameNowNs = System.nanoTime()
         val frameDt = if (lastDrawFrameNs == 0L) GameConstants.SIM_DT else ((frameNowNs - lastDrawFrameNs) / 1_000_000_000f).coerceIn(0.001f, 0.05f)
         lastDrawFrameNs = frameNowNs
+        if (frameDt > 0f) measuredFps = if (measuredFps == 0f) 1f / frameDt else measuredFps * 0.95f + (1f / frameDt) * 0.05f
         val snap = RenderInterp.resolve(snapshotRef.get(), frameNowNs)
         if (snap == null) {
             GLES20.glClearColor(0.043f, 0.063f, 0.125f, 1f)

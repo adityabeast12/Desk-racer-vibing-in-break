@@ -17,6 +17,10 @@ import android.view.InputDevice
 import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.Surface
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -116,6 +120,10 @@ class MainActivity : ComponentActivity(), SensorEventListener {
 
         prefs = Prefs(applicationContext)
         val initialProfile = prefs.state.value
+        // v6.2: re-apply the display refresh rate whenever the Frame rate setting changes
+        lifecycleScope.launch {
+            prefs.state.map { it.fpsMode }.distinctUntilChanged().collect { applyDisplayRefreshRate() }
+        }
 
         synthAudio = SynthAudio(applicationContext).apply {
             soundEnabled = initialProfile.soundEnabled
@@ -274,6 +282,12 @@ class MainActivity : ComponentActivity(), SensorEventListener {
                     onGlSurfaceViewCreated = { glView, renderer ->
                         glSurfaceViewRef = glView
                         gameRendererRef = renderer
+                        glView.holder.addCallback(object : android.view.SurfaceHolder.Callback {
+                            override fun surfaceCreated(holder: android.view.SurfaceHolder) { applyDisplayRefreshRate() }
+                            override fun surfaceChanged(holder: android.view.SurfaceHolder, format: Int, width: Int, height: Int) {}
+                            override fun surfaceDestroyed(holder: android.view.SurfaceHolder) {}
+                        })
+                        applyDisplayRefreshRate()
                     }
                 )
             }
@@ -314,9 +328,13 @@ class MainActivity : ComponentActivity(), SensorEventListener {
                 val isHot = status >= PowerManager.THERMAL_STATUS_MODERATE
                 if (isHot) {
                     applyThermalOrBatteryStepDown(showCoolingToast = true)
+                    thermalCapHz = 60f
+                    applyDisplayRefreshRate()
                 } else if (!isBatteryLowAndUnplugged()) {
                     gameLoop.thermalThrottle30Fps = false
                     thermalStepDownApplied = false
+                    thermalCapHz = Float.MAX_VALUE
+                    applyDisplayRefreshRate()
                 }
             }
             thermalListener = listener
@@ -411,9 +429,56 @@ class MainActivity : ComponentActivity(), SensorEventListener {
             WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
     }
 
+    /**
+     * v6.2: run at the panel's highest refresh rate (90/120/144 Hz) unless the player picked 60/30,
+     * or the phone is hot (temporary 60 Hz cap). Android defaults apps to 60 Hz otherwise.
+     */
+    private fun applyDisplayRefreshRate() {
+        if (!::prefs.isInitialized) return
+        val mode = prefs.state.value.fpsMode
+        val userCap = when (mode) {
+            1 -> 60f
+            2 -> 60f // 30 fps is paced in the renderer on a 60 Hz display mode
+            else -> Float.MAX_VALUE
+        }
+        val cap = minOf(userCap, thermalCapHz)
+        gameRendererRef?.minFrameIntervalNs = if (mode == 2) 33_333_333L else 0L
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return
+        runCatching {
+            @Suppress("DEPRECATION")
+            val display = (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) this.display else windowManager.defaultDisplay)
+                ?: return
+            val cur = display.mode
+            val best = display.supportedModes
+                .filter { it.physicalWidth == cur.physicalWidth && it.physicalHeight == cur.physicalHeight && it.refreshRate <= cap + 0.5f }
+                .maxByOrNull { it.refreshRate }
+                ?: return
+            targetRefreshHz = best.refreshRate
+            window.attributes = window.attributes.apply {
+                preferredDisplayModeId = best.modeId
+                preferredRefreshRate = best.refreshRate
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                glSurfaceViewRef?.holder?.surface?.takeIf { it.isValid }?.setFrameRate(
+                    best.refreshRate,
+                    Surface.FRAME_RATE_COMPATIBILITY_FIXED_SOURCE
+                )
+            }
+            recordDiagnosticLog("Display mode ${best.modeId} @ ${best.refreshRate}Hz (fpsMode=$mode, thermalCap=$thermalCapHz)")
+        }
+    }
+
+    @Volatile
+    private var thermalCapHz: Float = Float.MAX_VALUE
+
+    @Volatile
+    var targetRefreshHz: Float = 60f
+        private set
+
     override fun onResume() {
         super.onResume()
         applyImmersiveStickyBars()
+        applyDisplayRefreshRate()
         glSurfaceViewRef?.onResume()
         val sensorToUse = gameRotationSensor ?: accelerometer
         sensorToUse?.let {

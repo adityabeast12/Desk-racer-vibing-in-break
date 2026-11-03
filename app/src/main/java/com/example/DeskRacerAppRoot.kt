@@ -843,6 +843,7 @@ fun DeskRacerAppRoot(
                     onPostFxChanged = { prefs.updatePostFxEnabled(it) },
                     onContactShadowsChanged = { prefs.updateContactShadowsEnabled(it) },
                     onShowDebugHudZonesChanged = { prefs.updateShowDebugHudZones(it) },
+                    onFpsModeChanged = { prefs.updateFpsMode(it) },
                     onLaunchTestTrackLoop = {
                         selectedSoloTrackId = 0
                         val soloKart = buildSoloRacers(

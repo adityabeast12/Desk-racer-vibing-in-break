@@ -63,6 +63,7 @@ data class UserProfileAndSettings(
     val soundEnabled: Boolean = true,
     val hapticsEnabled: Boolean = true,
     val graphicsQuality: GraphicsQuality = GraphicsQuality.MEDIUM,
+    val fpsMode: Int = 0, // v6.2: 0 = Max (device refresh), 1 = 60 fps, 2 = 30 fps battery saver
     val fxaaEnabled: Boolean = true,
     val bloomEnabled: Boolean = true,
     val tiltShiftDofEnabled: Boolean = true,
@@ -237,6 +238,7 @@ class Prefs(private val context: Context) {
             soundEnabled = prefs.getBoolean("sound_enabled", true),
             hapticsEnabled = prefs.getBoolean("haptics_enabled", true),
             graphicsQuality = GraphicsQuality.fromId(prefs.getInt("graphics_quality", 1)),
+            fpsMode = prefs.getInt("fps_mode", 0).coerceIn(0, 2),
             fxaaEnabled = prefs.getBoolean("fxaa_enabled", true),
             bloomEnabled = prefs.getBoolean("bloom_enabled", true),
             tiltShiftDofEnabled = prefs.getBoolean("tilt_shift_dof", true),
@@ -436,6 +438,12 @@ class Prefs(private val context: Context) {
     fun updateHapticsEnabled(enabled: Boolean) {
         prefs.edit().putBoolean("haptics_enabled", enabled).apply()
         _state.value = _state.value.copy(hapticsEnabled = enabled)
+    }
+
+    fun updateFpsMode(mode: Int) {
+        val m = mode.coerceIn(0, 2)
+        prefs.edit().putInt("fps_mode", m).apply()
+        _state.value = _state.value.copy(fpsMode = m)
     }
 
     fun updateGraphicsQuality(quality: GraphicsQuality) {

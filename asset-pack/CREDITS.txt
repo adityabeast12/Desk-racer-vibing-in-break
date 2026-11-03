@@ -35,3 +35,6 @@ magnet, star sticker), decals, UI icons and track preview cards: original works 
 Car Kit by Kenney (www.kenney.nl) — License: CC0 1.0 Universal (public domain).
   Used for: Formula Racer, Hyperion X, Street Sprint, Hot Hatch, Interceptor, Cab Rush, Summit SUV
   (models/kart_car_*.drm, converted to DRM1; thumbnails rendered from the same models).
+
+Vortex V10 (models/kart_car_rspec.drm): supplied by the project owner as an .3ds model; converted,
+decimated and de-badged for the game. Confirm the original model's licence before public release.

@@ -352,6 +352,22 @@ enum class KartBodyType(
         statHandling = 3,
         statWeight = 5,
         unlockCoins = 800
+    ),
+    // v6.2: user-supplied supercar model (converted from .3ds, decimated 72k → 12k tris, badges removed)
+    VORTEX_V10(
+        id = 13,
+        title = "Vortex V10",
+        subtitle = "Mid-engine supercar — fastest launch, planted in corners",
+        drmAssetPath = "models/kart_car_rspec.drm",
+        mass = 1.04f,
+        topSpeedFactor = 1.05f,
+        accelFactor = 1.10f,
+        handlingFactor = 1.06f,
+        statSpeed = 5,
+        statAccel = 5,
+        statHandling = 4,
+        statWeight = 3,
+        unlockCoins = 1200
     );
 
     companion object {
