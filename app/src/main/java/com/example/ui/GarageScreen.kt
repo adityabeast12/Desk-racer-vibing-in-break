@@ -466,15 +466,15 @@ private fun LiveryTab(body: KartBodyType, liveryIdx: Int, colorIdx: Int, onPick:
 @Composable
 private fun LiverySwatch(mode: Int, paint: Color, modifier: Modifier = Modifier) {
     val lum = 0.299f * paint.red + 0.587f * paint.green + 0.114f * paint.blue
-    val stripe = if (lum < 0.62f) Color(0xFFF5F5F7) else Color(0xFF121216)
+    val stripe = if (lum < 0.62f) DR.SwatchStripeLight else DR.SwatchStripeDark
     androidx.compose.foundation.Canvas(modifier.clip(DRShape.Control)) {
         val w = size.width; val h = size.height
-        drawRect(Color(0xFF0E1320))
+        drawRect(DR.SwatchStage)
         val body = androidx.compose.ui.geometry.Rect(w * 0.06f, h * 0.30f, w * 0.94f, h * 0.78f)
         when (mode) {
             1 -> {
                 drawRect(paint, body.topLeft, androidx.compose.ui.geometry.Size(body.width, body.height * 0.55f))
-                drawRect(Color(0xFF1C1F26), androidx.compose.ui.geometry.Offset(body.left, body.top + body.height * 0.55f), androidx.compose.ui.geometry.Size(body.width, body.height * 0.45f))
+                drawRect(DR.SwatchGraphite, androidx.compose.ui.geometry.Offset(body.left, body.top + body.height * 0.55f), androidx.compose.ui.geometry.Size(body.width, body.height * 0.45f))
             }
             2 -> {
                 drawRect(paint, body.topLeft, body.size)
@@ -488,9 +488,9 @@ private fun LiverySwatch(mode: Int, paint: Color, modifier: Modifier = Modifier)
             else -> drawRect(paint, body.topLeft, body.size)
         }
         // cabin + wheels
-        drawRect(Color(0xFF2A3344), androidx.compose.ui.geometry.Offset(w * 0.30f, h * 0.14f), androidx.compose.ui.geometry.Size(w * 0.38f, h * 0.18f))
-        drawCircle(Color(0xFF0B0B0D), radius = h * 0.15f, center = androidx.compose.ui.geometry.Offset(w * 0.25f, h * 0.80f))
-        drawCircle(Color(0xFF0B0B0D), radius = h * 0.15f, center = androidx.compose.ui.geometry.Offset(w * 0.75f, h * 0.80f))
+        drawRect(DR.SwatchGlass, androidx.compose.ui.geometry.Offset(w * 0.30f, h * 0.14f), androidx.compose.ui.geometry.Size(w * 0.38f, h * 0.18f))
+        drawCircle(DR.SwatchTyre, radius = h * 0.15f, center = androidx.compose.ui.geometry.Offset(w * 0.25f, h * 0.80f))
+        drawCircle(DR.SwatchTyre, radius = h * 0.15f, center = androidx.compose.ui.geometry.Offset(w * 0.75f, h * 0.80f))
     }
 }
 

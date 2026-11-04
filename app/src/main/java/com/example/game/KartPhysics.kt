@@ -59,6 +59,7 @@ class KartRuntime(
     var driftScrubbing: Boolean = false
     var hopJustStarted: Boolean = false
     var visSpeedPrev: Float = 0f
+    var draftSec: Float = 0f
     var visAccelSmoothed: Float = 0f
 
     // Status Timers & Special Zones
@@ -148,7 +149,8 @@ private const val CONTACT_BETA = 0.45f           // fraction of penetration reso
 private const val RESTITUTION_SLOP = 1.2f        // u/s, slower closing speeds don't bounce
 private const val KART_RESTITUTION = 0.35f
 private const val WALL_BUMP_COOLDOWN_SEC = 0.35f
-private const val REAL_AIR_SEC = 0.42f           // longer than a drift hop
+private const val REAL_AIR_SEC = 0.42f
+const val DRAFT_CHARGE_SEC = 1.4f           // longer than a drift hop
 
 object KartPhysics {
 
@@ -943,6 +945,32 @@ object KartPhysics {
                     }
                 }
             }
+        }
+
+        // Step A2: Slipstream (drafting). Tuck in behind a kart for a moment and you're slung past it.
+        if (grounded && kart.forwardSpeed > 18f && kart.boostTimerSec <= 0f && kart.spinOutTimerSec <= 0f) {
+            var inDraft = false
+            for (other in allKarts) {
+                if (other.slotIndex == kart.slotIndex || other.isRespawning || other.forwardSpeed < 14f) continue
+                if (abs(other.y - kart.y) > 1.5f) continue
+                val ox = other.x - kart.x
+                val oz = other.z - kart.z
+                val d = hypot(ox, oz)
+                if (d < 2.2f || d > 15f) continue
+                if ((ox * fwdX + oz * fwdZ) / d > 0.965f) { inDraft = true; break }
+            }
+            if (inDraft) {
+                kart.draftSec += dt
+                if (kart.draftSec >= DRAFT_CHARGE_SEC) {
+                    kart.draftSec = 0f
+                    applyBoost(kart, 0.9f, 1.20f)
+                    onBoostTriggered()
+                }
+            } else {
+                kart.draftSec = (kart.draftSec - dt * 2f).coerceAtLeast(0f)
+            }
+        } else {
+            kart.draftSec = 0f
         }
 
         // Step B: Knockable Pylons (Part H3: 15% slowdown, tumble away, respawn after 6s)

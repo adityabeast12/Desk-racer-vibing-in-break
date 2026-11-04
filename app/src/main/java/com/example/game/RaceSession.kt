@@ -72,7 +72,8 @@ data class RenderKartSnapshot(
     val coinsHeld: Int = 0,
     val balloonsRemaining: Int = 0,
     val liveryIndex: Int = 0,
-    val paintFinishIndex: Int = 0
+    val paintFinishIndex: Int = 0,
+    val draftLevel: Float = 0f
 )
 
 data class RenderGhostSnapshot(
@@ -2245,6 +2246,7 @@ class RaceSession(
                 coinsHeld = k.coinsHeld,
                 balloonsRemaining = if (gameMode == GameMode.BATTLE_BALLOONS) k.balloonsRemaining else 0,
                 liveryIndex = k.liveryIndex,
+                draftLevel = (k.draftSec / DRAFT_CHARGE_SEC).coerceIn(0f, 1f),
                 paintFinishIndex = when {
                     k.slotIndex == localSlotIndex || (phase == RacePhase.SHOWROOM_MENU && k.isLocalPlayer) -> localPaintFinishIndex
                     !k.isHuman -> (k.slotIndex * 3) % 4 // CPU field gets a mix of gloss / matte / metal / pearl

@@ -9,7 +9,7 @@ import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
 
-class Particles(private val maxParticles: Int = 240) {
+class Particles(private val maxParticles: Int = 480) {
 
     private class Particle {
         var active = false
@@ -26,6 +26,18 @@ class Particles(private val maxParticles: Int = 240) {
         var size = 0.22f
         var life = 0f
         var maxLife = 0.4f
+        var gravity = 9.8f
+        var grow = 0f      // >0: puff expands over its life (smoke); 0: shrinks (sparks)
+        var drag = 0f
+    }
+
+    // v7: camera-facing billboards (quads used to be fixed in the world XY plane, so seen from
+    // behind a kart heading along X they were edge-on and vanished)
+    private var rX = 1f; private var rY = 0f; private var rZ = 0f
+    private var uX = 0f; private var uY = 1f; private var uZ = 0f
+
+    fun setBillboardBasis(rightX: Float, rightY: Float, rightZ: Float, upX: Float, upY: Float, upZ: Float) {
+        rX = rightX; rY = rightY; rZ = rightZ; uX = upX; uY = upY; uZ = upZ
     }
 
     private val pool = Array(maxParticles) { Particle() }
@@ -62,6 +74,8 @@ class Particles(private val maxParticles: Int = 240) {
             if (!emitThisFrame) break
             val backX = kart.x - sin(kart.headingRad) * 1.15f
             val backZ = kart.z - cos(kart.headingRad) * 1.15f
+            val sideX = cos(kart.headingRad)
+            val sideZ = -sin(kart.headingRad)
 
             // 1. Drift Sparks (Blue / Orange / Purple)
             if (kart.sparkTier > 0) {
@@ -70,11 +84,12 @@ class Particles(private val maxParticles: Int = 240) {
                     2 -> Triple(1.0f, 0.58f, 0.08f)  // Orange Super Sparks
                     else -> Triple(0.22f, 0.78f, 1.0f) // Blue Mini Sparks
                 }
-                repeat(if (allowFullParticles) 2 else 1) {
+                repeat(if (allowFullParticles) 2 else 1) { n ->
+                    val side = if (n % 2 == 0) 0.72f else -0.72f
                     spawn(
-                        x = backX + (Random.nextFloat() - 0.5f) * 0.75f,
-                        y = kart.y + 0.18f,
-                        z = backZ + (Random.nextFloat() - 0.5f) * 0.75f,
+                        x = backX + sideX * side + (Random.nextFloat() - 0.5f) * 0.25f,
+                        y = kart.y + 0.14f,
+                        z = backZ + sideZ * side + (Random.nextFloat() - 0.5f) * 0.25f,
                         vx = (Random.nextFloat() - 0.5f) * 4.5f,
                         vy = Random.nextFloat() * 3.8f + 1.0f,
                         vz = (Random.nextFloat() - 0.5f) * 4.5f,
@@ -103,6 +118,29 @@ class Particles(private val maxParticles: Int = 240) {
             }
 
             if (!allowFullParticles) continue
+
+            // 2b. Drift tyre smoke from the rear wheels (grows and rises, no gravity)
+            if (kart.isDrifting && abs(kart.speed) > 8f && Random.nextFloat() < 0.8f) {
+                val side = if (Random.nextBoolean()) 0.72f else -0.72f
+                spawn(
+                    x = backX + sideX * side, y = kart.y + 0.2f, z = backZ + sideZ * side,
+                    vx = (Random.nextFloat() - 0.5f) * 1.2f, vy = 0.6f + Random.nextFloat() * 0.6f, vz = (Random.nextFloat() - 0.5f) * 1.2f,
+                    r = 0.80f, g = 0.80f, b = 0.82f, size = 0.30f, maxLife = 0.7f,
+                    gravity = -0.4f, grow = 2.2f, drag = 2.5f, alphaScale = 0.42f
+                )
+            }
+
+            // 2c. Slipstream wind streaks
+            if (kart.draftLevel > 0.2f && Random.nextFloat() < kart.draftLevel) {
+                val fx = sin(kart.headingRad); val fz = cos(kart.headingRad)
+                val lat = (Random.nextFloat() - 0.5f) * 2.2f
+                spawn(
+                    x = kart.x + fx * 1.6f + sideX * lat, y = kart.y + 0.4f + Random.nextFloat() * 0.8f, z = kart.z + fz * 1.6f + sideZ * lat,
+                    vx = -fx * 16f, vy = 0f, vz = -fz * 16f,
+                    r = 0.92f, g = 0.96f, b = 1f, size = 0.07f, maxLife = 0.22f,
+                    gravity = 0f, alphaScale = 0.7f
+                )
+            }
 
             // 3. Boost Exhaust Flames
             if (kart.isBoosting) {
@@ -162,14 +200,16 @@ class Particles(private val maxParticles: Int = 240) {
         x: Float, y: Float, z: Float,
         vx: Float, vy: Float, vz: Float,
         r: Float, g: Float, b: Float,
-        size: Float, maxLife: Float
+        size: Float, maxLife: Float,
+        gravity: Float = 9.8f, grow: Float = 0f, drag: Float = 0f, alphaScale: Float = 0.95f
     ) {
         val p = pool[nextIndex]
         nextIndex = (nextIndex + 1) % maxParticles
         p.active = true
         p.x = x; p.y = y; p.z = z
         p.vx = vx; p.vy = vy; p.vz = vz
-        p.r = r; p.g = g; p.b = b; p.a = 0.95f
+        p.r = r; p.g = g; p.b = b; p.a = alphaScale
+        p.gravity = gravity; p.grow = grow; p.drag = drag
         p.size = size
         p.life = maxLife
         p.maxLife = maxLife
@@ -186,16 +226,19 @@ class Particles(private val maxParticles: Int = 240) {
                 p.active = false
                 continue
             }
+            if (p.drag > 0f) {
+                val k = (1f - p.drag * dt).coerceIn(0f, 1f)
+                p.vx *= k; p.vz *= k
+            }
             p.x += p.vx * dt
             p.y = (p.y + p.vy * dt).coerceAtLeast(0.05f)
             p.z += p.vz * dt
-            p.vy -= 9.8f * dt
-            val alpha = (p.life / p.maxLife).coerceIn(0f, 1f)
-            val s = p.size * (0.5f + 0.5f * alpha)
-
-            val x0 = p.x - s; val x1 = p.x + s
-            val y0 = p.y - s; val y1 = p.y + s
-            val z = p.z
+            p.vy -= p.gravity * dt
+            val lifeFrac = (p.life / p.maxLife).coerceIn(0f, 1f)
+            val alpha = lifeFrac * p.a
+            val s = if (p.grow > 0f) p.size * (1f + p.grow * (1f - lifeFrac)) else p.size * (0.5f + 0.5f * lifeFrac)
+            val ax = rX * s; val ay = rY * s; val az = rZ * s
+            val bx = uX * s; val by = uY * s; val bz = uZ * s
 
             fun putV(vx: Float, vy: Float, vz: Float) {
                 vertexData[floatCursor++] = vx
@@ -208,8 +251,9 @@ class Particles(private val maxParticles: Int = 240) {
                 vertCount++
             }
 
-            putV(x0, y0, z); putV(x1, y0, z); putV(x1, y1, z)
-            putV(x0, y0, z); putV(x1, y1, z); putV(x0, y1, z)
+            val px = p.x; val py = p.y; val pz = p.z
+            putV(px - ax - bx, py - ay - by, pz - az - bz); putV(px + ax - bx, py + ay - by, pz + az - bz); putV(px + ax + bx, py + ay + by, pz + az + bz)
+            putV(px - ax - bx, py - ay - by, pz - az - bz); putV(px + ax + bx, py + ay + by, pz + az + bz); putV(px - ax + bx, py - ay + by, pz - az + bz)
         }
 
         activeVertexCount = vertCount

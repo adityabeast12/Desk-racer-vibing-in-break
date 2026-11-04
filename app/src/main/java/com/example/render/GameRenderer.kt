@@ -77,7 +77,7 @@ class GameRenderer(
 
     val assetRepo = AssetRepository(appContext)
     private val camera = Camera()
-    private val particles = Particles(maxParticles = 240)
+    private val particles = Particles(maxParticles = 480)
 
     // Unified PBR-lite program
     private var litProgram = 0
@@ -773,6 +773,7 @@ class GameRenderer(
             }
 
             // 15. Update & Draw Pooled Unlit Particles (Sparks, Flames, Stall Smoke, Confetti, Dust)
+            particles.setBillboardBasis(viewMatrix[0], viewMatrix[4], viewMatrix[8], viewMatrix[1], viewMatrix[5], viewMatrix[9])
             particles.emitForKarts(
                 dt = frameDt,
                 karts = snap.karts,
@@ -795,7 +796,11 @@ class GameRenderer(
                 GLES20.glEnableVertexAttribArray(unlitColorLoc)
                 GLES20.glVertexAttribPointer(unlitColorLoc, 4, GLES20.GL_FLOAT, false, stride, buf)
 
+                GLES20.glDepthMask(false) // translucent puffs must not punch holes in each other
                 GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 0, particles.activeVertexCount)
+                GLES20.glDepthMask(true)
+                GLES20.glDisableVertexAttribArray(unlitColorLoc)
+                GLES20.glDisableVertexAttribArray(unlitPosLoc)
             }
         }
     }

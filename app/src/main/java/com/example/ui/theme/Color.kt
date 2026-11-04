@@ -12,6 +12,14 @@ import androidx.compose.ui.unit.dp
 object DR {
     // Surfaces (darkest → lightest)
     val Bg = Color(0xFF0C0D10)
+
+    // v7 livery swatch inks (garage)
+    val SwatchStage = Color(0xFF0E1320)
+    val SwatchGraphite = Color(0xFF1C1F26)
+    val SwatchGlass = Color(0xFF2A3344)
+    val SwatchTyre = Color(0xFF0B0B0D)
+    val SwatchStripeLight = Color(0xFFF5F5F7)
+    val SwatchStripeDark = Color(0xFF121216)
     val S1 = Color(0xFF121419)
     val S2 = Color(0xFF17191F)
     val S3 = Color(0xFF1E2128)

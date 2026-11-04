@@ -15,6 +15,7 @@ import android.util.Log
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedQueue
 import kotlin.math.PI
+import kotlin.math.abs
 import kotlin.math.sin
 import kotlin.random.Random
 
@@ -431,9 +432,18 @@ class SynthAudio(context: Context? = null) {
                 track.play()
                 val pcm = ShortArray(framesPerBuffer * 2) // Stereo L/R interleaved
                 var enginePhase = 0.0
-                var subPhase = 0.0
                 val remotePhases = DoubleArray(3)
                 var engineFadeGain = 0f
+                // v7 engine model state: geared RPM, exhaust low-pass, tyre-squeal band-pass
+                var rpm = 0.18f
+                var lp = 0f
+                var lp2 = 0f
+                var svfLow = 0f
+                var svfBand = 0f
+                var whinePhase = 0.0
+                var squealGain = 0f
+                val remoteLp = FloatArray(3)
+                val gearTops = floatArrayOf(0.20f, 0.40f, 0.60f, 0.80f, 1.02f, 9f)
 
                 while (running) {
                     if (!soundEnabled || lifecyclePaused) {
@@ -447,7 +457,19 @@ class SynthAudio(context: Context? = null) {
                     val engOn = isEngineActive
                     val spd = engineSpeedRatio.coerceIn(0f, 1.5f)
                     val driftOn = isDriftingActive
-                    val baseEngineFreq = 58.0 + spd * 145.0
+                    val boostOn = isBoostingActive
+                    // geared RPM: rises through each gear, drops on the up-shift (sounds like a car,
+                    // not a siren that only goes up with speed)
+                    var g = 0
+                    while (g < gearTops.size - 1 && spd > gearTops[g]) g++
+                    val lowEdge = if (g == 0) 0f else gearTops[g - 1]
+                    val within = ((spd - lowEdge) / (gearTops[g] - lowEdge).coerceAtLeast(0.05f)).coerceIn(0f, 1f)
+                    val rpmTarget = if (spd < 0.02f) 0.16f else (0.34f + 0.62f * within + if (boostOn) 0.06f else 0f).coerceAtMost(1.05f)
+                    rpm += (rpmTarget - rpm) * 0.22f
+                    val baseEngineFreq = 34.0 + rpm * 128.0
+                    val lpCoef = (0.06f + 0.34f * rpm).coerceIn(0.04f, 0.5f)
+                    squealGain += ((if (driftOn) 1f else 0f) - squealGain) * 0.18f
+                    val squealF = (2.0 * sin(PI * (1650.0 + 260.0 * spd) / sampleRate)).toFloat()
                     val remoteCount = activeRemoteEngineCount
 
                     for (i in 0 until framesPerBuffer) {
@@ -463,17 +485,31 @@ class SynthAudio(context: Context? = null) {
 
                         if (engineFadeGain > 0.001f) {
                             enginePhase += (2.0 * PI * baseEngineFreq) / sampleRate
-                            if (enginePhase > 2.0 * PI) enginePhase -= 2.0 * PI
-                            subPhase += (2.0 * PI * baseEngineFreq * 0.5) / sampleRate
-                            if (subPhase > 2.0 * PI) subPhase -= 2.0 * PI
+                            if (enginePhase > 4.0 * PI) enginePhase -= 4.0 * PI
+                            val ph = enginePhase
+                            // band-limited harmonic stack + half-order firing pulse (4-cylinder lope)
+                            val harm = sin(ph) + 0.55 * sin(2.0 * ph) + 0.33 * sin(3.0 * ph + 0.4) + 0.2 * sin(4.0 * ph)
+                            val lope = 0.74 + 0.26 * sin(ph * 0.5)
+                            val raw = (harm * lope).toFloat() * 0.30f
+                            lp += lpCoef * (raw - lp)
+                            lp2 += lpCoef * 0.8f * (lp - lp2)
+                            val drive = lp2 * 2.2f
+                            val growl = drive / (1f + abs(drive)) // soft clip = exhaust grit, no harsh square
+                            var localEng = growl * 0.42f * MIX_ENGINE * engineFadeGain
 
-                            val saw = ((enginePhase / PI) - 1.0).toFloat()
-                            val sub = sin(subPhase).toFloat()
-                            var localEng = (saw * 0.14f + sub * 0.12f) * MIX_ENGINE * engineFadeGain
+                            if (boostOn) {
+                                whinePhase += (2.0 * PI * (1400.0 + rpm * 1500.0)) / sampleRate
+                                if (whinePhase > 2.0 * PI) whinePhase -= 2.0 * PI
+                                localEng += sin(whinePhase).toFloat() * 0.035f * MIX_ENGINE * engineFadeGain
+                            }
 
-                            if (driftOn) {
-                                val screech = (Random.nextFloat() * 2f - 1f) * 0.09f * MIX_ENGINE * engineFadeGain
-                                localEng += screech
+                            if (squealGain > 0.01f) {
+                                // tyre squeal: resonant band-passed noise around 1.7 kHz (was raw white noise hiss)
+                                val n = Random.nextFloat() * 2f - 1f
+                                svfLow += squealF * svfBand
+                                val high = n - svfLow - 0.12f * svfBand
+                                svfBand += squealF * high
+                                localEng += svfBand.coerceIn(-1.5f, 1.5f) * 0.075f * squealGain * MIX_ENGINE * engineFadeGain
                             }
                             leftMix += localEng
                             rightMix += localEng
@@ -483,11 +519,13 @@ class SynthAudio(context: Context? = null) {
                                 val rGain = remoteEngineGains[r]
                                 if (rGain <= 0.01f) continue
                                 val rSpd = remoteEngineSpeeds[r].coerceIn(0f, 1.5f)
-                                val rFreq = 62.0 + (r * 4.0) + rSpd * 140.0
+                                val rFreq = 40.0 + (r * 3.0) + rSpd * 115.0
                                 remotePhases[r] += (2.0 * PI * rFreq) / sampleRate
                                 if (remotePhases[r] > 2.0 * PI) remotePhases[r] -= 2.0 * PI
-                                val rSaw = ((remotePhases[r] / PI) - 1.0).toFloat()
-                                val rSig = rSaw * 0.11f * MIX_ENGINE * rGain * engineFadeGain
+                                val rp = remotePhases[r]
+                                val rRaw = (sin(rp) + 0.5 * sin(2.0 * rp) + 0.25 * sin(3.0 * rp)).toFloat() * 0.3f
+                                remoteLp[r] += 0.18f * (rRaw - remoteLp[r])
+                                val rSig = remoteLp[r] * 0.55f * MIX_ENGINE * rGain * engineFadeGain
                                 val pan = remoteEnginePans[r].coerceIn(-1f, 1f)
                                 val lGain = ((1f - pan) * 0.5f).coerceIn(0.1f, 1f)
                                 val rChGain = ((1f + pan) * 0.5f).coerceIn(0.1f, 1f)
