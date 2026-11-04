@@ -246,6 +246,33 @@ data class NearestSampleResult(
     val lateralOffset: Float
 )
 
+/** v7: interpolated road frame under a point (see [Track.surfaceFrame]). */
+data class SurfaceFrame(
+    val x: Float,
+    val y: Float,
+    val z: Float,
+    val tangentX: Float,
+    val tangentZ: Float,
+    val rightX: Float,
+    val rightZ: Float,
+    val headingRad: Float,
+    val bankAngleRad: Float,
+    val lateral: Float
+)
+
+data class RampFrame(
+    val centerX: Float,
+    val centerZ: Float,
+    val tangentX: Float,
+    val tangentZ: Float,
+    val rightX: Float,
+    val rightZ: Float,
+    val baseY: Float,
+    val rise: Float,
+    val halfLength: Float,
+    val halfWidth: Float
+)
+
 class Track(
     val id: Int,
     val cupId: Int,
@@ -649,6 +676,69 @@ class Track(
 
     fun queryNearestPoint(worldX: Float, worldZ: Float): NearestSampleResult {
         return findNearestSampleWindowed(worldX, 0f, worldZ, -1)
+    }
+
+    /**
+     * v7: continuous road surface under a world point. The spline is stored as discrete samples
+     * ~1.5-2 u apart; using the nearest sample's height/frame directly made karts climb slopes and
+     * bridges in little steps (the "skips a beat" judder on elevated sections). This projects the
+     * point onto the segment next to [sample] and interpolates height, tangent and bank.
+     */
+    fun surfaceFrame(sample: SplineSample, worldX: Float, worldZ: Float): SurfaceFrame {
+        val n = samples.size
+        if (n < 2) {
+            val lat = (worldX - sample.pos.x) * sample.rightX + (worldZ - sample.pos.z) * sample.rightZ
+            return SurfaceFrame(sample.pos.x, sample.pos.y, sample.pos.z, sample.tangentX, sample.tangentZ,
+                sample.rightX, sample.rightZ, sample.headingRad, sample.bankAngleRad, lat)
+        }
+        val i = sample.index.coerceIn(0, n - 1)
+        val next = samples[(i + 1) % n]
+        val prev = samples[(i - 1 + n) % n]
+        val tf = segmentParam(sample, next, worldX, worldZ)
+        val a: SplineSample
+        val b: SplineSample
+        val t: Float
+        if (tf >= 0f) {
+            a = sample; b = next; t = tf.coerceAtMost(1.5f)
+        } else {
+            a = prev; b = sample; t = segmentParam(prev, sample, worldX, worldZ).coerceIn(-0.5f, 1f)
+        }
+        val px = a.pos.x + (b.pos.x - a.pos.x) * t
+        val py = a.pos.y + (b.pos.y - a.pos.y) * t
+        val pz = a.pos.z + (b.pos.z - a.pos.z) * t
+        var tx = a.tangentX + (b.tangentX - a.tangentX) * t
+        var tz = a.tangentZ + (b.tangentZ - a.tangentZ) * t
+        val tl = hypot(tx, tz)
+        if (tl > 1e-4f) { tx /= tl; tz /= tl } else { tx = a.tangentX; tz = a.tangentZ }
+        val rx = -tz
+        val rz = tx
+        val bank = a.bankAngleRad + (b.bankAngleRad - a.bankAngleRad) * t.coerceIn(0f, 1f)
+        val lat = (worldX - px) * rx + (worldZ - pz) * rz
+        return SurfaceFrame(px, py, pz, tx, tz, rx, rz, atan2(tx, tz), bank, lat)
+    }
+
+    private fun segmentParam(a: SplineSample, b: SplineSample, worldX: Float, worldZ: Float): Float {
+        val sx = b.pos.x - a.pos.x
+        val sz = b.pos.z - a.pos.z
+        val l2 = (sx * sx + sz * sz).coerceAtLeast(1e-4f)
+        return ((worldX - a.pos.x) * sx + (worldZ - a.pos.z) * sz) / l2
+    }
+
+    /** v7: ramps rise along the driving direction (derived from the spline, like boost pads). */
+    val rampFrames: Map<TrackProp, RampFrame> by lazy {
+        props.filter { it.isRamp }.associateWith { p ->
+            val near = findNearestSampleWindowed(p.x, p.y, p.z, -1)
+            val f = surfaceFrame(near.sample, p.x, p.z)
+            RampFrame(
+                centerX = p.x, centerZ = p.z,
+                tangentX = f.tangentX, tangentZ = f.tangentZ,
+                rightX = f.rightX, rightZ = f.rightZ,
+                baseY = f.y,
+                rise = (p.sy * 0.65f).coerceIn(0.4f, 2.2f),
+                halfLength = maxOf(p.sx, p.sz) * 0.5f,
+                halfWidth = minOf(p.sx, p.sz) * 0.5f
+            )
+        }
     }
 
     fun isInSinkHole(x: Float, z: Float): Boolean {

@@ -93,7 +93,8 @@ data class WorldProjectile(
     var distanceTravelled: Float = 0f,
     var bouncesRemaining: Int = GameConstants.MARBLE_MAX_BOUNCES,
     var lifeRemainingSec: Float = GameConstants.MARBLE_LIFETIME_SEC,
-    var targetSlot: Int = -1
+    var targetSlot: Int = -1,
+    var trackSampleIdx: Int = -1
 )
 
 object ItemsEngine {
@@ -159,6 +160,28 @@ object ItemsEngine {
                 else -> ItemType.TRIPLE_TACKS
             }
         }
+    }
+
+    private fun keepOnTrack(p: WorldProjectile, track: Track) {
+        if (track.samples.isEmpty()) return
+        val near = track.findNearestSampleWindowed(p.x, p.y, p.z, p.trackSampleIdx, windowRadius = 24)
+        p.trackSampleIdx = near.sample.index
+        val f = track.surfaceFrame(near.sample, p.x, p.z)
+        val limit = track.roadWidth * 0.5f + 0.4f
+        if (abs(f.lateral) > limit) {
+            val side = if (f.lateral > 0f) 1f else -1f
+            // push back inside and reflect the outward velocity component (elastic-ish, 0.8)
+            val excess = f.lateral - side * limit
+            p.x -= f.rightX * excess
+            p.z -= f.rightZ * excess
+            val vOut = (p.vx * f.rightX + p.vz * f.rightZ) * side
+            if (vOut > 0f) {
+                p.vx -= f.rightX * side * vOut * 1.8f
+                p.vz -= f.rightZ * side * vOut * 1.8f
+            }
+        }
+        val targetY = f.y + 0.5f
+        p.y += (targetY - p.y) * 0.5f
     }
 
     fun stepProjectilesAndPickups(
@@ -310,9 +333,15 @@ object ItemsEngine {
                     }
                     val stepDist = hypot(p.vx, p.vz) * dt
                     p.distanceTravelled += stepDist
-                    p.headingRad = atan2(p.vx, p.vz)
                     p.x += p.vx * dt
                     p.z += p.vz * dt
+                    // v7: marbles/tacks roll ON the road: follow its height (bridges, slopes) and
+                    // bank off the road edges like a kerb wall instead of flying off the track
+                    // in a straight line and floating in the air.
+                    if (p.kind != ProjectileKind.TACK || p.vx * p.vx + p.vz * p.vz > 1f) {
+                        keepOnTrack(p, track)
+                    }
+                    p.headingRad = atan2(p.vx, p.vz)
                 }
                 ProjectileKind.PAPER_PLANE -> {
                     val target = karts.firstOrNull { it.slotIndex == p.targetSlot }

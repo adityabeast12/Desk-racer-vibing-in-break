@@ -359,8 +359,8 @@ class GameRenderer(
         )
         Matrix.setLookAtM(
             viewMatrix, 0,
-            camera.posX, camera.posY, camera.posZ,
-            camera.lookX, camera.lookY, camera.lookZ,
+            camera.posX, camera.posY + camera.renderPosYOffset, camera.posZ,
+            camera.lookX, camera.lookY + camera.renderLookYOffset, camera.lookZ,
             0f, 1f, 0f
         )
         Matrix.multiplyMM(vpMatrix, 0, projMatrix, 0, viewMatrix, 0)
@@ -1172,10 +1172,56 @@ class GameRenderer(
         return Math.toDegrees(yawRad.toDouble()).toFloat()
     }
 
+    /**
+     * v7: ramps are drawn as the same slope the physics drives on — rising along the driving
+     * direction from road level to the lip, with a solid riser under the lip.
+     */
+    private fun drawSlopedRamp(prop: TrackProp, ramp: com.example.game.RampFrame, c1: FloatArray) {
+        val length = ramp.halfLength * 2f
+        val slopeRad = atan2(ramp.rise, length)
+        val slabLen = kotlin.math.sqrt(length * length + ramp.rise * ramp.rise)
+        val thickness = 0.16f
+        val yawDeg = Math.toDegrees(atan2(ramp.tangentX, ramp.tangentZ).toDouble()).toFloat()
+        val pitchDeg = -Math.toDegrees(slopeRad.toDouble()).toFloat()
+        val isRuler = prop.kind == PropKind.RULER_RAMP
+        val tex = if (isRuler) assetRepo.getTextureId("textures/surfaces/ruler_strip.png", repeatWrap = false) else assetRepo.getWhiteTexture()
+        val r = if (isRuler) 1f else c1[0]
+        val g = if (isRuler) 1f else c1[1]
+        val b = if (isRuler) 1f else c1[2]
+        // slab: its top face runs from (entry, baseY) to (lip, baseY + rise)
+        val cy = ramp.baseY + ramp.rise * 0.5f - (thickness * 0.5f) * cos(slopeRad) + 0.02f
+        drawLitMeshRotated(
+            unitCube, tex,
+            ramp.centerX, cy, ramp.centerZ,
+            pitchDeg, yawDeg, 0f,
+            ramp.halfWidth * 2f, thickness, slabLen,
+            r, g, b, 1f,
+            metallic = if (isRuler) 0.05f else 0.6f, roughness = if (isRuler) 0.4f else 0.3f
+        )
+        // riser block under the lip so the ramp reads as a solid wedge, not a floating plank
+        val riserLen = length * 0.10f
+        val off = ramp.halfLength - riserLen * 0.5f
+        val sec = Meshes.hexToRgb(prop.secondaryHex)
+        drawLitMeshRotated(
+            unitCube, assetRepo.getWhiteTexture(),
+            ramp.centerX + ramp.tangentX * off, ramp.baseY + ramp.rise * 0.47f, ramp.centerZ + ramp.tangentZ * off,
+            0f, yawDeg, 0f,
+            ramp.halfWidth * 2f * 0.96f, ramp.rise * 0.94f, riserLen,
+            sec[0], sec[1], sec[2], 1f,
+            metallic = 0.1f, roughness = 0.6f
+        )
+    }
+
     private fun drawFunctionalTrackProp(prop: TrackProp, track: Track) {
         val c1 = Meshes.hexToRgb(prop.colorHex)
         val yawDeg = Math.toDegrees(prop.yawRad.toDouble()).toFloat()
         val pitchDeg = Math.toDegrees(prop.pitchRad.toDouble()).toFloat()
+
+        val ramp = if (prop.isRamp) track.rampFrames[prop] else null
+        if (ramp != null && (prop.kind == PropKind.RULER_RAMP || prop.kind == PropKind.LAPTOP_BRIDGE || prop.kind == PropKind.CUTTING_BOARD)) {
+            drawSlopedRamp(prop, ramp, c1)
+            return
+        }
 
         when (prop.kind) {
             PropKind.RULER_RAMP -> {
@@ -1384,7 +1430,8 @@ class GameRenderer(
             }
         }
 
-        // Driver Helmet & Visor (for open-cockpit DRM1 karts)
+        // Rider helmet & visor — v7: only for the motorbike. Closed cars (Vortex V10, GTs, trucks)
+        // used to get a floating body-coloured sphere on the roof ("round button on top").
         val whiteTex = assetRepo.getWhiteTexture()
         fun drawKartAccessory(lx: Float, ly: Float, lz: Float, sx: Float, sy: Float, sz: Float, r: Float, g: Float, b: Float, mesh: GlMesh) {
             Matrix.setIdentityM(modelMatrix, 0)
@@ -1397,7 +1444,7 @@ class GameRenderer(
             renderLitMeshBuffer(mesh, whiteTex, r, g, b, forceAlpha, metallic = finishMetallic, roughness = finishRoughness)
         }
 
-        if (!kart.bodyType.isDrm2) {
+        if (kart.bodyType.hasRider) {
             drawKartAccessory(0f, 1.08f, -0.08f, 0.44f, 0.44f, 0.44f, bodyRgb[0], bodyRgb[1], bodyRgb[2], unitSphere)
             drawKartAccessory(0f, 1.10f, 0.28f, 0.48f, 0.16f, 0.18f, 0.15f, 0.75f, 0.98f, unitCube)
         }

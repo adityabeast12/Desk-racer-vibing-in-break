@@ -47,6 +47,18 @@ class KartRuntime(
     var trickArmedInAir: Boolean = false
     var landingShakeTrigger: Boolean = false
 
+    // v7 feel state
+    var steerSmoothed: Float = 0f          // sim-side steering filter (UI writes raw input)
+    var hopLockSec: Float = 0f             // stops the 120 ms drift buffer re-triggering hops
+    var hopPendingDrift: Boolean = false   // hop without steer: pick drift direction on landing
+    var airTimeSec: Float = 0f
+    var trickVisualSec: Float = 0f
+    var wasOnBoostPad: Boolean = false
+    var wallBumpCooldownSec: Float = 0f
+    var landingImpact: Float = 0f          // 0..1, for camera dip / suspension squash
+    var driftScrubbing: Boolean = false
+    var hopJustStarted: Boolean = false
+
     // Status Timers & Special Zones
     var spinOutTimerSec: Float = 0f
     var invulnerableTimerSec: Float = 0f
@@ -119,6 +131,21 @@ class KartRuntime(
 
 private const val GROUND_STICK_MAX_GAP = 0.30f
 private const val EDGE_PUSHBACK_PER_TICK = 0.35f
+
+// v7 handling model (see research notes: Mario Kart mini-turbo rules, arcade "exact position" grip,
+// sequential-impulse contacts with slop)
+private const val STEER_RISE_RATE = 32f          // 1/s, ~30 ms to reach the thumb position
+private const val STEER_RETURN_RATE = 16f        // 1/s, ~60 ms return to centre
+private const val HOP_LOCK_SEC = 0.22f
+private const val DRIFT_STRAIGHT_SCRUB = 7.5f    // u/s^2 lost when drifting without turning into it
+private const val CORNER_SCRUB = 4.0f            // u/s^2 lost by hard grip-steering at top speed
+private const val KART_CONTACT_RADIUS = 0.95f    // per kart, sum = 1.9 separation
+private const val CONTACT_SLOP = 0.04f           // penetration allowed before positional correction
+private const val CONTACT_BETA = 0.45f           // fraction of penetration resolved per tick
+private const val RESTITUTION_SLOP = 1.2f        // u/s, slower closing speeds don't bounce
+private const val KART_RESTITUTION = 0.35f
+private const val WALL_BUMP_COOLDOWN_SEC = 0.35f
+private const val REAL_AIR_SEC = 0.42f           // longer than a drift hop
 
 object KartPhysics {
 
@@ -403,6 +430,24 @@ object KartPhysics {
         kart.prevY = kart.y
         kart.prevZ = kart.z
 
+        // v7: steering is filtered here, in sim time, instead of in a UI coroutine (which added a
+        // frame of latency and restarted on every touch move). Fast to follow the thumb, a touch
+        // slower to re-centre so releases don't snap the kart straight.
+        run {
+            val raw = input.steer.coerceIn(-1f, 1f)
+            val s = kart.steerSmoothed
+            val rising = abs(raw) > abs(s) && (raw * s >= 0f)
+            val rate = if (rising) STEER_RISE_RATE else STEER_RETURN_RATE
+            kart.steerSmoothed = s + (raw - s) * (1f - kotlin.math.exp(-rate * dt))
+            if (abs(kart.steerSmoothed) < 0.002f && raw == 0f) kart.steerSmoothed = 0f
+        }
+        @Suppress("NAME_SHADOWING")
+        val input = if (input.steer == kart.steerSmoothed) input else input.copy(steer = kart.steerSmoothed)
+        if (kart.hopLockSec > 0f) kart.hopLockSec = (kart.hopLockSec - dt).coerceAtLeast(0f)
+        if (kart.wallBumpCooldownSec > 0f) kart.wallBumpCooldownSec = (kart.wallBumpCooldownSec - dt).coerceAtLeast(0f)
+        if (kart.trickVisualSec > 0f) kart.trickVisualSec = (kart.trickVisualSec - dt).coerceAtLeast(0f)
+        kart.landingImpact = (kart.landingImpact - dt * 4f).coerceAtLeast(0f)
+
         // 1. Item Roulette Animation Countdown
         if (kart.rouletteTimerSec > 0f) {
             kart.rouletteTimerSec -= dt
@@ -454,12 +499,13 @@ object KartPhysics {
         val oldS = kart.trackS
         val nearestRes = updateKartSplineProgress(kart, track)
         val nearestSample = nearestRes.sample
-        val signedLateral = nearestRes.lateralOffset
+        val surf = track.surfaceFrame(nearestSample, kart.x, kart.z)
+        val signedLateral = surf.lateral
         val newS = kart.trackS
         val deltaS = track.wrapSignedDelta(newS - oldS)
 
         val halfRoad = track.roadWidth * 0.5f
-        val verticalDiffFromRoad = abs(kart.y - nearestSample.pos.y)
+        val verticalDiffFromRoad = abs(kart.y - surf.y)
         kart.isOffTrack = abs(signedLateral) > halfRoad && verticalDiffFromRoad < 1.2f
 
         if (!kart.isOffTrack && !kart.isWrongWay) {
@@ -503,22 +549,45 @@ object KartPhysics {
 
         // 5. Hop + Drift Initiation & Release Boost
         val canControl = kart.spinOutTimerSec <= 0f && kart.rocketStartStallTimerSec <= 0f
-        val grounded = kart.y <= nearestSample.pos.y + 0.14f
+        val grounded = kart.y <= surf.y + 0.14f
 
-        if (canControl && input.driftJustPressed) {
-            if (grounded) {
+        if (canControl && input.driftJustPressed && kart.hopLockSec <= 0f) {
+            if (grounded && kart.vy <= 0.01f) {
                 kart.hopTimerSec = GameConstants.HOP_DURATION_SEC
+                kart.hopLockSec = HOP_LOCK_SEC
+                kart.hopJustStarted = true
                 kart.vy = GameConstants.HOP_VELOCITY_Y
+                kart.hopPendingDrift = false
                 if (abs(input.steer) > 0.12f && kart.forwardSpeed > 8f) {
                     kart.isDrifting = true
                     kart.driftDirection = if (input.steer > 0f) 1 else -1
                     kart.driftChargeUnits = 0
+                } else if (!kart.isDrifting) {
+                    // Mario Kart style: hop straight, choose the drift side while in the air
+                    kart.hopPendingDrift = true
                 }
-            } else if (kart.y > nearestSample.pos.y + 0.6f && !kart.trickArmedInAir) {
+            } else if (kart.y > surf.y + 0.6f && !kart.trickArmedInAir) {
                 kart.trickArmedInAir = true
-                kart.visualPitchRad = -0.38f
+                kart.trickVisualSec = 0.42f // smooth flip in the visual block (no snap)
             }
         }
+        if (kart.hopPendingDrift) {
+            if (!input.driftPressed || !canControl || kart.forwardSpeed < 8f) {
+                kart.hopPendingDrift = false
+            } else if (abs(input.steer) > 0.25f) {
+                kart.isDrifting = true
+                kart.driftDirection = if (input.steer > 0f) 1 else -1
+                kart.driftChargeUnits = 0
+                kart.hopPendingDrift = false
+            } else if (grounded && kart.hopLockSec <= 0f) {
+                kart.hopPendingDrift = false
+            }
+        }
+
+        // How hard the player is steering INTO the drift: +1 = full lock into, 0 = neutral,
+        // -1 = full counter-steer (which straightens the line, i.e. drifting on a straight).
+        val driftInto = if (kart.isDrifting) (input.steer * kart.driftDirection).coerceIn(-1f, 1f) else 0f
+        kart.driftScrubbing = false
 
         if (kart.isDrifting) {
             if (!input.driftPressed || kart.forwardSpeed < 6f || !canControl) {
@@ -537,10 +606,19 @@ object KartPhysics {
                     onBoostTriggered()
                 }
             } else {
-                val sameDir = (kart.driftDirection > 0 && input.steer > 0.1f) ||
-                    (kart.driftDirection < 0 && input.steer < -0.1f)
-                val baseInc = if (sameDir) GameConstants.DRIFT_CHARGE_INTO else GameConstants.DRIFT_CHARGE_COUNTER
-                val increment = if (kart.bodyType == KartBodyType.TURBO_COUPE) baseInc + 1 else baseInc
+                // v7 drift reward: sparks only build while the kart is really carving a turn.
+                //  into the drift (hard)  -> fastest charge
+                //  neutral                -> slow charge
+                //  counter-steer/straight -> almost none, and the slide scrubs speed (see 7.)
+                // Airborne or off-road drifting doesn't charge at all.
+                val baseInc = when {
+                    !grounded || kart.isOffTrack -> 0
+                    driftInto > 0.55f -> GameConstants.DRIFT_CHARGE_INTO
+                    driftInto > 0.15f -> GameConstants.DRIFT_CHARGE_INTO - 1
+                    driftInto > -0.20f -> GameConstants.DRIFT_CHARGE_COUNTER + 1
+                    else -> GameConstants.DRIFT_CHARGE_COUNTER - 1
+                }
+                val increment = if (kart.bodyType == KartBodyType.TURBO_COUPE && baseInc > 0) baseInc + 1 else baseInc
                 val maxAllowedUnits = if (smartSteering) {
                     GameConstants.SPARK_PURPLE_UNITS - 1
                 } else {
@@ -567,15 +645,15 @@ object KartPhysics {
             kart.frontWheelSteerRad = (-effectiveSteer * 0.42f).coerceIn(-0.45f, 0.45f)
 
             if (smartSteering && abs(signedLateral) > halfRoad * 0.82f) {
-                val pullError = wrapAngle(nearestSample.headingRad - kart.headingRad)
+                val pullError = wrapAngle(surf.headingRad - kart.headingRad)
                 kart.headingRad += pullError.coerceIn(-0.6f, 0.6f) * GameConstants.SMART_STEERING_PULL * dt
                 if (abs(signedLateral) > halfRoad * 0.96f) {
                     val clampLat = if (signedLateral > 0f) halfRoad * 0.96f else -halfRoad * 0.96f
                     // v6: soft edge correction (was an instant per-tick snap, which made karts
                     // shudder while grinding the track edge at top speed)
                     val excessLat = (signedLateral - clampLat) * EDGE_PUSHBACK_PER_TICK
-                    kart.x -= nearestSample.rightX * excessLat
-                    kart.z -= nearestSample.rightZ * excessLat
+                    kart.x -= surf.rightX * excessLat
+                    kart.z -= surf.rightZ * excessLat
                 }
             }
         }
@@ -592,6 +670,25 @@ object KartPhysics {
         }
         if (kart.magnetTimerSec > 0f) {
             targetTopSpeed *= 1.18f
+        }
+
+        // v7: make the drift a decision. Real cars don't slide for free: a drift that isn't carving a
+        // turn (neutral / counter-steer on a straight) bleeds top speed, and hard grip-steering at
+        // top speed bleeds a little too — so drifting INTO a corner is the fast line, while drifting
+        // on a straight is slower than just driving. Applied to the target speed so the throttle
+        // can't simply cancel it.
+        if (canControl && grounded && kart.forwardSpeed > 10f && kart.boostTimerSec <= 0f) {
+            if (kart.isDrifting) {
+                val notTurning = ((0.35f - driftInto) / 1.35f).coerceIn(0f, 1f) // 0 when steering into it
+                if (notTurning > 0.05f) {
+                    kart.driftScrubbing = true
+                    targetTopSpeed *= 1f - DRIFT_STRAIGHT_SCRUB * 0.03f * notTurning   // up to -22.5 %
+                }
+            } else {
+                val hard = ((abs(input.steer) - 0.55f) / 0.45f).coerceIn(0f, 1f)
+                val speedRatio = (kart.forwardSpeed / GameConstants.TOP_SPEED).coerceIn(0f, 1.2f)
+                targetTopSpeed *= 1f - CORNER_SCRUB * 0.02f * hard * speedRatio        // up to -8 %
+            }
         }
 
         if (canControl) {
@@ -658,26 +755,42 @@ object KartPhysics {
         kart.z += kart.vz * dt
 
         // 9. Vertical Physics, Elevated Bridges, Guard Walls, Ramps & Sink/Water Hazards
-        var supportY = nearestSample.pos.y
+        // v7: continuous surface under the kart's NEW position (no per-sample height steps)
+        val ground = track.surfaceFrame(nearestSample, kart.x, kart.z)
+        var supportY = ground.y
 
-        if (nearestSample.pos.y > 1.5f) {
+        if (ground.y > 1.5f) {
             val bridgeWallLimit = halfRoad + 0.4f
-            val curDx = kart.x - nearestSample.pos.x
-            val curDz = kart.z - nearestSample.pos.z
-            val curLat = curDx * nearestSample.rightX + curDz * nearestSample.rightZ
+            val curLat = ground.lateral
             if (abs(curLat) > bridgeWallLimit) {
                 val clampSide = if (curLat > 0f) bridgeWallLimit else -bridgeWallLimit
                 val excessLat = curLat - clampSide
-                kart.x -= nearestSample.rightX * excessLat
-                kart.z -= nearestSample.rightZ * excessLat
-                kart.forwardSpeed *= 0.96f
-                val wallHeadingErr = wrapAngle(nearestSample.headingRad - kart.headingRad)
+                kart.x -= ground.rightX * excessLat
+                kart.z -= ground.rightZ * excessLat
+                // slide along the guard rail: kill only the velocity going into it
+                val outward = if (curLat > 0f) 1f else -1f
+                val vInto = (kart.vx * ground.rightX + kart.vz * ground.rightZ) * outward
+                if (vInto > 0f) {
+                    kart.vx -= ground.rightX * outward * vInto
+                    kart.vz -= ground.rightZ * outward * vInto
+                }
+                val wallHeadingErr = wrapAngle(ground.headingRad - kart.headingRad)
                 kart.headingRad += wallHeadingErr.coerceIn(-0.4f, 0.4f) * 4.5f * dt
+                if (kart.wallBumpCooldownSec <= 0f) {
+                    // one-off scrub on impact, proportional to how head-on it was
+                    val headOn = abs(sin(wallHeadingErr)).coerceIn(0f, 1f)
+                    kart.forwardSpeed *= 1f - 0.25f * headOn
+                    kart.wallBumpCooldownSec = WALL_BUMP_COOLDOWN_SEC
+                    if (headOn > 0.15f) onWallBump()
+                } else {
+                    kart.forwardSpeed *= 1f - 0.4f * dt // light rail friction while grinding
+                }
             }
         }
 
+        var onBoostPad = false
         for (prop in track.props) {
-            if (!prop.isRamp && !prop.isBoostPad) continue
+            if (!prop.isBoostPad) continue
             val dx = kart.x - prop.x
             val dz = kart.z - prop.z
             val c = cos(-prop.yawRad)
@@ -685,16 +798,31 @@ object KartPhysics {
             val localX = dx * c - dz * s
             val localZ = dx * s + dz * c
             if (abs(localX) <= prop.sx * 0.5f && abs(localZ) <= prop.sz * 0.5f && abs(kart.y - prop.y) < 3.0f) {
-                if (prop.isBoostPad) {
-                    applyBoost(kart, GameConstants.STICKY_NOTE_BOOST_SEC, GameConstants.STICKY_NOTE_BOOST_MULT)
-                    onBoostTriggered()
-                }
-                if (prop.isRamp) {
-                    supportY = maxOf(supportY, prop.y + prop.sy * 0.65f)
-                    if (kart.forwardSpeed > 12f && kart.vy <= 1.5f) {
-                        kart.vy = GameConstants.RAMP_LAUNCH_VY
-                    }
-                }
+                onBoostPad = true
+                applyBoost(kart, GameConstants.STICKY_NOTE_BOOST_SEC, GameConstants.STICKY_NOTE_BOOST_MULT)
+                // v7: sound + haptic once per pad, not every tick spent on it (that was a 60 Hz buzz)
+                if (!kart.wasOnBoostPad) onBoostTriggered()
+            }
+        }
+        kart.wasOnBoostPad = onBoostPad
+
+        // v7: ramps are real slopes rising along the driving direction; the kart rolls up them and
+        // launches off the lip with a speed-scaled kick (was: an instant 0.9 u pop onto a flat slab).
+        for ((_, ramp) in track.rampFrames) {
+            val dx = kart.x - ramp.centerX
+            val dz = kart.z - ramp.centerZ
+            val along = dx * ramp.tangentX + dz * ramp.tangentZ
+            val lat = dx * ramp.rightX + dz * ramp.rightZ
+            if (abs(along) > ramp.halfLength || abs(lat) > ramp.halfWidth) continue
+            if (abs(kart.y - (ramp.baseY + ramp.rise * 0.5f)) > 3.0f) continue
+            val t = ((along + ramp.halfLength) / (2f * ramp.halfLength)).coerceIn(0f, 1f)
+            val rampY = ramp.baseY + ramp.rise * t
+            supportY = maxOf(supportY, rampY)
+            val travellingUp = kart.vx * ramp.tangentX + kart.vz * ramp.tangentZ
+            if (t > 0.80f && travellingUp > 12f && kart.vy <= 1.5f && kart.y <= rampY + 0.25f) {
+                val k = (travellingUp / GameConstants.TOP_SPEED).coerceIn(0.6f, 1.15f)
+                kart.vy = GameConstants.RAMP_LAUNCH_VY * k
+                kart.y = maxOf(kart.y, rampY)
             }
         }
 
@@ -717,27 +845,35 @@ object KartPhysics {
                 kart.vy = 0f
             }
         }
-        val wasAirborne = kart.y > supportY + 0.35f
         kart.y += kart.vy * dt
+        if (kart.y > supportY + 0.02f) {
+            kart.airTimeSec += dt
+        }
         if (kart.y > supportY) {
             kart.vy -= GameConstants.GRAVITY * dt
             if (kart.y <= supportY && supportY >= -1f) {
+                val impactVy = -kart.vy
                 kart.y = supportY
                 kart.vy = 0f
-                if (wasAirborne) {
+                // v7: only a real jump counts as a landing (a drift hop used to fire the camera
+                // shake + haptic on every single drift)
+                if (kart.airTimeSec >= REAL_AIR_SEC) {
+                    kart.landingImpact = (impactVy / 16f).coerceIn(0.25f, 1f)
                     kart.landingShakeTrigger = true
                     onLanded()
-                    if (kart.trickArmedInAir) {
-                        kart.trickArmedInAir = false
-                        applyBoost(kart, GameConstants.TRICK_BOOST_SEC)
-                        onBoostTriggered()
-                    }
                 }
+                if (kart.trickArmedInAir) {
+                    kart.trickArmedInAir = false
+                    applyBoost(kart, GameConstants.TRICK_BOOST_SEC)
+                    onBoostTriggered()
+                }
+                kart.airTimeSec = 0f
             }
         } else if (supportY >= -1f) {
             kart.y = supportY
             kart.vy = 0f
             kart.trickArmedInAir = false
+            kart.airTimeSec = 0f
         }
 
         kart.groundedLastTick = supportY >= -1f && kart.vy == 0f && kart.y <= supportY + 0.001f
@@ -749,39 +885,53 @@ object KartPhysics {
         }
 
         // 10. Collisions
-        // Step A: Mass-weighted Kart-vs-Kart impulse collision
+        // Step A: Kart-vs-kart contact (v7: sequential-impulse style with slop)
+        //  - positional correction only resolves part of the penetration beyond a small slop each
+        //    tick (Baumgarte), instead of shoving both karts 0.25 u past contact — that over-push was
+        //    the "bumping into someone makes both karts vibrate" effect.
+        //  - restitution only applies above a closing-speed slop, so resting/scraping contacts
+        //    don't bounce, while a real T-bone still knocks the lighter kart sideways.
+        //  - the impulse is split back into forward speed + lateral slide for BOTH karts so the
+        //    shove survives the next tick's grip model instead of being silently overwritten.
         if (kart.ghostTimerSec <= 0f) {
             for (other in allKarts) {
                 if (other.slotIndex == kart.slotIndex || other.isRespawning || other.ghostTimerSec > 0f) continue
                 val dx = kart.x - other.x
                 val dz = kart.z - other.z
                 val d = hypot(dx, dz)
-                val minSep = 1.90f
+                val minSep = KART_CONTACT_RADIUS * 2f
                 if (d < minSep && d > 0.001f && abs(kart.y - other.y) < 1.6f) {
                     val nx = dx / d
                     val nz = dz / d
-                    val m1 = kart.bodyType.mass
-                    val m2 = other.bodyType.mass
-                    val invM1 = 1f / m1
-                    val invM2 = 1f / m2
+                    val invM1 = 1f / kart.bodyType.mass
+                    val invM2 = 1f / other.bodyType.mass
                     val invMassSum = invM1 + invM2
 
-                    val overlap = (minSep - d) + 0.25f
-                    kart.x += nx * overlap * (invM1 / invMassSum)
-                    kart.z += nz * overlap * (invM1 / invMassSum)
-                    other.x -= nx * overlap * (invM2 / invMassSum)
-                    other.z -= nz * overlap * (invM2 / invMassSum)
+                    val penetration = minSep - d
+                    val correction = ((penetration - CONTACT_SLOP).coerceAtLeast(0f) * CONTACT_BETA) / invMassSum
+                    kart.x += nx * correction * invM1
+                    kart.z += nz * correction * invM1
+                    other.x -= nx * correction * invM2
+                    other.z -= nz * correction * invM2
 
                     val rvx = kart.vx - other.vx
                     val rvz = kart.vz - other.vz
-                    val relNormalVel = rvx * nx + rvz * nz
-                    if (relNormalVel < 0f) {
-                        val impulse = -(1.30f * relNormalVel) / invMassSum
-                        kart.vx += nx * (impulse * invM1) * 0.30f
-                        kart.vz += nz * (impulse * invM1) * 0.30f
-                        other.vx -= nx * (impulse * invM2) * 0.30f
-                        other.vz -= nz * (impulse * invM2) * 0.30f
+                    val closing = rvx * nx + rvz * nz
+                    if (closing < 0f) {
+                        val e = if (-closing > RESTITUTION_SLOP) KART_RESTITUTION else 0f
+                        val j = -(1f + e) * closing / invMassSum
+                        kart.vx += nx * j * invM1
+                        kart.vz += nz * j * invM1
+                        other.vx -= nx * j * invM2
+                        other.vz -= nz * j * invM2
                         kart.forwardSpeed = kart.vx * fwdX + kart.vz * fwdZ
+                        val ofx = sin(other.headingRad)
+                        val ofz = cos(other.headingRad)
+                        other.forwardSpeed = other.vx * ofx + other.vz * ofz
+                        if (-closing > 4f && kart.wallBumpCooldownSec <= 0f) {
+                            kart.wallBumpCooldownSec = WALL_BUMP_COOLDOWN_SEC
+                            onWallBump()
+                        }
                     }
 
                     if (other.orbitingTacksCount > 0 && kart.invulnerableTimerSec <= 0f) {
@@ -822,7 +972,8 @@ object KartPhysics {
 
         // Step C: Solid Landmarks & OBB Props
         val hitProp = resolvePropCollisions(kart, track)
-        if (hitProp) {
+        if (hitProp && kart.wallBumpCooldownSec <= 0f) {
+            kart.wallBumpCooldownSec = WALL_BUMP_COOLDOWN_SEC
             onWallBump()
         }
 
@@ -891,21 +1042,38 @@ object KartPhysics {
             }
         }
 
-        // 12. Visual Tilt, Roll & Road Banking
+        // 12. Visual Tilt, Roll & Road Banking (v7: everything eased with frame-rate independent
+        // exponentials; the trick flip and landing squash are shaped curves, never instant snaps)
+        fun ease(rate: Float) = 1f - kotlin.math.exp(-rate * dt)
         val targetYawOffset = when {
             kart.spinOutTimerSec > 0f -> kart.spinOutAngleRad
-            kart.isDrifting -> -kart.driftDirection * 0.34f
+            kart.isDrifting -> -kart.driftDirection * (0.30f + 0.10f * driftInto.coerceAtLeast(0f))
             else -> -input.steer * 0.10f
         }
-        kart.visualYawOffsetRad += (targetYawOffset - kart.visualYawOffsetRad) * (12f * dt).coerceAtMost(1f)
+        kart.visualYawOffsetRad += (targetYawOffset - kart.visualYawOffsetRad) *
+            (if (kart.spinOutTimerSec > 0f) 1f else ease(10f))
 
-        val bankRoll = nearestSample.bankAngleRad
-        val steerRoll = if (kart.isDrifting) kart.driftDirection * 0.14f else input.steer * 0.07f
+        val bankRoll = ground.bankAngleRad
+        val steerRoll = if (kart.isDrifting) kart.driftDirection * (0.10f + 0.06f * driftInto.coerceAtLeast(0f)) else input.steer * 0.06f
         val targetRoll = steerRoll + bankRoll
-        kart.visualRollRad += (targetRoll - kart.visualRollRad) * (10f * dt).coerceAtMost(1f)
+        kart.visualRollRad += (targetRoll - kart.visualRollRad) * ease(8f)
 
-        val targetPitch = if (kart.vy > 1f) -0.18f else if (kart.vy < -2f) 0.14f else 0f
-        kart.visualPitchRad += (targetPitch - kart.visualPitchRad) * (10f * dt).coerceAtMost(1f)
+        val airborne = kart.y > supportY + 0.05f
+        val airPitch = when {
+            !airborne -> 0f
+            kart.vy > 1f -> -0.14f
+            kart.vy < -2f -> 0.10f
+            else -> 0f
+        }
+        // trick: one smooth nose-up-and-back arc over 0.42 s (sin bump), not a -0.38 rad snap
+        val trickPitch = if (kart.trickVisualSec > 0f) {
+            val p = 1f - kart.trickVisualSec / 0.42f
+            -0.42f * sin(p * PI.toFloat())
+        } else 0f
+        // landing: brief nose-down squash that decays (suspension feel)
+        val landPitch = 0.10f * kart.landingImpact * kart.landingImpact
+        val targetPitch = airPitch + trickPitch + landPitch
+        kart.visualPitchRad += (targetPitch - kart.visualPitchRad) * ease(if (kart.trickVisualSec > 0f) 22f else 9f)
 
         // 13. Plane-Crossing Checkpoint Gates & Unwrapped Lap Completion (with C3 Sub-Tick Interpolation)
         for (g in track.checkpoints) {
@@ -960,17 +1128,17 @@ object KartPhysics {
             if (d < radius && d > 0.001f) {
                 val nx = dx / d
                 val nz = dz / d
-                kart.x = prop.x + nx * (radius + 0.08f)
-                kart.z = prop.z + nz * (radius + 0.08f)
+                kart.x = prop.x + nx * (radius + 0.01f)
+                kart.z = prop.z + nz * (radius + 0.01f)
                 if (prop.name.contains("orange", ignoreCase = true)) {
                     val dot = kart.vx * nx + kart.vz * nz
                     if (dot < 0f) {
                         kart.vx -= 1.8f * dot * nx
                         kart.vz -= 1.8f * dot * nz
+                        if (kart.wallBumpCooldownSec <= 0f) kart.forwardSpeed *= 0.84f
                     }
-                    kart.forwardSpeed *= 0.84f
                 } else {
-                    kart.forwardSpeed *= 0.72f
+                    wallContact(kart, nx, nz)
                 }
                 hitAny = true
             }
@@ -989,17 +1157,17 @@ object KartPhysics {
                 if (d < radius && d > 0.001f) {
                     val nx = dx / d
                     val nz = dz / d
-                    kart.x = prop.x + nx * (radius + 0.08f)
-                    kart.z = prop.z + nz * (radius + 0.08f)
+                    kart.x = prop.x + nx * (radius + 0.01f)
+                    kart.z = prop.z + nz * (radius + 0.01f)
                     if (prop.restitution >= 0.6f) {
                         val dot = kart.vx * nx + kart.vz * nz
                         if (dot < 0f) {
                             kart.vx -= (1f + prop.restitution) * dot * nx
                             kart.vz -= (1f + prop.restitution) * dot * nz
+                            if (kart.wallBumpCooldownSec <= 0f) kart.forwardSpeed *= 0.82f
                         }
-                        kart.forwardSpeed *= 0.82f
                     } else {
-                        kart.forwardSpeed *= 0.72f
+                        wallContact(kart, nx, nz)
                     }
                     hitAny = true
                 }
@@ -1025,7 +1193,7 @@ object KartPhysics {
                     val pushLocalZ: Float
                     if (distSq > 0.0001f) {
                         val dist = kotlin.math.sqrt(distSq)
-                        val penetration = (kartRadius - dist) + 0.08f
+                        val penetration = (kartRadius - dist) + 0.01f
                         pushLocalX = (diffX / dist) * penetration
                         pushLocalZ = (diffZ / dist) * penetration
                     } else {
@@ -1047,12 +1215,43 @@ object KartPhysics {
 
                     kart.x += worldPushX
                     kart.z += worldPushZ
-                    kart.forwardSpeed *= 0.72f
+                    val pl = hypot(worldPushX, worldPushZ)
+                    if (pl > 1e-4f) wallContact(kart, worldPushX / pl, worldPushZ / pl)
                     hitAny = true
                 }
             }
         }
         return hitAny
+    }
+
+    /**
+     * v7: wall contact = slide, not stop. Removes the velocity going into the wall, scrubs speed by
+     * how head-on the hit was (once per impact), and turns the nose along the wall so the kart
+     * glides off instead of grinding and shuddering against it every tick.
+     */
+    private fun wallContact(kart: KartRuntime, nx: Float, nz: Float) {
+        val vn = kart.vx * nx + kart.vz * nz
+        if (vn < 0f) {
+            kart.vx -= 1.15f * vn * nx
+            kart.vz -= 1.15f * vn * nz
+        }
+        val fx = sin(kart.headingRad)
+        val fz = cos(kart.headingRad)
+        val into = -(fx * nx + fz * nz) // 1 = driving straight into it
+        val headOn = into.coerceIn(0f, 1f)
+        if (kart.wallBumpCooldownSec <= 0f) {
+            kart.forwardSpeed *= 1f - 0.45f * headOn
+        } else {
+            kart.forwardSpeed *= 1f - 0.03f * headOn
+        }
+        if (headOn > 0.02f && headOn < 0.97f) {
+            // tangent direction closest to the current heading
+            var tx = -nz
+            var tz = nx
+            if (tx * fx + tz * fz < 0f) { tx = -tx; tz = -tz }
+            val err = wrapAngle(kotlin.math.atan2(tx, tz) - kart.headingRad)
+            kart.headingRad += err.coerceIn(-0.05f, 0.05f) * headOn
+        }
     }
 
     fun wrapAngle(angle: Float): Float {

@@ -302,6 +302,36 @@ class RaceSession(
 
     // Remote Kart Snapshot Interpolation Buffer (8 samples per kart)
     private val remoteBuffers = Array(GameConstants.MAX_RACERS) { ArrayDeque<RemoteSnapshotEntry>(8) }
+
+    // v7: remote pose timestamps come from the SENDER's clock (mapped onto ours with a smoothed
+    // offset) instead of "when the packet happened to be processed". Packets arrive with Wi-Fi
+    // jitter and are only drained on 60 Hz sim ticks, so receipt-time stamps made interpolation
+    // spans swing 17-50 ms for equally spaced poses — remote karts visibly sped up / hitched.
+    private val senderClockOffsetMs = DoubleArray(GameConstants.MAX_RACERS + 1)
+    private val senderClockInit = BooleanArray(GameConstants.MAX_RACERS + 1)
+
+    private fun mapSenderTimeMs(channel: Int, senderMs: Long): Long {
+        val localMs = (raceElapsedSec * 1000f).toLong()
+        val sample = (localMs - senderMs).toDouble()
+        if (!senderClockInit[channel] || kotlin.math.abs(sample - senderClockOffsetMs[channel]) > 400.0) {
+            senderClockOffsetMs[channel] = sample
+            senderClockInit[channel] = true
+        } else if (sample < senderClockOffsetMs[channel]) {
+            // a packet that arrived faster than usual is the best latency estimate: follow quickly
+            senderClockOffsetMs[channel] += (sample - senderClockOffsetMs[channel]) * 0.3
+        } else {
+            senderClockOffsetMs[channel] += (sample - senderClockOffsetMs[channel]) * 0.02
+        }
+        return senderMs + senderClockOffsetMs[channel].toLong()
+    }
+
+    private fun pushRemote(slot: Int, entry: RemoteSnapshotEntry) {
+        val buf = remoteBuffers[slot]
+        val last = buf.lastOrNull()
+        if (last != null && entry.hostTimeMs <= last.hostTimeMs) return // stale / reordered UDP
+        if (buf.size >= 8) buf.removeFirst()
+        buf.addLast(entry)
+    }
     private val lastClientItemUseMs = LongArray(GameConstants.MAX_RACERS)
 
     // Part B8: Client race time tracking from hostRaceTimeMs + (now - snapshotReceiptTime)
@@ -525,6 +555,7 @@ class RaceSession(
         newRecordAchievedLocal = false
 
         for (buf in remoteBuffers) buf.clear()
+        senderClockInit.fill(false)
         lastClientItemUseMs.fill(0L)
         overtakeHoldTimersSec.fill(0f)
         lastHostRaceTimeMs = 0
@@ -644,12 +675,11 @@ class RaceSession(
         if (slot == localSlotIndex || slot !in 0 until GameConstants.MAX_RACERS) return
         val kart = karts.firstOrNull { it.slotIndex == slot } ?: return
 
-        val nowMs = (raceElapsedSec * 1000f).toLong()
-        val buf = remoteBuffers[slot]
-        if (buf.size >= 8) buf.removeFirst()
-        buf.addLast(
+        val stampMs = mapSenderTimeMs(slot, pkt.raceTimeMs.toLong())
+        pushRemote(
+            slot,
             RemoteSnapshotEntry(
-                hostTimeMs = nowMs,
+                hostTimeMs = stampMs,
                 x = pkt.x,
                 y = pkt.y,
                 z = pkt.z,
@@ -899,6 +929,7 @@ class RaceSession(
         projectiles.removeAll { it.id !in incomingIds }
 
         // 4. Sync Karts (Part B6: Host racePosition and lap are One Truth for ALL karts)
+        val snapStampMs = mapSenderTimeMs(GameConstants.MAX_RACERS, snap.hostRaceTimeMs.toLong())
         for (ks in snap.karts) {
             val kart = karts.firstOrNull { it.slotIndex == ks.slot } ?: continue
             kart.racePosition = ks.racePosition
@@ -907,11 +938,10 @@ class RaceSession(
             kart.coinsHeld = ks.coins
 
             if (ks.slot != localSlotIndex) {
-                val buf = remoteBuffers[ks.slot]
-                if (buf.size >= 8) buf.removeFirst()
-                buf.addLast(
+                pushRemote(
+                    ks.slot,
                     RemoteSnapshotEntry(
-                        hostTimeMs = (raceElapsedSec * 1000f).toLong(),
+                        hostTimeMs = snapStampMs,
                         x = ks.x,
                         y = ks.y,
                         z = ks.z,
@@ -1279,6 +1309,7 @@ class RaceSession(
         kart.isHuman = true
         kart.playerName = playerName
         remoteBuffers[slotIndex].clear()
+        senderClockInit[slotIndex] = false
         showToast("$playerName rejoined!", 1.6f)
     }
 
@@ -1434,9 +1465,6 @@ class RaceSession(
 
                     if (kart.slotIndex == localSlotIndex && !kart.hasFinishedRace) {
                         // Local human player active driving
-                        if (localInput.driftJustPressed && kart.y <= currentTrack.sampleAtDistance(kart.trackS).pos.y + 0.14f) {
-                            synthAudio.playHopSound()
-                        }
                         handleItemActivation(kart, localInput)
                         KartPhysics.stepKart(
                             dt = effectiveDt,
@@ -1461,6 +1489,10 @@ class RaceSession(
                                 }
                             }
                         )
+                        if (kart.hopJustStarted) {
+                            kart.hopJustStarted = false
+                            synthAudio.playHopSound()
+                        }
                         if (kart.landingShakeTrigger) {
                             kart.landingShakeTrigger = false
                             landingShakeCounter++

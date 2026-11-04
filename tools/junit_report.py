@@ -10,3 +10,8 @@ for f in sorted(glob.glob('app/build/test-results/testDebugUnitTest/*.xml')):
             frames = [l.strip() for l in body.splitlines() if l.strip().startswith('at ') and ('com.example' in l or 'compose.ui.test' in l)][:4]
             if frames:
                 print("::warning::  " + " | ".join(frames)[:900])
+    so = r.find('system-out')
+    if so is not None and so.text:
+        for line in so.text.splitlines():
+            if line.startswith('FEEL '):
+                print(f"::notice::{line[:300]}")

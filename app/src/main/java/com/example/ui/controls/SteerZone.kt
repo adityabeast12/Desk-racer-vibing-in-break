@@ -126,27 +126,11 @@ fun SteerZone(
             var anchorY by remember { mutableFloatStateOf(0f) }
             var currentX by remember { mutableFloatStateOf(0f) }
             var targetSteer by remember { mutableFloatStateOf(0f) }
-            var smoothedSteer by remember { mutableFloatStateOf(0f) }
 
-            val curveExponent = if (controlScheme == ControlSchemeType.PRO) 1.3f else 1.5f
-            val clampedSens = sensitivity.coerceIn(0.6f, 1.6f)
-
-            // Part G4: 70 ms return-to-centre smoothing (and responsive 35 ms active tracking)
-            LaunchedEffect(isTouching, targetSteer) {
-                while (isTouching || abs(smoothedSteer) > 0.01f) {
-                    val goal = if (isTouching) targetSteer else 0f
-                    val dt = 0.016f
-                    val tau = if (isTouching) 0.035f else 0.070f // 70 ms return-to-centre smoothing
-                    val alpha = dt / (tau + dt)
-                    smoothedSteer += (goal - smoothedSteer) * alpha
-                    if (!isTouching && abs(smoothedSteer) < 0.015f) {
-                        smoothedSteer = 0f
-                    }
-                    inputState.updateSteer(smoothedSteer.coerceIn(-1f, 1f))
-                    delay(16L)
-                }
-                inputState.updateSteer(0f)
-            }
+            // v7: raw thumb position goes straight to the sim; smoothing now happens per sim tick
+            // (KartPhysics.steerSmoothed). The old UI-side coroutine added ~16-50 ms of lag and was
+            // restarted on every pointer move.
+            DisposableEffect(Unit) { onDispose { inputState.updateSteer(0f) } }
 
             val steerZoneDesc = stringResource(R.string.cd_steer_zone)
             Box(
@@ -162,6 +146,7 @@ fun SteerZone(
                             anchorY = down.position.y
                             currentX = anchorX
                             targetSteer = 0f
+                            inputState.updateSteer(0f)
 
                             var pointerActive = true
                             while (pointerActive) {
@@ -188,11 +173,13 @@ fun SteerZone(
                                         val curved = norm.pow(curveExponent)
                                         (sign(dx) * curved * clampedSens).coerceIn(-1f, 1f)
                                     }
+                                    inputState.updateSteer(targetSteer)
                                 }
                             }
 
                             isTouching = false
                             targetSteer = 0f
+                            inputState.updateSteer(0f)
                         }
                     }
                     .testTag("steer_thumb_zone")

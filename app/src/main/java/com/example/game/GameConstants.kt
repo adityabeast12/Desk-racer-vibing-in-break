@@ -370,6 +370,9 @@ enum class KartBodyType(
         unlockCoins = 1200
     );
 
+    /** v7: only the motorbike draws a rider helmet; every other body is a closed car. */
+    val hasRider: Boolean get() = this == PENCIL_ROCKET
+
     companion object {
         fun fromId(id: Int): KartBodyType = entries.firstOrNull { it.id == id } ?: CLASSIC
     }

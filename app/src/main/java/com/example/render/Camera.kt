@@ -10,7 +10,6 @@ import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.tan
-import kotlin.random.Random
 
 class Camera {
     var posX: Float = 0f
@@ -41,9 +40,11 @@ class Camera {
         viewportWidth: Int = 1280,
         viewportHeight: Int = 720
     ) {
+        renderPosYOffset = 0f
+        renderLookYOffset = 0f
         if (landingShakeSignal != lastLandingSignal) {
             lastLandingSignal = landingShakeSignal
-            shakeTimerSec = 0.22f
+            shakeTimerSec = LAND_DIP_SEC
         }
 
         // v6: keep the showroom kart in the left stage (menu column / garage panel own the right side)
@@ -80,7 +81,7 @@ class Camera {
         }
 
         if (targetKart == null) return
-        if (phase != RacePhase.RACING && phase != RacePhase.COUNTDOWN) chaseHeadingInit = false
+        if (phase != RacePhase.RACING && phase != RacePhase.COUNTDOWN) { chaseHeadingInit = false; rideYInit = false }
 
         // 2. Showroom / Garage / Results / Finished local player orbit camera
         val isOrbitMode = phase == RacePhase.SHOWROOM_MENU ||
@@ -127,8 +128,14 @@ class Camera {
         val chaseDist = if (targetKart.isBoosting) 7.4f else 6.6f
         val chaseHeight = 3.15f
 
+        // v7: the camera follows a separately smoothed ride height, so drift hops and small kerb
+        // bumps don't bounce the whole view (big jumps still pull it along within ~0.2 s)
+        if (!rideYInit) { rideY = targetKart.y; rideYInit = true }
+        val yErr = targetKart.y - rideY
+        rideY += yErr * smoothFactor(if (abs(yErr) > 1.2f) 9f else 4.5f, dt)
+
         val desiredCamX = targetKart.x - fwdX * chaseDist
-        val desiredCamY = targetKart.y + chaseHeight
+        val desiredCamY = rideY + chaseHeight
         val desiredCamZ = targetKart.z - fwdZ * chaseDist
 
         val springRate = smoothFactor(11f, dt)
@@ -137,7 +144,7 @@ class Camera {
         posZ += (desiredCamZ - posZ) * springRate
 
         val desiredLookX = targetKart.x + fwdX * 3.8f
-        val desiredLookY = targetKart.y + 0.85f
+        val desiredLookY = (rideY * 0.6f + targetKart.y * 0.4f) + 0.85f
         val desiredLookZ = targetKart.z + fwdZ * 3.8f
 
         val lookRate = smoothFactor(16f, dt)
@@ -145,12 +152,16 @@ class Camera {
         lookY += (desiredLookY - lookY) * lookRate
         lookZ += (desiredLookZ - lookZ) * lookRate
 
+        // v7: landing = one smooth damped dip of the view (was per-frame random jitter added into
+        // the camera state, which read as the screen vibrating after every hop and jump)
+        var dipY = 0f
         if (shakeTimerSec > 0f) {
             shakeTimerSec = (shakeTimerSec - dt).coerceAtLeast(0f)
-            val mag = shakeTimerSec * 0.9f
-            posY += (Random.nextFloat() - 0.5f) * mag
-            lookY += (Random.nextFloat() - 0.5f) * mag
+            val p = 1f - shakeTimerSec / LAND_DIP_SEC
+            dipY = -0.22f * sin(p * PI.toFloat()) * (1f - p)
         }
+        renderPosYOffset = dipY
+        renderLookYOffset = dipY * 0.6f
 
         // Speed FOV — 62° at rest -> 70° at top speed (+6° on boost), damped at 8 rad/s
         val speedNorm = (abs(targetKart.speed) / GameConstants.TOP_SPEED).coerceIn(0f, 1.15f)
@@ -161,11 +172,21 @@ class Camera {
 
     private var chaseHeadingRad = 0f
     private var chaseHeadingInit = false
+    private var rideY = 0f
+    private var rideYInit = false
+
+    /** Additive, non-accumulating offsets for this frame's view matrix (landing dip). */
+    var renderPosYOffset = 0f
+        private set
+    var renderLookYOffset = 0f
+        private set
 
     /** Frame-rate independent exponential smoothing factor for rate [k] per second. */
     private fun smoothFactor(k: Float, dt: Float): Float = (1f - kotlin.math.exp(-k * dt)).coerceIn(0f, 1f)
 
     companion object {
+        private const val LAND_DIP_SEC = 0.32f
+
         fun computeLensShiftX(stageCenterX: Float, screenWidth: Float): Float {
             val halfW = (screenWidth * 0.5f).coerceAtLeast(1f)
             val screenCenterX = screenWidth * 0.5f
