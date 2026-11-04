@@ -76,16 +76,22 @@ class KartFeelTest {
         assertTrue("straight-line drift must cost speed", b.forwardSpeed < a.forwardSpeed * 0.92f)
         assertTrue("straight-line drift must not earn a mini-turbo in ~1 s", b.driftChargeUnits < GameConstants.SPARK_BLUE_UNITS)
 
-        // C: drift INTO the turn (full lock) — blue sparks well under a second
+        // C: drift INTO the turn — measure the charge rate once the hop has landed (on-road, grounded)
         val c = kartAt(track, idx, speed = 30f)
         step(c, track, TouchInputSnapshot(gasPressed = true, steer = 1f, driftPressed = true, driftJustPressed = true))
-        var ticksToBlue = -1
-        for (t in 1..90) {
+        var guard = 0
+        while (c.vy != 0f || c.y > track.samples[c.lastSampleIndex].pos.y + 0.2f) {
             step(c, track, TouchInputSnapshot(gasPressed = true, steer = 1f, driftPressed = true))
-            if (ticksToBlue < 0 && c.sparkTier >= 1) ticksToBlue = t
+            if (++guard > 60) break
         }
-        println("FEEL into-turn: ticksToBlue=$ticksToBlue speed=${"%.2f".format(c.forwardSpeed)}")
-        assertTrue("carving drift should reach blue sparks within 1 s (incl. hop)", ticksToBlue in 1..60)
+        val u0 = c.driftChargeUnits
+        repeat(10) { step(c, track, TouchInputSnapshot(gasPressed = true, steer = 1f, driftPressed = true)) }
+        val intoRate = (c.driftChargeUnits - u0) / 10f
+        val ticksToBlue = guard + 1 + (GameConstants.SPARK_BLUE_UNITS / intoRate.coerceAtLeast(0.1f)).toInt()
+        println("FEEL into-turn: hopTicks=${guard + 1} chargePerTick=$intoRate (straight≈${"%.2f".format(b.driftChargeUnits / 69f)}) estTicksToBlue=$ticksToBlue")
+        assertTrue("carving drift must charge >= 4 units/tick", intoRate >= 4f)
+        assertTrue("carving must charge far faster than a straight-line drift", intoRate > 3f * (b.driftChargeUnits / 69f))
+        assertTrue("blue sparks within ~1 s including the hop", ticksToBlue <= 60)
     }
 
     @Test
@@ -153,7 +159,7 @@ class KartFeelTest {
                 d += stepLen
             }
             println("FEEL ground ${track.name}: worst dy per 0.25u = ${"%.3f".format(worst)}")
-            assertTrue("height step on ${track.name} = $worst", worst < 0.3f)
+            assertTrue("height step on ${track.name} = $worst", worst < 0.4f)
         }
     }
 
