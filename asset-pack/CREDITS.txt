@@ -38,3 +38,11 @@ Car Kit by Kenney (www.kenney.nl) — License: CC0 1.0 Universal (public domain)
 
 Vortex V10 (models/kart_car_rspec.drm): supplied by the project owner as an .3ds model; converted,
 decimated and de-badged for the game. Confirm the original model's licence before public release.
+
+Aurora Hyper (models/kart_car_aurora.drm): derived from "Car Concept" from the Khronos glTF-Sample-Assets
+repository (https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/CarConcept),
+(c) 2024 Darmstadt Graphics Group GmbH, licensed CC BY 4.0
+(https://creativecommons.org/licenses/by/4.0/), itself based on the public-domain (CC0) "Free Concept
+Car 004" by Unity Fan. Changes: textures, interior, logos and licence plate removed; decimated to
+~15k triangles; vertex-coloured paint mask; wheels replaced with procedural low-poly wheels.
+Khronos logos are trademarks of The Khronos Group and are NOT included.

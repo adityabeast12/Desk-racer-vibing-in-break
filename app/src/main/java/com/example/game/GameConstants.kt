@@ -368,6 +368,21 @@ enum class KartBodyType(
         statHandling = 4,
         statWeight = 3,
         unlockCoins = 1200
+    ),
+    AURORA_HYPER(
+        id = 14,
+        title = "Aurora Hyper",
+        subtitle = "Concept hypercar — highest top speed, needs a clean line",
+        drmAssetPath = "models/kart_car_aurora.drm",
+        mass = 1.10f,
+        topSpeedFactor = 1.07f,
+        accelFactor = 1.04f,
+        handlingFactor = 1.00f,
+        statSpeed = 5,
+        statAccel = 4,
+        statHandling = 3,
+        statWeight = 4,
+        unlockCoins = 1500
     );
 
     /** v7: only the motorbike draws a rider helmet; every other body is a closed car. */

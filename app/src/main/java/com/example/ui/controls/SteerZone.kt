@@ -132,6 +132,9 @@ fun SteerZone(
             // restarted on every pointer move.
             DisposableEffect(Unit) { onDispose { inputState.updateSteer(0f) } }
 
+            val curveExponent = if (controlScheme == ControlSchemeType.PRO) 1.3f else 1.5f
+            val clampedSens = sensitivity.coerceIn(0.6f, 1.6f)
+
             val steerZoneDesc = stringResource(R.string.cd_steer_zone)
             Box(
                 modifier = modifier

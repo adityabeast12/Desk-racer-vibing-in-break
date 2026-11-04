@@ -441,8 +441,7 @@ object KartPhysics {
             kart.steerSmoothed = s + (raw - s) * (1f - kotlin.math.exp(-rate * dt))
             if (abs(kart.steerSmoothed) < 0.002f && raw == 0f) kart.steerSmoothed = 0f
         }
-        @Suppress("NAME_SHADOWING")
-        val input = if (input.steer == kart.steerSmoothed) input else input.copy(steer = kart.steerSmoothed)
+        val inp = if (input.steer == kart.steerSmoothed) input else input.copy(steer = kart.steerSmoothed)
         if (kart.hopLockSec > 0f) kart.hopLockSec = (kart.hopLockSec - dt).coerceAtLeast(0f)
         if (kart.wallBumpCooldownSec > 0f) kart.wallBumpCooldownSec = (kart.wallBumpCooldownSec - dt).coerceAtLeast(0f)
         if (kart.trickVisualSec > 0f) kart.trickVisualSec = (kart.trickVisualSec - dt).coerceAtLeast(0f)
@@ -451,7 +450,7 @@ object KartPhysics {
         // 1. Item Roulette Animation Countdown
         if (kart.rouletteTimerSec > 0f) {
             kart.rouletteTimerSec -= dt
-            if (input.itemJustPressed && kart.rouletteTimerSec < GameConstants.ITEM_ROULETTE_SEC - 0.25f) {
+            if (inp.itemJustPressed && kart.rouletteTimerSec < GameConstants.ITEM_ROULETTE_SEC - 0.25f) {
                 kart.rouletteTimerSec = 0f
             }
             if (kart.rouletteTimerSec <= 0f && kart.pendingItem != ItemType.NONE) {
@@ -551,16 +550,16 @@ object KartPhysics {
         val canControl = kart.spinOutTimerSec <= 0f && kart.rocketStartStallTimerSec <= 0f
         val grounded = kart.y <= surf.y + 0.14f
 
-        if (canControl && input.driftJustPressed && kart.hopLockSec <= 0f) {
+        if (canControl && inp.driftJustPressed && kart.hopLockSec <= 0f) {
             if (grounded && kart.vy <= 0.01f) {
                 kart.hopTimerSec = GameConstants.HOP_DURATION_SEC
                 kart.hopLockSec = HOP_LOCK_SEC
                 kart.hopJustStarted = true
                 kart.vy = GameConstants.HOP_VELOCITY_Y
                 kart.hopPendingDrift = false
-                if (abs(input.steer) > 0.12f && kart.forwardSpeed > 8f) {
+                if (abs(inp.steer) > 0.12f && kart.forwardSpeed > 8f) {
                     kart.isDrifting = true
-                    kart.driftDirection = if (input.steer > 0f) 1 else -1
+                    kart.driftDirection = if (inp.steer > 0f) 1 else -1
                     kart.driftChargeUnits = 0
                 } else if (!kart.isDrifting) {
                     // Mario Kart style: hop straight, choose the drift side while in the air
@@ -572,11 +571,11 @@ object KartPhysics {
             }
         }
         if (kart.hopPendingDrift) {
-            if (!input.driftPressed || !canControl || kart.forwardSpeed < 8f) {
+            if (!inp.driftPressed || !canControl || kart.forwardSpeed < 8f) {
                 kart.hopPendingDrift = false
-            } else if (abs(input.steer) > 0.25f) {
+            } else if (abs(inp.steer) > 0.25f) {
                 kart.isDrifting = true
-                kart.driftDirection = if (input.steer > 0f) 1 else -1
+                kart.driftDirection = if (inp.steer > 0f) 1 else -1
                 kart.driftChargeUnits = 0
                 kart.hopPendingDrift = false
             } else if (grounded && kart.hopLockSec <= 0f) {
@@ -586,11 +585,11 @@ object KartPhysics {
 
         // How hard the player is steering INTO the drift: +1 = full lock into, 0 = neutral,
         // -1 = full counter-steer (which straightens the line, i.e. drifting on a straight).
-        val driftInto = if (kart.isDrifting) (input.steer * kart.driftDirection).coerceIn(-1f, 1f) else 0f
+        val driftInto = if (kart.isDrifting) (inp.steer * kart.driftDirection).coerceIn(-1f, 1f) else 0f
         kart.driftScrubbing = false
 
         if (kart.isDrifting) {
-            if (!input.driftPressed || kart.forwardSpeed < 6f || !canControl) {
+            if (!inp.driftPressed || kart.forwardSpeed < 6f || !canControl) {
                 val tier = kart.sparkTier
                 val boostDur = when (tier) {
                     3 -> GameConstants.BOOST_ULTRA_SEC
@@ -636,9 +635,9 @@ object KartPhysics {
             if (kart.isDrifting) steerRate *= GameConstants.DRIFT_STEER_BONUS
 
             val effectiveSteer = if (kart.isDrifting) {
-                (kart.driftDirection * 0.55f + input.steer * 0.65f).coerceIn(-1.25f, 1.25f)
+                (kart.driftDirection * 0.55f + inp.steer * 0.65f).coerceIn(-1.25f, 1.25f)
             } else {
-                input.steer
+                inp.steer
             }
 
             kart.headingRad -= effectiveSteer * steerRate * dt
@@ -659,7 +658,7 @@ object KartPhysics {
         }
 
         // 7. Forward Acceleration, Coins Bonus (+0.6%/coin), Off-Track Drag, Boosts
-        val gasActive = canControl && (input.gasPressed || (autoAccelerate && !input.brakePressed))
+        val gasActive = canControl && (inp.gasPressed || (autoAccelerate && !inp.brakePressed))
         val coinBonusMult = 1.0f + kart.coinsHeld.coerceIn(0, GameConstants.MAX_COINS_HELD) * GameConstants.COIN_SPEED_BONUS_PER_COIN
         var targetTopSpeed = GameConstants.TOP_SPEED * kart.bodyType.topSpeedFactor * coinBonusMult * speedScale
         if (kart.boostTimerSec > 0f) {
@@ -685,14 +684,14 @@ object KartPhysics {
                     targetTopSpeed *= 1f - DRIFT_STRAIGHT_SCRUB * 0.03f * notTurning   // up to -22.5 %
                 }
             } else {
-                val hard = ((abs(input.steer) - 0.55f) / 0.45f).coerceIn(0f, 1f)
+                val hard = ((abs(inp.steer) - 0.55f) / 0.45f).coerceIn(0f, 1f)
                 val speedRatio = (kart.forwardSpeed / GameConstants.TOP_SPEED).coerceIn(0f, 1.2f)
                 targetTopSpeed *= 1f - CORNER_SCRUB * 0.02f * hard * speedRatio        // up to -8 %
             }
         }
 
         if (canControl) {
-            if (input.brakePressed) {
+            if (inp.brakePressed) {
                 if (kart.forwardSpeed > 0f) {
                     kart.forwardSpeed = (kart.forwardSpeed - GameConstants.BRAKE_DECEL * dt).coerceAtLeast(0f)
                 } else {
@@ -1048,13 +1047,13 @@ object KartPhysics {
         val targetYawOffset = when {
             kart.spinOutTimerSec > 0f -> kart.spinOutAngleRad
             kart.isDrifting -> -kart.driftDirection * (0.30f + 0.10f * driftInto.coerceAtLeast(0f))
-            else -> -input.steer * 0.10f
+            else -> -inp.steer * 0.10f
         }
         kart.visualYawOffsetRad += (targetYawOffset - kart.visualYawOffsetRad) *
             (if (kart.spinOutTimerSec > 0f) 1f else ease(10f))
 
         val bankRoll = ground.bankAngleRad
-        val steerRoll = if (kart.isDrifting) kart.driftDirection * (0.10f + 0.06f * driftInto.coerceAtLeast(0f)) else input.steer * 0.06f
+        val steerRoll = if (kart.isDrifting) kart.driftDirection * (0.10f + 0.06f * driftInto.coerceAtLeast(0f)) else inp.steer * 0.06f
         val targetRoll = steerRoll + bankRoll
         kart.visualRollRad += (targetRoll - kart.visualRollRad) * ease(8f)
 
