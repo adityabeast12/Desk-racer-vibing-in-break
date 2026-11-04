@@ -120,7 +120,8 @@ class Camera {
             var dH = (targetKart.headingRad - chaseHeadingRad) % (2f * PI.toFloat())
             if (dH > PI.toFloat()) dH -= 2f * PI.toFloat()
             if (dH < -PI.toFloat()) dH += 2f * PI.toFloat()
-            chaseHeadingRad += dH * smoothFactor(9f, dt)
+            // v7: looser follow while drifting so the camera swings out and shows the slide
+            chaseHeadingRad += dH * smoothFactor(if (targetKart.isDrifting) 4.2f else 9f, dt)
         }
         val fwdX = sin(chaseHeadingRad)
         val fwdZ = cos(chaseHeadingRad)
