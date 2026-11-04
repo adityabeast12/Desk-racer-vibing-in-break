@@ -73,11 +73,6 @@ class GameRenderer(
     @Volatile
     var garageZoomFactor: Float = 1.0f
 
-    /**
-     * Part E5: Paint finish index: 0=Gloss, 1=Matte, 2=Metallic, 3=Pearl
-     */
-    @Volatile
-
     private val pendingUnloadTrackAssets = AtomicBoolean(false)
 
     val assetRepo = AssetRepository(appContext)
