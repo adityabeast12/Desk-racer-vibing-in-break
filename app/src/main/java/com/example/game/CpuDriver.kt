@@ -173,24 +173,39 @@ object CpuDriver {
         var fireItem = false
         var fireBackward = false
         if (kart.heldItem != ItemType.NONE && kart.rouletteTimerSec <= 0f) {
+            // v7: aim items instead of firing at random — forward cone / rear threat / straights
+            val fx = sin(kart.headingRad)
+            val fz = cos(kart.headingRad)
+            var aheadInCone = false
+            var closeBehind = false
+            for (other in allKarts) {
+                if (other.slotIndex == kart.slotIndex || other.isRespawning) continue
+                val ox = other.x - kart.x
+                val oz = other.z - kart.z
+                val d = hypot(ox, oz)
+                if (d < 0.5f || abs(other.y - kart.y) > 3f) continue
+                val dot = (ox * fx + oz * fz) / d
+                if (dot > 0.86f && d < 34f) aheadInCone = true
+                if (dot < -0.80f && d < 14f) closeBehind = true
+            }
+            val onStraight = cornerAbs < 0.15f
+            val aim = when (effectiveDiff) {
+                CpuDifficulty.ROOKIE -> 0.02f
+                CpuDifficulty.PRO -> 0.06f
+                else -> 0.10f
+            }
             when (kart.heldItem) {
-                ItemType.BATTERY, ItemType.MAGNET, ItemType.PAPER_PLANE -> {
-                    fireItem = Random.nextFloat() < 0.05f
+                ItemType.BATTERY -> fireItem = onStraight && Random.nextFloat() < aim
+                ItemType.MAGNET, ItemType.PAPER_PLANE -> fireItem = kart.racePosition > 1 && Random.nextFloat() < aim
+                ItemType.MARBLE -> {
+                    if (aheadInCone && Random.nextFloat() < aim * 1.5f) fireItem = true
+                    else if (closeBehind && Random.nextFloat() < aim) { fireItem = true; fireBackward = true }
                 }
-                ItemType.MARBLE, ItemType.TRIPLE_TACKS -> {
-                    val targetAhead = allKarts.any { other ->
-                        other.slotIndex != kart.slotIndex &&
-                            hypot(other.x - kart.x, other.z - kart.z) < 30f
-                    }
-                    if (targetAhead && Random.nextFloat() < 0.06f) {
-                        fireItem = true
-                    }
-                }
+                ItemType.TRIPLE_TACKS -> fireItem = aheadInCone && Random.nextFloat() < aim
                 ItemType.ERASER -> {
-                    if (Random.nextFloat() < 0.04f) {
-                        fireItem = true
-                        fireBackward = true
-                    }
+                    // hold it as a shield; drop it when someone is right behind
+                    if (closeBehind && Random.nextFloat() < aim) { fireItem = true; fireBackward = true }
+                    else if (Random.nextFloat() < 0.004f) { fireItem = true; fireBackward = true }
                 }
                 ItemType.NONE -> Unit
             }
@@ -219,7 +234,7 @@ object CpuDriver {
             driftJustPressed = driftJustPressed,
             itemJustPressed = fireItem,
             itemFireBackward = fireBackward,
-            itemHeldDown = false
+            itemHeldDown = kart.heldItem == ItemType.ERASER && !fireItem && kart.rouletteTimerSec <= 0f // trail it as a shield
         )
         return Pair(snapshot, speedScale)
     }

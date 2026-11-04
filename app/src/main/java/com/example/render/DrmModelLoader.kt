@@ -21,7 +21,29 @@ class DrmPartMesh(
 class DrmModel(
     val assetPath: String,
     val parts: List<DrmPartMesh>
-)
+) {
+    /**
+     * v7: bounds of the paintable body surface in model space (part pivot applied):
+     * [minY, maxY, maxAbsX, minZ, maxZ]. Drives livery placement (two-tone line, stripe width).
+     */
+    val paintBounds: FloatArray by lazy {
+        var minY = Float.MAX_VALUE; var maxY = -Float.MAX_VALUE; var maxX = 0f
+        var minZ = Float.MAX_VALUE; var maxZ = -Float.MAX_VALUE
+        for (p in parts) {
+            if (p.isWheel) continue
+            val b = p.buffer
+            for (v in 0 until p.vertexCount) {
+                val o = v * 10
+                if (b.get(o + 9) <= 0.5f) continue
+                val x = b.get(o) + p.pivotX; val y = b.get(o + 1) + p.pivotY; val z = b.get(o + 2) + p.pivotZ
+                if (y < minY) minY = y; if (y > maxY) maxY = y
+                if (kotlin.math.abs(x) > maxX) maxX = kotlin.math.abs(x)
+                if (z < minZ) minZ = z; if (z > maxZ) maxZ = z
+            }
+        }
+        if (minY == Float.MAX_VALUE) floatArrayOf(0f, 1f, 0.8f, -1.3f, 1.3f) else floatArrayOf(minY, maxY, maxX, minZ, maxZ)
+    }
+}
 
 object DrmModelLoader {
     private const val TAG = "DrmModelLoader"

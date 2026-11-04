@@ -58,6 +58,8 @@ class KartRuntime(
     var landingImpact: Float = 0f          // 0..1, for camera dip / suspension squash
     var driftScrubbing: Boolean = false
     var hopJustStarted: Boolean = false
+    var visSpeedPrev: Float = 0f
+    var visAccelSmoothed: Float = 0f
 
     // Status Timers & Special Zones
     var spinOutTimerSec: Float = 0f
@@ -90,6 +92,7 @@ class KartRuntime(
     // Item, Coin & Balloon State
     var heldItem: ItemType = ItemType.NONE
     var pendingItem: ItemType = ItemType.NONE
+    var lastRolledItem: ItemType = ItemType.NONE
     var rouletteTimerSec: Float = 0f
     var clientBoxPickupPendingSec: Float = 0f
     var clientUsedItemHoldbackSec: Float = 0f
@@ -1071,7 +1074,12 @@ object KartPhysics {
         } else 0f
         // landing: brief nose-down squash that decays (suspension feel)
         val landPitch = 0.10f * kart.landingImpact * kart.landingImpact
-        val targetPitch = airPitch + trickPitch + landPitch
+        // longitudinal weight transfer: nose lifts under throttle/boost, dives under braking/impacts
+        val longAccel = ((kart.forwardSpeed - kart.visSpeedPrev) / dt).coerceIn(-60f, 40f)
+        kart.visSpeedPrev = kart.forwardSpeed
+        kart.visAccelSmoothed += (longAccel - kart.visAccelSmoothed) * ease(6f)
+        val weightPitch = if (airborne) 0f else (-kart.visAccelSmoothed * 0.0035f).coerceIn(-0.06f, 0.07f)
+        val targetPitch = airPitch + trickPitch + landPitch + weightPitch
         kart.visualPitchRad += (targetPitch - kart.visualPitchRad) * ease(if (kart.trickVisualSec > 0f) 22f else 9f)
 
         // 13. Plane-Crossing Checkpoint Gates & Unwrapped Lap Completion (with C3 Sub-Tick Interpolation)

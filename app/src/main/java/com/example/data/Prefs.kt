@@ -218,7 +218,7 @@ class Prefs(private val context: Context) {
             playerName = sanitizePlayerName(prefs.getString("player_name", defaultName) ?: defaultName),
             kartColorIndex = prefs.getInt("kart_color_idx", 0).coerceIn(0, GameConstants.KART_COLORS.lastIndex),
             kartBody = KartBodyType.fromId(prefs.getInt("kart_body_id", 0)),
-            toyCarLiveryIndex = prefs.getInt("toy_livery_idx", 0).coerceIn(0, 2),
+            toyCarLiveryIndex = prefs.getInt("toy_livery_idx", 0).coerceIn(0, 3),
             paintFinishIndex = prefs.getInt("paint_finish_idx", 0).coerceIn(0, 3),
             wheelStyleIndex = prefs.getInt("wheel_style_idx", 0).coerceIn(0, 5),
             controlScheme = scheme,
@@ -323,7 +323,7 @@ class Prefs(private val context: Context) {
     }
 
     fun updateToyCarLivery(index: Int) {
-        val idx = index.coerceIn(0, 2)
+        val idx = index.coerceIn(0, 3)
         prefs.edit().putInt("toy_livery_idx", idx).apply()
         _state.value = _state.value.copy(toyCarLiveryIndex = idx)
     }

@@ -81,7 +81,8 @@ private val KART_COLOR_NAMES = listOf(
     "Hot Pink", "Lamp Amber", "Boost Cyan", "Lime", "Coral", "Hyper Purple", "Cobalt", "Chalk White",
     "Racing Red", "Mint", "Solar Gold", "Tangerine", "Magenta", "Aqua", "Violet", "Titanium"
 )
-private val LIVERY_NAMES = listOf("Stock", "Cyber", "Pro")
+private val LIVERY_NAMES = listOf("Solid", "Two-Tone", "Racing Stripes", "Fade")
+private val LIVERY_DESC = listOf("One colour, full body", "Graphite lower body", "Twin stripes nose to tail", "Colour fades to a deep shade")
 private val FINISH_NAMES = listOf("Gloss", "Matte", "Metal", "Pearl")
 
 private fun KartBodyType.speedFrac() = ((topSpeedFactor - 0.8f) / 0.3f).coerceIn(0.05f, 1f)
@@ -266,7 +267,7 @@ fun GarageScreen(
                     when (tab) {
                         0 -> BodyGrid(profile, draftBody) { preview(body = it) }
                         1 -> PaintTab(draftColor, draftFinish, onColor = { preview(c = it) }, onFinish = { preview(f = it) })
-                        2 -> LiveryTab(draftBody, draftLivery) { preview(l = it) }
+                        2 -> LiveryTab(draftBody, draftLivery, draftColor) { preview(l = it) }
                         else -> DriverTab(profile.playerName, onNameChanged)
                     }
                 }
@@ -421,14 +422,20 @@ private fun PaintTab(colorIdx: Int, finishIdx: Int, onColor: (Int) -> Unit, onFi
 }
 
 @Composable
-private fun LiveryTab(body: KartBodyType, liveryIdx: Int, onPick: (Int) -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        LIVERY_NAMES.forEachIndexed { i, name ->
+private fun LiveryTab(body: KartBodyType, liveryIdx: Int, colorIdx: Int, onPick: (Int) -> Unit) {
+    val paint = Color(GameConstants.KART_COLORS.getOrElse(colorIdx) { GameConstants.KART_COLORS[0] })
+    val isToy = body.isDrm2
+    Column(
+        modifier = Modifier.verticalScroll(androidx.compose.foundation.rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        val count = if (isToy) 3 else LIVERY_NAMES.size
+        for (i in 0 until count) {
             val sel = i == liveryIdx
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(62.dp)
+                    .height(54.dp)
                     .clip(DRShape.Card)
                     .background(if (sel) DR.AmberTint else DR.S2)
                     .border(if (sel) 1.5.dp else 1.dp, if (sel) DR.Amber else DR.Line, DRShape.Card)
@@ -438,14 +445,52 @@ private fun LiveryTab(body: KartBodyType, liveryIdx: Int, onPick: (Int) -> Unit)
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                KartThumb(body = body, modifier = Modifier.width(70.dp).height(46.dp))
+                LiverySwatch(mode = if (isToy) 0 else i, paint = paint, modifier = Modifier.width(64.dp).height(34.dp))
                 Column(Modifier.weight(1f)) {
-                    Text(String.format(Locale.US, "%02d", i + 1), style = DRType.NumS.copy(fontSize = 10.sp), color = if (sel) DR.Amber else DR.TextDis)
-                    Text("$name livery", style = DRType.Title.copy(fontSize = 17.sp), color = DR.TextHi)
+                    Text(
+                        if (isToy) listOf("Stock", "Shifted", "Inverted")[i] else LIVERY_NAMES[i],
+                        style = DRType.Title.copy(fontSize = 16.sp), color = DR.TextHi, maxLines = 1, overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        if (isToy) "Hue variation" else LIVERY_DESC[i],
+                        style = DRType.Caption, color = DR.TextLo, maxLines = 1, overflow = TextOverflow.Ellipsis
+                    )
                 }
                 if (sel) DRBadge("On", DRBadgeKind.AMBER)
             }
         }
+    }
+}
+
+/** Little side-profile chip that previews the livery pattern in the chosen colour. */
+@Composable
+private fun LiverySwatch(mode: Int, paint: Color, modifier: Modifier = Modifier) {
+    val lum = 0.299f * paint.red + 0.587f * paint.green + 0.114f * paint.blue
+    val stripe = if (lum < 0.62f) Color(0xFFF5F5F7) else Color(0xFF121216)
+    androidx.compose.foundation.Canvas(modifier.clip(DRShape.Control)) {
+        val w = size.width; val h = size.height
+        drawRect(Color(0xFF0E1320))
+        val body = androidx.compose.ui.geometry.Rect(w * 0.06f, h * 0.30f, w * 0.94f, h * 0.78f)
+        when (mode) {
+            1 -> {
+                drawRect(paint, body.topLeft, androidx.compose.ui.geometry.Size(body.width, body.height * 0.55f))
+                drawRect(Color(0xFF1C1F26), androidx.compose.ui.geometry.Offset(body.left, body.top + body.height * 0.55f), androidx.compose.ui.geometry.Size(body.width, body.height * 0.45f))
+            }
+            2 -> {
+                drawRect(paint, body.topLeft, body.size)
+                drawRect(stripe, androidx.compose.ui.geometry.Offset(body.left, body.top + body.height * 0.18f), androidx.compose.ui.geometry.Size(body.width, body.height * 0.13f))
+                drawRect(stripe, androidx.compose.ui.geometry.Offset(body.left, body.top + body.height * 0.40f), androidx.compose.ui.geometry.Size(body.width, body.height * 0.13f))
+            }
+            3 -> drawRect(
+                Brush.horizontalGradient(listOf(Color(paint.blue * 0.55f + 0.05f, paint.red * 0.25f + 0.04f, paint.green * 0.55f + 0.10f), paint), startX = body.left, endX = body.right),
+                body.topLeft, body.size
+            )
+            else -> drawRect(paint, body.topLeft, body.size)
+        }
+        // cabin + wheels
+        drawRect(Color(0xFF2A3344), androidx.compose.ui.geometry.Offset(w * 0.30f, h * 0.14f), androidx.compose.ui.geometry.Size(w * 0.38f, h * 0.18f))
+        drawCircle(Color(0xFF0B0B0D), radius = h * 0.15f, center = androidx.compose.ui.geometry.Offset(w * 0.25f, h * 0.80f))
+        drawCircle(Color(0xFF0B0B0D), radius = h * 0.15f, center = androidx.compose.ui.geometry.Offset(w * 0.75f, h * 0.80f))
     }
 }
 

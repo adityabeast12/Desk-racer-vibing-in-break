@@ -15,7 +15,6 @@ object Shaders {
     const val LIT_VERTEX_SHADER = """
         uniform mat4 uMvpMatrix;
         uniform mat4 uModelMatrix;
-        uniform vec3 uPaintColor;
         attribute vec3 aPosition;
         attribute vec3 aNormal;
         attribute vec2 aTexCoord;
@@ -27,6 +26,10 @@ object Shaders {
         varying vec3 vTangent;
         varying vec2 vTexCoord;
         varying vec3 vVertColorLinear;
+        varying vec3 vObjPos;
+        varying float vPaint;
+        varying float vShade;
+        uniform vec3 uPartOffset;
 
         vec3 srgbToLinear(vec3 c) {
             return pow(max(c, vec3(0.0)), vec3(2.2));
@@ -34,14 +37,18 @@ object Shaders {
 
         void main() {
             vec4 worldPos = uModelMatrix * vec4(aPosition, 1.0);
+            // v7 paint mask: > 0.5 = paintable, value = baked panel shade (keeps the model's
+            // light/dark facets when recoloured). Paint itself is resolved per fragment (liveries).
+            vPaint = step(0.5, aPaintMask);
+            vShade = clamp(aPaintMask, 0.6, 1.4);
+            vObjPos = aPosition + uPartOffset;
             vWorldPos = worldPos.xyz;
             vec3 worldNorm = (uModelMatrix * vec4(aNormal, 0.0)).xyz;
             vNormal = normalize(worldNorm);
             vec3 worldTan = (uModelMatrix * vec4(aTangent, 0.0)).xyz;
             vTangent = normalize(worldTan);
             vTexCoord = aTexCoord;
-            vec3 mixedSrgb = mix(aVertColor, uPaintColor, clamp(aPaintMask, 0.0, 1.0));
-            vVertColorLinear = srgbToLinear(mixedSrgb);
+            vVertColorLinear = srgbToLinear(aVertColor);
             gl_Position = uMvpMatrix * vec4(aPosition, 1.0);
         }
     """
@@ -69,6 +76,13 @@ object Shaders {
         varying vec3 vTangent;
         varying vec2 vTexCoord;
         varying vec3 vVertColorLinear;
+        varying vec3 vObjPos;
+        varying float vPaint;
+        varying float vShade;
+        uniform vec3 uPaintColor;
+        uniform vec3 uLiveryColor;
+        uniform vec4 uLivery;     // x=mode (0 solid, 1 two-tone, 2 stripes, 3 fade), y=splitY, z=stripeHalfW, w=fade 1/len
+        uniform vec3 uPaintMat;   // x=metallic, y=roughness, z=enabled
 
         vec3 srgbToLinear(vec3 c) {
             return pow(max(c, vec3(0.0)), vec3(2.2));
@@ -105,13 +119,28 @@ object Shaders {
                 discard;
             }
 
-            vec3 albedo = texLinear * factorLinear * vVertColorLinear * tintLinear;
+            vec3 paintS = uPaintColor;
+            if (uLivery.x > 0.5 && uLivery.x < 1.5) {
+                float edge = smoothstep(uLivery.y - 0.015, uLivery.y + 0.015, vObjPos.y);
+                paintS = mix(uLiveryColor, uPaintColor, edge);
+            } else if (uLivery.x > 1.5 && uLivery.x < 2.5) {
+                float ax = abs(vObjPos.x);
+                float stripe = 1.0 - smoothstep(uLivery.z - 0.012, uLivery.z + 0.012, ax);
+                float gap = 1.0 - smoothstep(uLivery.z * 0.28 - 0.01, uLivery.z * 0.28 + 0.01, ax);
+                paintS = mix(uPaintColor, uLiveryColor, stripe * (1.0 - gap));
+            } else if (uLivery.x > 2.5) {
+                float t = clamp(vObjPos.z * uLivery.w + 0.5, 0.0, 1.0);
+                paintS = mix(uLiveryColor, uPaintColor, smoothstep(0.15, 0.85, t));
+            }
+            vec3 baseLinear = mix(vVertColorLinear, srgbToLinear(clamp(paintS * vShade, 0.0, 1.0)), vPaint);
+            vec3 albedo = texLinear * factorLinear * baseLinear * tintLinear;
             if (abs(uMaterialParams.w) > 0.01) {
                 albedo = clamp(shiftHue(albedo, uMaterialParams.w), 0.0, 1.0);
             }
 
-            float metallic = clamp(uMaterialParams.x, 0.0, 1.0);
-            float roughness = clamp(uMaterialParams.y, 0.06, 1.0);
+            float paintSel = vPaint * step(0.5, uPaintMat.z);
+            float metallic = clamp(mix(uMaterialParams.x, uPaintMat.x, paintSel), 0.0, 1.0);
+            float roughness = clamp(mix(uMaterialParams.y, uPaintMat.y, paintSel), 0.06, 1.0);
 
             vec3 N = normalize(vNormal);
             vec3 norm = N;
@@ -150,6 +179,13 @@ object Shaders {
 
             vec3 lit = diffuseColor * (ambientLight * 1.15 + keyLinear * nDotL * 1.25)
                      + specColor * keyLinear * (specTerm + fresnel * 0.25);
+
+            // v7 car paint: clear-coat highlight on glossy painted panels + pearl colour flip
+            float clear = paintSel * (1.0 - smoothstep(0.30, 0.75, roughness));
+            lit += keyLinear * (pow(nDotH, 240.0) * 1.1 + fresnel * 0.10) * clear;
+            if (paintSel > 0.5 && uPaintMat.z > 1.5) {
+                lit *= mix(vec3(1.0), vec3(0.80, 0.95, 1.22), clamp(fresnel * 2.2, 0.0, 1.0));
+            }
 
             // 3. Warm Desk Lamp / Point Light contribution
             vec3 toPoint = uPointLightPos - vWorldPos;

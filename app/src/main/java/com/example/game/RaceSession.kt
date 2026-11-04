@@ -2164,7 +2164,8 @@ class RaceSession(
 
             ItemType.PAPER_PLANE -> {
                 // Part B6: Paper-plane targets use Host's racePosition
-                val targetPos = (kart.racePosition - 1).coerceAtLeast(1)
+                // leader's plane goes after 2nd place instead of a random kart
+                val targetPos = if (kart.racePosition <= 1) 2 else kart.racePosition - 1
                 val targetKart = karts.firstOrNull { it.racePosition == targetPos && it.slotIndex != kart.slotIndex }
                     ?: karts.firstOrNull { it.slotIndex != kart.slotIndex }
                 val vx = fwdX * 38f
@@ -2244,7 +2245,11 @@ class RaceSession(
                 coinsHeld = k.coinsHeld,
                 balloonsRemaining = if (gameMode == GameMode.BATTLE_BALLOONS) k.balloonsRemaining else 0,
                 liveryIndex = k.liveryIndex,
-                paintFinishIndex = if (k.slotIndex == localSlotIndex) localPaintFinishIndex else 0
+                paintFinishIndex = when {
+                    k.slotIndex == localSlotIndex || (phase == RacePhase.SHOWROOM_MENU && k.isLocalPlayer) -> localPaintFinishIndex
+                    !k.isHuman -> (k.slotIndex * 3) % 4 // CPU field gets a mix of gloss / matte / metal / pearl
+                    else -> 0
+                }
             )
         }
 

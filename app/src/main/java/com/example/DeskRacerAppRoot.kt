@@ -306,7 +306,12 @@ fun DeskRacerAppRoot(
                     val am = ctx.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
                     val supportsEs3 = (am?.deviceConfigurationInfo?.reqGlEsVersion ?: 0) >= 0x30000
                     setEGLContextClientVersion(if (supportsEs3) 3 else 2)
-                    setEGLConfigChooser(8, 8, 8, 8, 16, 0)
+                    setEGLConfigChooser(
+                        com.example.render.MsaaConfigChooser(
+                            es3 = supportsEs3,
+                            allowMsaa = prefs.state.value.graphicsQuality != com.example.game.GraphicsQuality.LOW
+                        )
+                    )
                     val renderer = GameRenderer(gameLoop.latestRenderSnapshot, ctx.applicationContext)
                     setRenderer(renderer)
                     renderMode = GLSurfaceView.RENDERMODE_CONTINUOUSLY
@@ -972,7 +977,7 @@ private fun buildSoloRacers(
                 isLocalPlayer = false,
                 colorHex = GameConstants.KART_COLORS[cpuColorIdx],
                 bodyType = cpuBody,
-                liveryIndex = slot % 3
+                liveryIndex = slot % 4
             )
         )
     }
@@ -1033,7 +1038,7 @@ private fun startMultiplayerRaceFromLobby(
                     isLocalPlayer = false,
                     colorHex = GameConstants.KART_COLORS[slot % GameConstants.KART_COLORS.size],
                     bodyType = KartBodyType.fromId(slot % KartBodyType.entries.size),
-                    liveryIndex = slot % 3
+                    liveryIndex = slot % 4
                 )
             )
         }

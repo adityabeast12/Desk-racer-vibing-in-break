@@ -198,4 +198,21 @@ class KartFeelTest {
             assertTrue("marble floated on ${track.name}", worstDy < 0.8f)
         }
     }
+
+    @Test
+    fun `every item can drop and the leader is not stuck with three items`() {
+        val rnd = kotlin.random.Random(7)
+        for (pos in listOf(1, 2, 4, 6, 8)) {
+            val counts = HashMap<com.example.game.ItemType, Int>()
+            var last = com.example.game.ItemType.NONE
+            repeat(4000) {
+                val it2 = ItemsEngine.rollItemForPosition(pos, com.example.game.ItemMode.NORMAL, rnd, 8, last)
+                counts[it2] = (counts[it2] ?: 0) + 1
+                last = it2
+            }
+            println("FEEL items pos$pos: " + counts.entries.sortedByDescending { it.value }.joinToString { "${it.key.name}=${it.value * 100 / 4000}%" })
+            val distinct = counts.keys.size
+            assertTrue("position $pos only gets $distinct item kinds", distinct >= if (pos >= 6) 5 else 6)
+        }
+    }
 }

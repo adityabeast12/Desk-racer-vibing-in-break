@@ -77,7 +77,6 @@ class GameRenderer(
      * Part E5: Paint finish index: 0=Gloss, 1=Matte, 2=Metallic, 3=Pearl
      */
     @Volatile
-    var garagePaintFinishIndex: Int = 0
 
     private val pendingUnloadTrackAssets = AtomicBoolean(false)
 
@@ -100,6 +99,10 @@ class GameRenderer(
     private var litNormalTexLoc = 0
     private var litBaseColorFactorLoc = 0
     private var litPaintColorLoc = 0
+    private var litLiveryLoc = -1
+    private var litLiveryColorLoc = -1
+    private var litPaintMatLoc = -1
+    private var litPartOffsetLoc = -1
     private var litTintLoc = 0
     private var litMaterialParamsLoc = 0
     private var litNormalParamsLoc = 0
@@ -146,6 +149,10 @@ class GameRenderer(
 
     // Part D3: Ring buffer of 2,000 drift skid mark quads fading over 20 seconds
     private val maxSkidMarks = 2000
+    private val skidBatch: java.nio.FloatBuffer = java.nio.ByteBuffer
+        .allocateDirect(maxSkidMarks * 6 * 7 * 4)
+        .order(java.nio.ByteOrder.nativeOrder())
+        .asFloatBuffer()
     private val skidX = FloatArray(maxSkidMarks)
     private val skidY = FloatArray(maxSkidMarks)
     private val skidZ = FloatArray(maxSkidMarks)
@@ -199,6 +206,10 @@ class GameRenderer(
         litNormalTexLoc = GLES20.glGetUniformLocation(litProgram, "uNormalTex")
         litBaseColorFactorLoc = GLES20.glGetUniformLocation(litProgram, "uBaseColorFactor")
         litPaintColorLoc = GLES20.glGetUniformLocation(litProgram, "uPaintColor")
+        litLiveryLoc = GLES20.glGetUniformLocation(litProgram, "uLivery")
+        litLiveryColorLoc = GLES20.glGetUniformLocation(litProgram, "uLiveryColor")
+        litPaintMatLoc = GLES20.glGetUniformLocation(litProgram, "uPaintMat")
+        litPartOffsetLoc = GLES20.glGetUniformLocation(litProgram, "uPartOffset")
         litTintLoc = GLES20.glGetUniformLocation(litProgram, "uTintColor")
         litMaterialParamsLoc = GLES20.glGetUniformLocation(litProgram, "uMaterialParams")
         litNormalParamsLoc = GLES20.glGetUniformLocation(litProgram, "uNormalParams")
@@ -694,7 +705,7 @@ class GameRenderer(
                     kart = kart,
                     forceAlpha = alpha,
                     isBattleMode = isBattle,
-                    paintFinishIndex = if (kart.slotIndex == snap.localSlotIndex) garagePaintFinishIndex else 0
+                    paintFinishIndex = kart.paintFinishIndex
                 )
             }
         }
@@ -910,30 +921,47 @@ class GameRenderer(
             }
         }
 
+        // v7: all skid marks in ONE batched draw (was one draw call + uniform upload per quad —
+        // up to ~2000 calls per frame with a full field drifting, a real frame-time spike).
         if (skidTotalCount > 0) {
-            val skidTexId = assetRepo.getTextureId("textures/decals/skid_mark.png", repeatWrap = false)
+            val fb = skidBatch
+            fb.clear()
+            var verts = 0
             for (i in 0 until skidTotalCount) {
                 val age = nowSec - skidBirthSec[i]
                 if (age < 0f || age >= 20f) continue
                 val dx = skidX[i] - camera.posX
                 val dz = skidZ[i] - camera.posZ
                 if (dx * dx + dz * dz > 140f * 140f) continue
-                val alpha = (1f - age / 20f).coerceIn(0f, 1f) * 0.62f
-                drawLitMeshRotated(
-                    mesh = flatQuadXZ,
-                    texId = skidTexId,
-                    x = skidX[i],
-                    y = skidY[i],
-                    z = skidZ[i],
-                    rxDeg = 0f,
-                    ryDeg = skidYawDeg[i],
-                    rzDeg = 0f,
-                    sx = 0.42f,
-                    sy = 1f,
-                    sz = 1.25f,
-                    r = 0.12f, g = 0.12f, b = 0.14f, a = alpha,
-                    roughness = 0.85f
-                )
+                val alpha = (1f - age / 20f).coerceIn(0f, 1f) * 0.55f
+                val yaw = Math.toRadians(skidYawDeg[i].toDouble()).toFloat()
+                val fx = sin(yaw) * 0.64f; val fz = cos(yaw) * 0.64f
+                val rx = cos(yaw) * 0.20f; val rz = -sin(yaw) * 0.20f
+                val cx = skidX[i]; val cy = skidY[i]; val cz = skidZ[i]
+                val ax = cx - fx - rx; val az = cz - fz - rz
+                val bx = cx - fx + rx; val bz = cz - fz + rz
+                val ccx = cx + fx + rx; val ccz = cz + fz + rz
+                val dx2 = cx + fx - rx; val dz2 = cz + fz - rz
+                fun v(x: Float, z: Float) { fb.put(x); fb.put(cy); fb.put(z); fb.put(0.07f); fb.put(0.07f); fb.put(0.08f); fb.put(alpha) }
+                v(ax, az); v(bx, bz); v(ccx, ccz)
+                v(ax, az); v(ccx, ccz); v(dx2, dz2)
+                verts += 6
+            }
+            if (verts > 0) {
+                GLES20.glUseProgram(unlitProgram)
+                GLES20.glUniformMatrix4fv(unlitMvpLoc, 1, false, vpMatrix, 0)
+                GLES20.glUniform4f(unlitTintLoc, 1f, 1f, 1f, 1f)
+                val stride = Meshes.UNLIT_STRIDE_BYTES
+                fb.position(0)
+                GLES20.glEnableVertexAttribArray(unlitPosLoc)
+                GLES20.glVertexAttribPointer(unlitPosLoc, 3, GLES20.GL_FLOAT, false, stride, fb)
+                fb.position(3)
+                GLES20.glEnableVertexAttribArray(unlitColorLoc)
+                GLES20.glVertexAttribPointer(unlitColorLoc, 4, GLES20.GL_FLOAT, false, stride, fb)
+                GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 0, verts)
+                GLES20.glDisableVertexAttribArray(unlitColorLoc)
+                GLES20.glDisableVertexAttribArray(unlitPosLoc)
+                GLES20.glUseProgram(litProgram)
             }
         }
 
@@ -1328,7 +1356,8 @@ class GameRenderer(
         val activeColorHex = if (kart.paintTintHex != 0L) kart.paintTintHex else kart.colorHex
         val baseRgb = Meshes.hexToRgb(activeColorHex)
 
-        // Part E5: Paint Finish (0=Gloss, 1=Matte, 2=Metallic, 3=Pearl -> roughness/metalness uniforms)
+        // Part E5: Paint Finish (0=Gloss, 1=Matte, 2=Metallic, 3=Pearl). v7: on DRM1 cars the finish
+        // only applies to painted panels (PaintSpec); this pair is used for the DRM2 toy car.
         val (finishMetallic, finishRoughness) = when (paintFinishIndex % 4) {
             1 -> Pair(0.08f, 0.78f) // Matte
             2 -> Pair(0.88f, 0.16f) // Metallic
@@ -1336,21 +1365,9 @@ class GameRenderer(
             else -> Pair(0.28f, 0.22f) // Gloss
         }
 
-        // Apply livery variation for DRM1 karts or hue-shift for CLASSIC_TOY DRM2 kart
+        // DRM2 toy car keeps its hue-shift liveries; DRM1 cars get real livery patterns in the shader
         val hueShiftRad = (kart.liveryIndex % 3) * 2.094395f // 0°, +120°, +240°
-        val bodyRgb = when (kart.liveryIndex % 3) {
-            1 -> floatArrayOf(
-                (baseRgb[0] * 0.7f + baseRgb[2] * 0.45f).coerceIn(0f, 1f),
-                (baseRgb[1] * 0.85f + baseRgb[0] * 0.25f).coerceIn(0f, 1f),
-                (baseRgb[2] * 0.7f + baseRgb[1] * 0.45f).coerceIn(0f, 1f)
-            )
-            2 -> floatArrayOf(
-                (baseRgb[0] * 0.55f + 0.42f).coerceIn(0f, 1f),
-                (baseRgb[1] * 0.55f + 0.42f).coerceIn(0f, 1f),
-                (baseRgb[2] * 0.55f + 0.45f).coerceIn(0f, 1f)
-            )
-            else -> baseRgb
-        }
+        val bodyRgb = baseRgb
 
         if (kart.bodyType.isDrm2) {
             val toyCarModel = assetRepo.getDrm2Model(kart.bodyType.drmAssetPath)
@@ -1372,6 +1389,7 @@ class GameRenderer(
                 val steerDeg = Math.toDegrees(kart.frontWheelSteerRad.toDouble()).toFloat()
                 val spinDeg = Math.toDegrees(kart.wheelSpinRad.toDouble()).toFloat()
                 val kartScale = 1.32f
+                val paintSpec = buildPaintSpec(drmModel, bodyRgb, kart.liveryIndex, paintFinishIndex)
 
                 for (part in drmModel.parts) {
                     Matrix.setIdentityM(partMatrix, 0)
@@ -1396,8 +1414,9 @@ class GameRenderer(
                         paintG = bodyRgb[1],
                         paintB = bodyRgb[2],
                         alpha = forceAlpha,
-                        metallic = if (part.isWheel) 0.1f else finishMetallic,
-                        roughness = if (part.isWheel) 0.75f else finishRoughness
+                        metallic = if (part.isWheel) 0.1f else 0.12f,
+                        roughness = if (part.isWheel) 0.78f else 0.42f,
+                        paint = paintSpec
                     )
                 }
             } else {
@@ -1622,8 +1641,15 @@ class GameRenderer(
         paintB: Float,
         alpha: Float,
         metallic: Float = 0.25f,
-        roughness: Float = 0.35f
+        roughness: Float = 0.35f,
+        paint: PaintSpec? = null
     ) {
+        if (paint != null) {
+            if (litPaintMatLoc >= 0) GLES20.glUniform3f(litPaintMatLoc, paint.metallic, paint.roughness, if (paint.pearl) 2f else 1f)
+            if (litLiveryLoc >= 0) GLES20.glUniform4f(litLiveryLoc, paint.liveryMode.toFloat(), paint.splitY, paint.stripeHalfW, paint.fadeInv)
+            if (litLiveryColorLoc >= 0) GLES20.glUniform3f(litLiveryColorLoc, paint.liveryRgb[0], paint.liveryRgb[1], paint.liveryRgb[2])
+            if (litPartOffsetLoc >= 0) GLES20.glUniform3f(litPartOffsetLoc, part.pivotX, part.pivotY, part.pivotZ)
+        }
         Matrix.multiplyMM(mvpMatrix, 0, vpMatrix, 0, matrix, 0)
         GLES20.glUniformMatrix4fv(litMvpLoc, 1, false, mvpMatrix, 0)
         GLES20.glUniformMatrix4fv(litModelLoc, 1, false, matrix, 0)
@@ -1677,6 +1703,55 @@ class GameRenderer(
             GLES20.glDisableVertexAttribArray(litPaintMaskLoc)
             GLES20.glVertexAttrib1f(litPaintMaskLoc, 0f)
         }
+        if (paint != null) {
+            if (litPaintMatLoc >= 0) GLES20.glUniform3f(litPaintMatLoc, 0f, 0.5f, 0f)
+            if (litLiveryLoc >= 0) GLES20.glUniform4f(litLiveryLoc, 0f, 0f, 0f, 0f)
+            if (litPartOffsetLoc >= 0) GLES20.glUniform3f(litPartOffsetLoc, 0f, 0f, 0f)
+        }
+    }
+
+    /** v7: per-kart paint job — finish applies to painted panels only; trim/glass/tyres keep their own. */
+    class PaintSpec(
+        val metallic: Float,
+        val roughness: Float,
+        val liveryMode: Int,
+        val splitY: Float,
+        val stripeHalfW: Float,
+        val fadeInv: Float,
+        val liveryRgb: FloatArray,
+        val pearl: Boolean = false
+    )
+
+    private fun buildPaintSpec(model: DrmModel, paintRgb: FloatArray, liveryIndex: Int, finishIndex: Int): PaintSpec {
+        val (m, r) = when (finishIndex % 4) {
+            1 -> 0.02f to 0.82f   // Matte
+            2 -> 0.85f to 0.24f   // Metallic
+            3 -> 0.55f to 0.10f   // Pearl
+            else -> 0.10f to 0.18f // Gloss (clear-coat look)
+        }
+        val b = model.paintBounds
+        val lum = 0.299f * paintRgb[0] + 0.587f * paintRgb[1] + 0.114f * paintRgb[2]
+        val mode = liveryIndex.coerceIn(0, 3)
+        val accent = when (mode) {
+            1 -> floatArrayOf(0.11f, 0.12f, 0.15f)                                         // graphite lower body
+            2 -> if (lum < 0.62f) floatArrayOf(0.96f, 0.96f, 0.97f) else floatArrayOf(0.07f, 0.07f, 0.09f) // stripes
+            3 -> floatArrayOf(                                                              // fade to a deep shade
+                (paintRgb[2] * 0.55f + 0.05f).coerceIn(0f, 1f),
+                (paintRgb[0] * 0.25f + 0.04f).coerceIn(0f, 1f),
+                (paintRgb[1] * 0.55f + 0.10f).coerceIn(0f, 1f)
+            )
+            else -> paintRgb
+        }
+        val height = (b[1] - b[0]).coerceAtLeast(0.05f)
+        val len = (b[4] - b[3]).coerceAtLeast(0.2f)
+        return PaintSpec(
+            metallic = m, roughness = r, liveryMode = mode,
+            splitY = b[0] + height * 0.40f,
+            stripeHalfW = (b[2] * 0.20f).coerceAtLeast(0.06f),
+            fadeInv = 1f / len,
+            liveryRgb = accent,
+            pearl = finishIndex % 4 == 3
+        )
     }
 
     private fun drawLitMesh(

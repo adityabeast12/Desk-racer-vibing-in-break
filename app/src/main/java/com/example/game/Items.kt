@@ -100,66 +100,57 @@ data class WorldProjectile(
 object ItemsEngine {
 
     /**
-     * Rubber-banded item probability table based on race position (1..8) and ItemMode.
+     * v7 rubber-banded item table. Every item can drop in every place (weights shift with the
+     * normalised race position, like Mario Kart's distance tables), and the same item is re-rolled
+     * once if the kart just had it — previously the leader could only ever see Eraser / Marble /
+     * Tacks, which is all a good player ever got.
      */
-    fun rollItemForPosition(position: Int, itemMode: ItemMode, random: Random = Random.Default): ItemType {
+    fun rollItemForPosition(
+        position: Int,
+        itemMode: ItemMode,
+        random: Random = Random.Default,
+        racerCount: Int = GameConstants.MAX_RACERS,
+        lastItem: ItemType = ItemType.NONE
+    ): ItemType {
         if (itemMode == ItemMode.OFF) return ItemType.NONE
-        val r = random.nextFloat()
-
-        // Skill Only mode (Part C): boxes give only Battery and Tacks
         if (itemMode == ItemMode.SKILL_ONLY) {
-            return if (r < 0.55f) ItemType.BATTERY else ItemType.TRIPLE_TACKS
+            return if (random.nextFloat() < 0.55f) ItemType.BATTERY else ItemType.TRIPLE_TACKS
         }
+        val n = racerCount.coerceAtLeast(2)
+        val place = ((position - 1).toFloat() / (n - 1)).coerceIn(0f, 1f)
+        val table = weightsFor(place, position == 1, itemMode == ItemMode.FRANTIC)
+        var pick = pickWeighted(table, random)
+        if (pick == lastItem) pick = pickWeighted(table, random)
+        return pick
+    }
 
-        if (itemMode == ItemMode.FRANTIC) {
-            return when {
-                position == 1 -> when {
-                    r < 0.35f -> ItemType.MARBLE
-                    r < 0.70f -> ItemType.ERASER
-                    else -> ItemType.TRIPLE_TACKS
-                }
-                position in 2..4 -> when {
-                    r < 0.25f -> ItemType.BATTERY
-                    r < 0.50f -> ItemType.TRIPLE_TACKS
-                    r < 0.72f -> ItemType.MARBLE
-                    r < 0.86f -> ItemType.MAGNET
-                    else -> ItemType.PAPER_PLANE
-                }
-                else -> when {
-                    r < 0.35f -> ItemType.PAPER_PLANE
-                    r < 0.70f -> ItemType.MAGNET
-                    else -> ItemType.BATTERY
-                }
-            }
-        }
+    private val ORDER = arrayOf(ItemType.MARBLE, ItemType.ERASER, ItemType.BATTERY, ItemType.TRIPLE_TACKS, ItemType.PAPER_PLANE, ItemType.MAGNET)
 
-        // Normal Item Mode (1..8)
-        return when {
-            position == 1 -> when {
-                r < 0.45f -> ItemType.ERASER
-                r < 0.82f -> ItemType.MARBLE
-                else -> ItemType.TRIPLE_TACKS
-            }
-            position in 2..3 -> when {
-                r < 0.30f -> ItemType.MARBLE
-                r < 0.52f -> ItemType.ERASER
-                r < 0.76f -> ItemType.BATTERY
-                else -> ItemType.TRIPLE_TACKS
-            }
-            position in 4..5 -> when {
-                r < 0.35f -> ItemType.BATTERY
-                r < 0.60f -> ItemType.TRIPLE_TACKS
-                r < 0.80f -> ItemType.MARBLE
-                r < 0.92f -> ItemType.MAGNET
-                else -> ItemType.PAPER_PLANE
-            }
-            else -> when {
-                r < 0.36f -> ItemType.BATTERY
-                r < 0.68f -> ItemType.PAPER_PLANE
-                r < 0.92f -> ItemType.MAGNET
-                else -> ItemType.TRIPLE_TACKS
-            }
+    //                                     MARBLE ERASER BATTERY TACKS PLANE MAGNET
+    private val LEADER = floatArrayOf(      26f,   26f,   16f,   20f,   6f,   6f)
+    private val FRONT = floatArrayOf(       24f,   18f,   20f,   18f,  10f,  10f)
+    private val MID = floatArrayOf(         16f,    8f,   24f,   18f,  16f,  18f)
+    private val BACK = floatArrayOf(         8f,    0f,   30f,   10f,  26f,  26f)
+    private val FRANTIC_SHIFT = floatArrayOf(-6f,  -6f,    4f,    0f,   6f,   6f)
+
+    internal fun weightsFor(place: Float, isLeader: Boolean, frantic: Boolean): FloatArray {
+        val base = when {
+            isLeader -> LEADER
+            place < 0.34f -> FRONT
+            place < 0.67f -> MID
+            else -> BACK
         }
+        return FloatArray(base.size) { i -> (base[i] + if (frantic) FRANTIC_SHIFT[i] else 0f).coerceAtLeast(0f) }
+    }
+
+    private fun pickWeighted(w: FloatArray, random: Random): ItemType {
+        val total = w.sum()
+        var r = random.nextFloat() * total
+        for (i in w.indices) {
+            r -= w[i]
+            if (r <= 0f && w[i] > 0f) return ORDER[i]
+        }
+        return ORDER[w.indices.last { w[it] > 0f }]
     }
 
     private fun keepOnTrack(p: WorldProjectile, track: Track) {
@@ -223,11 +214,12 @@ object ItemsEngine {
                     box.respawnTimerSec = GameConstants.ITEM_BOX_RESPAWN_SEC
                     if (kart.heldItem == ItemType.NONE && kart.rouletteTimerSec <= 0f) {
                         val rolled = if (hostAuthority) {
-                            rollItemForPosition(kart.racePosition, itemMode)
+                            rollItemForPosition(kart.racePosition, itemMode, racerCount = karts.size, lastItem = kart.lastRolledItem)
                         } else {
                             ItemType.BATTERY // Client optimistic roulette start; host event grants authoritative item
                         }
                         kart.pendingItem = rolled
+                        kart.lastRolledItem = rolled
                         kart.rouletteTimerSec = GameConstants.ITEM_ROULETTE_SEC
                         onBoxPickedUp(kart.slotIndex, box.id, rolled)
                     }
