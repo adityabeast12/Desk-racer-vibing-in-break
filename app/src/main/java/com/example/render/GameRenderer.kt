@@ -187,7 +187,14 @@ class GameRenderer(
         pendingUnloadTrackAssets.set(true)
     }
 
+    private var hasStencil = false
+
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
+        run {
+            val bits = IntArray(1)
+            GLES20.glGetIntegerv(GLES20.GL_STENCIL_BITS, bits, 0)
+            hasStencil = bits[0] > 0
+        }
         GLES20.glEnable(GLES20.GL_DEPTH_TEST)
         GLES20.glDepthFunc(GLES20.GL_LEQUAL)
         GLES20.glEnable(GLES20.GL_BLEND)
@@ -381,7 +388,7 @@ class GameRenderer(
         val snap = RenderInterp.resolve(snapshotRef.get(), frameNowNs)
         if (snap == null) {
             GLES20.glClearColor(0.043f, 0.063f, 0.125f, 1f)
-            GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT or GLES20.GL_DEPTH_BUFFER_BIT)
+            GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT or GLES20.GL_DEPTH_BUFFER_BIT or (if (hasStencil) GLES20.GL_STENCIL_BUFFER_BIT else 0))
             return
         }
         lastDrawnPhase = snap.phase
@@ -389,7 +396,7 @@ class GameRenderer(
         val fogRgb = Meshes.hexToRgb(track.fogHex)
 
         GLES20.glClearColor(fogRgb[0], fogRgb[1], fogRgb[2], 1f)
-        GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT or GLES20.GL_DEPTH_BUFFER_BIT)
+        GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT or GLES20.GL_DEPTH_BUFFER_BIT or (if (hasStencil) GLES20.GL_STENCIL_BUFFER_BIT else 0))
         if (litProgram == 0) return
 
         // Complete Frame 1 immediately so WindowManager SurfaceSyncGroup finishes in <10ms
@@ -1188,9 +1195,15 @@ class GameRenderer(
 
         // v7.3: real car-shaped shadows — each DRM1 kart flattened onto the road along the key light
         // (planar projection). Depth-tested against itself so overlapping triangles darken once.
-        GLES20.glDepthMask(true)
+        // stencil: each pixel gets darkened at most once (no dark rims where projected faces overlap)
+        GLES20.glDepthMask(!hasStencil)
+        if (hasStencil) {
+            GLES20.glEnable(GLES20.GL_STENCIL_TEST)
+            GLES20.glStencilFunc(GLES20.GL_EQUAL, 0, 0xFF)
+            GLES20.glStencilOp(GLES20.GL_KEEP, GLES20.GL_KEEP, GLES20.GL_INCR)
+        }
         GLES20.glEnable(GLES20.GL_POLYGON_OFFSET_FILL)
-        GLES20.glPolygonOffset(-2f, -4f)
+        GLES20.glPolygonOffset(-3f, -6f)
         GLES20.glDisableVertexAttribArray(unlitColorLoc)
         GLES20.glUniform4f(unlitTintLoc, 1f, 1f, 1f, 1f)
         var lx = lp.keyLightDir[0]; var ly = lp.keyLightDir[1]; var lz = lp.keyLightDir[2]
@@ -1210,7 +1223,7 @@ class GameRenderer(
             val h = (k.y - groundY).coerceAtLeast(0f)
             val a = (0.40f * (1f - h * 0.12f)).coerceIn(0.12f, 0.40f) * (if (k.isGhostMode) 0.5f else 1f)
             GLES20.glVertexAttrib4f(unlitColorLoc, 0.02f, 0.02f, 0.05f, a)
-            buildPlanarShadowMatrix(shadowMatrix, groundY + 0.035f, lx, ly, lz)
+            buildPlanarShadowMatrix(shadowMatrix, groundY + 0.075f, lx, ly, lz)
             val yawDeg = Math.toDegrees((k.headingRad + k.visualYawOffsetRad).toDouble()).toFloat()
             val pitchDeg = Math.toDegrees(k.visualPitchRad.toDouble()).toFloat()
             val rollDeg = Math.toDegrees(k.visualRollRad.toDouble()).toFloat()
@@ -1233,6 +1246,8 @@ class GameRenderer(
             }
         }
         GLES20.glDisable(GLES20.GL_POLYGON_OFFSET_FILL)
+        if (hasStencil) GLES20.glDisable(GLES20.GL_STENCIL_TEST)
+        GLES20.glDepthMask(true)
         GLES20.glDisableVertexAttribArray(unlitPosLoc)
 
         GLES20.glDepthMask(true)
@@ -1630,10 +1645,11 @@ class GameRenderer(
 
         if (kart.shieldEraserHeld || kart.heldItem == ItemType.ERASER) {
             val eraserModel = assetRepo.getDrm2Model("models/items/eraser.drm")
-            val ex = kart.x - fwdX * 1.75f
-            val ez = kart.z - fwdZ * 1.75f
+            // v7.4: trail it a little further back and smaller — it read as a block bolted to the car
+            val ex = kart.x - fwdX * 2.25f
+            val ez = kart.z - fwdZ * 2.25f
             if (eraserModel != null) {
-                drawDrm2Model(eraserModel, ex, kart.y + 0.15f, ez, yawDeg, 0f, 0f, 95f, forceAlpha = forceAlpha)
+                drawDrm2Model(eraserModel, ex, kart.y + 0.12f, ez, yawDeg, 0f, 0f, 68f, forceAlpha = forceAlpha)
             } else {
                 drawKartAccessory(0f, 0.42f, -1.75f, 1.2f, 0.5f, 0.7f, 0.96f, 0.35f, 0.55f, unitCube)
             }

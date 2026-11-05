@@ -17,18 +17,22 @@ class MsaaConfigChooser(private val es3: Boolean, private val allowMsaa: Boolean
         private set
 
     override fun chooseConfig(egl: EGL10, display: EGLDisplay): EGLConfig {
+        // [depth, samples, stencil] — stencil 8 lets the renderer draw clean projected shadows
         val attempts = buildList {
             if (allowMsaa) {
-                add(intArrayOf(24, 4))
-                add(intArrayOf(16, 4))
+                add(intArrayOf(24, 4, 8))
+                add(intArrayOf(24, 4, 0))
+                add(intArrayOf(16, 4, 0))
             }
-            add(intArrayOf(24, 0))
-            add(intArrayOf(16, 0))
+            add(intArrayOf(24, 0, 8))
+            add(intArrayOf(24, 0, 0))
+            add(intArrayOf(16, 0, 0))
         }
         val renderables = if (es3) listOf(0x40 /* EGL_OPENGL_ES3_BIT_KHR */, 4) else listOf(4 /* EGL_OPENGL_ES2_BIT */)
         for (renderable in renderables) {
-            for ((depth, samples) in attempts.map { it[0] to it[1] }) {
-                val cfg = find(egl, display, depth, samples, renderable)
+            for (a in attempts) {
+                val depth = a[0]; val samples = a[1]; val stencil = a[2]
+                val cfg = find(egl, display, depth, samples, renderable, stencil)
                 if (cfg != null) {
                     chosenSamples = samples
                     return cfg
@@ -36,14 +40,14 @@ class MsaaConfigChooser(private val es3: Boolean, private val allowMsaa: Boolean
             }
         }
         // last resort: anything with a depth buffer
-        return find(egl, display, 16, 0, 4) ?: throw IllegalArgumentException("No usable EGL config")
+        return find(egl, display, 16, 0, 4, 0) ?: throw IllegalArgumentException("No usable EGL config")
     }
 
-    private fun find(egl: EGL10, display: EGLDisplay, depth: Int, samples: Int, renderable: Int): EGLConfig? {
+    private fun find(egl: EGL10, display: EGLDisplay, depth: Int, samples: Int, renderable: Int, stencil: Int = 0): EGLConfig? {
         val attrs = ArrayList<Int>()
         attrs += listOf(
             EGL10.EGL_RED_SIZE, 8, EGL10.EGL_GREEN_SIZE, 8, EGL10.EGL_BLUE_SIZE, 8, EGL10.EGL_ALPHA_SIZE, 8,
-            EGL10.EGL_DEPTH_SIZE, depth, EGL10.EGL_STENCIL_SIZE, 0,
+            EGL10.EGL_DEPTH_SIZE, depth, EGL10.EGL_STENCIL_SIZE, stencil,
             EGL10.EGL_RENDERABLE_TYPE, renderable
         )
         if (samples > 0) attrs += listOf(EGL10.EGL_SAMPLE_BUFFERS, 1, EGL10.EGL_SAMPLES, samples)
@@ -59,7 +63,7 @@ class MsaaConfigChooser(private val es3: Boolean, private val allowMsaa: Boolean
         return configs.filterNotNull().firstOrNull {
             attr(it, EGL10.EGL_RED_SIZE) == 8 && attr(it, EGL10.EGL_GREEN_SIZE) == 8 &&
                 attr(it, EGL10.EGL_BLUE_SIZE) == 8 && attr(it, EGL10.EGL_ALPHA_SIZE) == 8 &&
-                attr(it, EGL10.EGL_DEPTH_SIZE) >= depth
+                attr(it, EGL10.EGL_DEPTH_SIZE) >= depth && attr(it, EGL10.EGL_STENCIL_SIZE) >= stencil
         } ?: configs.firstOrNull()
     }
 }
