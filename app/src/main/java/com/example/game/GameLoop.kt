@@ -35,6 +35,9 @@ class GameLoop(
     @Volatile
     var isPausedSolo: Boolean = false
 
+    /** Bumped when the Activity pauses the race for lifecycle reasons, so the UI can open the pause menu. */
+    val lifecyclePauseSignal = MutableStateFlow(0)
+
     @Volatile
     var thermalThrottle30Fps: Boolean = false
 

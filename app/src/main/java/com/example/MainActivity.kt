@@ -511,10 +511,11 @@ class MainActivity : ComponentActivity(), SensorEventListener {
         if (::lanClient.isInitialized && lanClient.isConnected.value) {
             lanClient.setAwayStatus(true)
         }
-        if (!raceSession.isMultiplayer &&
+        if (!raceSession.isMultiplayer && !raceSession.autopilotLocal &&
             (raceSession.phase == RacePhase.RACING || raceSession.phase == RacePhase.COUNTDOWN)
         ) {
             gameLoop.isPausedSolo = true
+            gameLoop.lifecyclePauseSignal.value = gameLoop.lifecyclePauseSignal.value + 1
         }
         glSurfaceViewRef?.onPause()
         super.onPause()

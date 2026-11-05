@@ -654,7 +654,9 @@ fun DeskRacerAppRoot(
             }
 
             is Screen.Race -> {
+                val lifecyclePause by gameLoop.lifecyclePauseSignal.collectAsState()
                 RaceScreen(
+                    externalPauseSignal = lifecyclePause,
                     hudState = hudState,
                     profile = profile,
                     inputState = inputState,

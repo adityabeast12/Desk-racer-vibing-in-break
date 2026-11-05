@@ -76,7 +76,7 @@ class Camera {
             lookX += (sLook.pos.x - lookX) * fl
             lookY += (sLook.pos.y + 1.0f - lookY) * fl
             lookZ += (sLook.pos.z - lookZ) * fl
-            currentFovDeg = 64f
+            currentFovDeg = verticalFovFor(92f, viewportWidth, viewportHeight)
             return
         }
 
@@ -108,7 +108,7 @@ class Camera {
             lookX = targetKart.x
             lookY = targetKart.y + if (isGarageStage) 0.58f else 0.7f
             lookZ = targetKart.z
-            currentFovDeg = if (isGarageStage) 46f else 56f
+            currentFovDeg = if (isGarageStage) 46f else verticalFovFor(84f, viewportWidth, viewportHeight)
             return
         }
 
@@ -126,8 +126,10 @@ class Camera {
         val fwdX = sin(chaseHeadingRad)
         val fwdZ = cos(chaseHeadingRad)
 
-        val chaseDist = if (targetKart.isBoosting) 7.4f else 6.6f
-        val chaseHeight = 3.15f
+        // v7.3 chase rig (tuned from emulator captures): closer + lower so the kart reads big in the
+        // lower-middle of the screen and rivals can't park between camera and player.
+        val chaseDist = if (targetKart.isBoosting) 6.3f else 5.6f
+        val chaseHeight = 2.45f
 
         // v7: the camera follows a separately smoothed ride height, so drift hops and small kerb
         // bumps don't bounce the whole view (big jumps still pull it along within ~0.2 s)
@@ -144,9 +146,9 @@ class Camera {
         posY += (desiredCamY - posY) * springRate
         posZ += (desiredCamZ - posZ) * springRate
 
-        val desiredLookX = targetKart.x + fwdX * 3.8f
-        val desiredLookY = (rideY * 0.6f + targetKart.y * 0.4f) + 0.85f
-        val desiredLookZ = targetKart.z + fwdZ * 3.8f
+        val desiredLookX = targetKart.x + fwdX * 3.2f
+        val desiredLookY = (rideY * 0.6f + targetKart.y * 0.4f) + 0.80f
+        val desiredLookZ = targetKart.z + fwdZ * 3.2f
 
         val lookRate = smoothFactor(16f, dt)
         lookX += (desiredLookX - lookX) * lookRate
@@ -164,10 +166,13 @@ class Camera {
         renderPosYOffset = dipY
         renderLookYOffset = dipY * 0.6f
 
-        // Speed FOV — 62° at rest -> 70° at top speed (+6° on boost), damped at 8 rad/s
+        // v7.3: FOV is chosen HORIZONTALLY and converted for the screen's aspect. A fixed 62-76°
+        // vertical FOV on a 20:9 phone was a ~115-125° horizontal fisheye: the player's kart looked
+        // tiny and far away while roadside cones/karts next to the camera ballooned.
         val speedNorm = (abs(targetKart.speed) / GameConstants.TOP_SPEED).coerceIn(0f, 1.15f)
-        val boostKick = if (targetKart.isBoosting) 6.0f else 0.0f
-        val targetFov = 62.0f + speedNorm * 8.0f + boostKick
+        val boostKick = if (targetKart.isBoosting) 5.0f else 0.0f
+        val targetHFov = 80.0f + speedNorm * 6.0f + boostKick
+        val targetFov = verticalFovFor(targetHFov, viewportWidth, viewportHeight)
         currentFovDeg += (targetFov - currentFovDeg) * smoothFactor(8.0f, dt)
     }
 
@@ -181,6 +186,13 @@ class Camera {
         private set
     var renderLookYOffset = 0f
         private set
+
+    private fun verticalFovFor(hFovDeg: Float, w: Int, h: Int): Float {
+        val aspect = (w.coerceAtLeast(1).toFloat() / h.coerceAtLeast(1).toFloat()).coerceIn(1.0f, 3.0f)
+        val half = Math.toRadians(hFovDeg / 2.0)
+        val v = Math.toDegrees(2.0 * kotlin.math.atan(kotlin.math.tan(half) / aspect)).toFloat()
+        return v.coerceIn(38f, 62f)
+    }
 
     /** Frame-rate independent exponential smoothing factor for rate [k] per second. */
     private fun smoothFactor(k: Float, dt: Float): Float = (1f - kotlin.math.exp(-k * dt)).coerceIn(0f, 1f)

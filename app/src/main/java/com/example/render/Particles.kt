@@ -11,6 +11,12 @@ import kotlin.random.Random
 
 class Particles(private val maxParticles: Int = 480) {
 
+    private companion object {
+        const val SEGMENTS = 6
+        val COS = FloatArray(SEGMENTS + 1) { cos(it * 2.0 * Math.PI / SEGMENTS).toFloat() }
+        val SIN = FloatArray(SEGMENTS + 1) { sin(it * 2.0 * Math.PI / SEGMENTS).toFloat() }
+    }
+
     private class Particle {
         var active = false
         var x = 0f
@@ -44,7 +50,7 @@ class Particles(private val maxParticles: Int = 480) {
     private var nextIndex = 0
 
     // Each active particle is rendered as 2 triangles (6 vertices * 7 floats: x,y,z, r,g,b,a)
-    private val vertexData = FloatArray(maxParticles * 6 * 7)
+    private val vertexData = FloatArray(maxParticles * SEGMENTS * 3 * 7)
     val vertexBuffer: FloatBuffer = ByteBuffer.allocateDirect(vertexData.size * 4)
         .order(ByteOrder.nativeOrder())
         .asFloatBuffer()
@@ -125,7 +131,7 @@ class Particles(private val maxParticles: Int = 480) {
                 spawn(
                     x = backX + sideX * side, y = kart.y + 0.2f, z = backZ + sideZ * side,
                     vx = (Random.nextFloat() - 0.5f) * 1.2f, vy = 0.6f + Random.nextFloat() * 0.6f, vz = (Random.nextFloat() - 0.5f) * 1.2f,
-                    r = 0.80f, g = 0.80f, b = 0.82f, size = 0.30f, maxLife = 0.7f,
+                    r = 0.80f, g = 0.80f, b = 0.82f, size = 0.46f, maxLife = 0.7f,
                     gravity = -0.4f, grow = 2.2f, drag = 2.5f, alphaScale = 0.42f
                 )
             }
@@ -240,20 +246,27 @@ class Particles(private val maxParticles: Int = 480) {
             val ax = rX * s; val ay = rY * s; val az = rZ * s
             val bx = uX * s; val by = uY * s; val bz = uZ * s
 
-            fun putV(vx: Float, vy: Float, vz: Float) {
+            fun putV(vx: Float, vy: Float, vz: Float, a: Float) {
                 vertexData[floatCursor++] = vx
                 vertexData[floatCursor++] = vy
                 vertexData[floatCursor++] = vz
                 vertexData[floatCursor++] = p.r
                 vertexData[floatCursor++] = p.g
                 vertexData[floatCursor++] = p.b
-                vertexData[floatCursor++] = alpha
+                vertexData[floatCursor++] = a
                 vertCount++
             }
 
+            // v7.3: soft round puff — a 6-segment fan with full alpha in the centre fading to the rim
+            // (flat quads read as grey squares, especially the drift smoke)
             val px = p.x; val py = p.y; val pz = p.z
-            putV(px - ax - bx, py - ay - by, pz - az - bz); putV(px + ax - bx, py + ay - by, pz + az - bz); putV(px + ax + bx, py + ay + by, pz + az + bz)
-            putV(px - ax - bx, py - ay - by, pz - az - bz); putV(px + ax + bx, py + ay + by, pz + az + bz); putV(px - ax + bx, py - ay + by, pz - az + bz)
+            val rimA = if (p.grow > 0f) 0f else alpha * 0.25f
+            for (k in 0 until SEGMENTS) {
+                val c0 = COS[k]; val s0 = SIN[k]; val c1 = COS[k + 1]; val s1 = SIN[k + 1]
+                putV(px, py, pz, alpha)
+                putV(px + ax * c0 + bx * s0, py + ay * c0 + by * s0, pz + az * c0 + bz * s0, rimA)
+                putV(px + ax * c1 + bx * s1, py + ay * c1 + by * s1, pz + az * c1 + bz * s1, rimA)
+            }
         }
 
         activeVertexCount = vertCount

@@ -104,7 +104,8 @@ fun RaceScreen(
     onRestartRace: () -> Unit,
     onOpenSettings: () -> Unit,
     onQuitToMenu: () -> Unit,
-    onHudCoverageMeasured: (HudCoverageMetrics) -> Unit = {}
+    onHudCoverageMeasured: (HudCoverageMetrics) -> Unit = {},
+    externalPauseSignal: Int = 0
 ) {
     val context = LocalContext.current
     var pauseMenuOpen by remember { mutableStateOf(false) }
@@ -116,6 +117,13 @@ fun RaceScreen(
     fun setPaused(p: Boolean) {
         pauseMenuOpen = p
         onPauseChanged(p)
+    }
+
+    // v7.3: the app went to the background mid-race (notification shade, call, screen off). The sim
+    // was paused by the Activity but no menu opened, so the race just looked frozen. Show the menu.
+    val pauseSignalAtEntry = remember { externalPauseSignal }
+    androidx.compose.runtime.LaunchedEffect(externalPauseSignal) {
+        if (externalPauseSignal != pauseSignalAtEntry && !isMultiplayer && !pauseMenuOpen) setPaused(true)
     }
 
     BackHandler {
