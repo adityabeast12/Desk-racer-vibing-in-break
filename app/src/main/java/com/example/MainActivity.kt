@@ -264,9 +264,14 @@ class MainActivity : ComponentActivity(), SensorEventListener {
 
         setupThermalAndBatteryMonitoring()
 
+        val autoplay = intent?.getBooleanExtra("dr_autoplay", false) == true
+        val autoplayTrack = intent?.getIntExtra("dr_track", 0) ?: 0
+        if (autoplay) raceSession.autopilotLocal = true
+
         setContent {
             MyApplicationTheme {
                 DeskRacerAppRoot(
+                    autoplayTrackId = if (autoplay) autoplayTrack else -1,
                     prefs = prefs,
                     synthAudio = synthAudio,
                     inputState = inputState,

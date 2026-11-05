@@ -69,6 +69,9 @@ class GameRenderer(
     /** Measured render rate (EMA), exposed for the Settings readout. */
     @Volatile
     var measuredFps: Float = 0f
+    private var statWindowStartNs = 0L
+    private var statFrames = 0
+    private var statWorstDt = 0f
 
     @Volatile
     var garageZoomFactor: Float = 1.0f
@@ -313,6 +316,16 @@ class GameRenderer(
         val frameDt = if (lastDrawFrameNs == 0L) GameConstants.SIM_DT else ((frameNowNs - lastDrawFrameNs) / 1_000_000_000f).coerceIn(0.001f, 0.05f)
         lastDrawFrameNs = frameNowNs
         if (frameDt > 0f) measuredFps = if (measuredFps == 0f) 1f / frameDt else measuredFps * 0.95f + (1f / frameDt) * 0.05f
+        // QA telemetry (read by the emulator playtest job): fps + worst frame per 2 s window
+        statFrames++
+        if (frameDt > statWorstDt) statWorstDt = frameDt
+        if (frameNowNs - statWindowStartNs > 2_000_000_000L) {
+            if (statWindowStartNs != 0L) {
+                val secs = (frameNowNs - statWindowStartNs) / 1e9f
+                android.util.Log.i("DRPERF", "fps=%.1f worstMs=%.1f".format(statFrames / secs, statWorstDt * 1000f))
+            }
+            statWindowStartNs = frameNowNs; statFrames = 0; statWorstDt = 0f
+        }
         val snap = RenderInterp.resolve(snapshotRef.get(), frameNowNs)
         if (snap == null) {
             GLES20.glClearColor(0.043f, 0.063f, 0.125f, 1f)

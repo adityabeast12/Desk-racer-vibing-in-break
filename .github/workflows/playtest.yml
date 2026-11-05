@@ -1,0 +1,75 @@
+name: Emulator playtest
+on:
+  workflow_dispatch:
+    inputs:
+      tracks:
+        description: "Track ids to record (space separated)"
+        default: "0"
+  push:
+    branches: [v6-ui]
+permissions:
+  contents: write
+jobs:
+  playtest:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[playtest]')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v5
+        with:
+          gradle-version: '9.3.1'
+      - name: Accept SDK licenses
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+      - name: Merge asset pack + brand
+        run: |
+          mkdir -p app/src/main/assets && cp -r asset-pack/. app/src/main/assets/
+          cp -r brand/res_override/. app/src/main/res/
+      - name: Create debug keystore
+        run: keytool -genkeypair -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+      - name: Build debug APK
+        run: gradle :app:assembleDebug -q
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Run emulator playtest
+        uses: reactivecircus/android-emulator-runner@v2
+        env:
+          PLAYTEST_TRACKS: ${{ github.event.inputs.tracks || '0' }}
+        with:
+          api-level: 31
+          arch: x86_64
+          target: google_apis
+          profile: pixel_6
+          ram-size: 4096M
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none
+          script: bash tools/playtest.sh
+      - name: Extract frames and publish to playtest branch
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          sudo apt-get install -y -qq ffmpeg > /dev/null 2>&1 || true
+          cd /tmp/playtest || exit 0
+          for v in *.mp4; do
+            [ -f "$v" ] || continue
+            b="${v%.mp4}"
+            # 12 fps contact sheets across the clip + a dense 30 fps burst for jitter inspection
+            ffmpeg -loglevel error -i "$v" -vf "fps=2,scale=640:-1,tile=4x3" -frames:v 2 "${b}_sheet_%d.png" || true
+            ffmpeg -loglevel error -ss 8 -t 1.2 -i "$v" -vf "fps=30,scale=480:-1,tile=6x6" -frames:v 1 "${b}_burst.png" || true
+            ffmpeg -loglevel error -i "$v" -vf "fps=30" -f null - 2>&1 | tail -1 || true
+          done
+          grep DRPERF logcat.txt | tail -30 | sed 's/^/::notice::/' || true
+          grep -E "FATAL|AndroidRuntime" logcat.txt | head -10 | sed 's/^/::error::/' || true
+          rm -f logcat_full.txt
+          git init -q -b playtest && git add .
+          git -c user.name=ci -c user.email=ci@users.noreply.github.com commit -q -m "playtest from ${GITHUB_SHA::7}"
+          git push -f "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" playtest
+          echo "::notice::PLAYTEST published: $(ls | tr '\n' ' ')"

@@ -105,7 +105,8 @@ fun DeskRacerAppRoot(
     adGateway: FakeAdGateway,
     onCalibrateTiltBaseline: () -> Unit,
     onUnloadRaceAssets: () -> Unit,
-    onGlSurfaceViewCreated: (GLSurfaceView, GameRenderer) -> Unit
+    onGlSurfaceViewCreated: (GLSurfaceView, GameRenderer) -> Unit,
+    autoplayTrackId: Int = -1
 ) {
     val context = LocalContext.current
     val profile by prefs.state.collectAsState()
@@ -137,7 +138,7 @@ fun DeskRacerAppRoot(
         delay(800L)
         if (currentScreen == Screen.Splash) {
             currentScreen = Screen.MainMenu
-            if (!profile.hasSeenHowToPlay) {
+            if (!profile.hasSeenHowToPlay && autoplayTrackId < 0) {
                 showHowToPlayModal = true
             }
         }
@@ -297,6 +298,14 @@ fun DeskRacerAppRoot(
         }
         gameLoop.forceHudRefresh()
         currentScreen = Screen.Race
+    }
+
+    // QA playtest capture: start a full 8-kart race on the requested track straight after the splash
+    LaunchedEffect(autoplayTrackId) {
+        if (autoplayTrackId >= 0) {
+            delay(2500L)
+            launchSoloRace(mode = GameMode.QUICK_RACE, cup = profile.selectedCup, trackId = autoplayTrackId, startNewCup = false)
+        }
     }
 
     Box(modifier = Modifier.fillMaxSize()) {

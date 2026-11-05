@@ -304,6 +304,10 @@ class RaceSession(
     // Remote Kart Snapshot Interpolation Buffer (8 samples per kart)
     private val remoteBuffers = Array(GameConstants.MAX_RACERS) { ArrayDeque<RemoteSnapshotEntry>(8) }
 
+    /** QA: drive the local kart with the CPU driver (playtest capture via `--ez dr_autoplay true`). */
+    @Volatile
+    var autopilotLocal: Boolean = false
+
     // v7: remote pose timestamps come from the SENDER's clock (mapped onto ours with a smoothed
     // offset) instead of "when the packet happened to be processed". Packets arrive with Wi-Fi
     // jitter and are only drained on 60 Hz sim ticks, so receipt-time stamps made interpolation
@@ -1465,12 +1469,19 @@ class RaceSession(
                     }
 
                     if (kart.slotIndex == localSlotIndex && !kart.hasFinishedRace) {
-                        // Local human player active driving
-                        handleItemActivation(kart, localInput)
+                        // Local human player active driving (or the QA autopilot for playtest capture)
+                        val driveInput = if (autopilotLocal) {
+                            CpuDriver.computeCpuInput(
+                                kart = kart, track = currentTrack, allKarts = karts, projectiles = projectiles,
+                                itemBoxes = itemBoxes, coins = coins, difficulty = CpuDifficulty.CHAMPION,
+                                ccClass = ccClass, leadingHumanProgress = 0f, raceElapsedSec = raceElapsedSec
+                            ).first
+                        } else localInput
+                        handleItemActivation(kart, driveInput)
                         KartPhysics.stepKart(
                             dt = effectiveDt,
                             kart = kart,
-                            input = localInput,
+                            input = driveInput,
                             track = currentTrack,
                             allKarts = karts,
                             autoAccelerate = autoAccelerate,
