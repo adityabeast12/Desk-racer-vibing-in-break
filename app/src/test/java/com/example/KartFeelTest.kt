@@ -215,4 +215,50 @@ class KartFeelTest {
             assertTrue("position $pos only gets $distinct item kinds", distinct >= if (pos >= 6) 5 else 6)
         }
     }
+
+    @Test
+    fun `cpu field drives calmly - few hops, no weaving`() {
+        val silent = com.example.audio.SynthAudio(context = null).apply { soundEnabled = false; hapticsEnabled = false }
+        val session = com.example.game.RaceSession(synthAudio = silent, onNewBestLapRecorded = { _, _ -> false })
+        val racers = (0 until GameConstants.MAX_RACERS).map { slot ->
+            KartRuntime(slot, "B$slot", isHuman = false, isLocalPlayer = false, colorHex = 0xFFFF0000L,
+                bodyType = KartBodyType.fromId(slot % 5))
+        }
+        session.startNewRace(
+            trackId = 0, laps = 1, mode = com.example.game.ItemMode.NORMAL,
+            difficulty = com.example.game.CpuDifficulty.CHAMPION, cc = com.example.game.CcClass.CC_150,
+            gameMode = com.example.game.GameMode.QUICK_RACE, multiplayer = false, hostAuthority = true,
+            localSlot = -1, racerConfigs = racers, skipFlyby = true
+        )
+        val hops = IntArray(GameConstants.MAX_RACERS)
+        val lastVy = FloatArray(GameConstants.MAX_RACERS)
+        var latFlips = 0
+        val lastLatVel = FloatArray(GameConstants.MAX_RACERS)
+        var bigBounces = 0
+        val prevLat = FloatArray(GameConstants.MAX_RACERS)
+        var steps = 0
+        val empty = TouchInputSnapshot()
+        while (steps < 60 * 150 && session.phase != com.example.game.RacePhase.RESULTS) {
+            session.stepFixed(dt = dt, localInput = empty, autoAccelerate = true, smartSteering = false, showRocketStartTip = false)
+            steps++
+            if (session.phase != com.example.game.RacePhase.RACING) continue
+            for (k in session.karts) {
+                val i = k.slotIndex
+                if (k.vy > 4f && lastVy[i] <= 0.5f && k.vy < 6f) hops[i]++ // drift hop launch
+                lastVy[i] = k.vy
+                val fx = sin(k.headingRad); val fz = cos(k.headingRad)
+                val lat = k.vx * cos(k.headingRad) - k.vz * sin(k.headingRad)
+                if (abs(lat - prevLat[i]) > 6f) bigBounces++
+                prevLat[i] = lat
+                if (abs(lat) > 0.8f && lastLatVel[i] * lat < 0f) latFlips++
+                if (abs(lat) > 0.8f) lastLatVel[i] = lat
+                if (fx.isNaN() || fz.isNaN()) error("nan")
+            }
+        }
+        val secs = steps / 60f
+        val hopsPerMin = hops.sum() / (secs / 60f) / GameConstants.MAX_RACERS
+        println("FEEL cpu: raceSec=${"%.0f".format(secs)} hopsPerKartPerMin=${"%.1f".format(hopsPerMin)} hops=${hops.toList()} lateralFlips=$latFlips bigBounces=$bigBounces")
+        silent.shutdown()
+        assertTrue("bots hop too often ($hopsPerMin/min)", hopsPerMin < 14f)
+    }
 }

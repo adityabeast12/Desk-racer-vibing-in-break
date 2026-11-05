@@ -60,6 +60,12 @@ class KartRuntime(
     var hopJustStarted: Boolean = false
     var visSpeedPrev: Float = 0f
     var draftSec: Float = 0f
+
+    // CPU driver memory (v7.2)
+    var cpuLaneTarget: Float = 0f
+    var cpuLaneSmoothed: Float = 0f
+    var cpuLaneInit: Boolean = false
+    var cpuLastDriftEndSec: Float = -10f
     var visAccelSmoothed: Float = 0f
 
     // Status Timers & Special Zones
@@ -146,8 +152,8 @@ private const val CORNER_SCRUB = 4.0f            // u/s^2 lost by hard grip-stee
 private const val KART_CONTACT_RADIUS = 0.95f    // per kart, sum = 1.9 separation
 private const val CONTACT_SLOP = 0.04f           // penetration allowed before positional correction
 private const val CONTACT_BETA = 0.45f           // fraction of penetration resolved per tick
-private const val RESTITUTION_SLOP = 1.2f        // u/s, slower closing speeds don't bounce
-private const val KART_RESTITUTION = 0.35f
+private const val RESTITUTION_SLOP = 3.0f        // u/s, slower closing speeds don't bounce
+private const val KART_RESTITUTION = 0.15f
 private const val WALL_BUMP_COOLDOWN_SEC = 0.35f
 private const val REAL_AIR_SEC = 0.42f
 const val DRAFT_CHARGE_SEC = 1.4f           // longer than a drift hop

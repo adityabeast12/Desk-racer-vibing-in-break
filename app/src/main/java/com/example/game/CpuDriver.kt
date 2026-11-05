@@ -11,6 +11,7 @@ import kotlin.random.Random
 object CpuDriver {
 
     private val LANE_FACTORS = floatArrayOf(-0.60f, -0.30f, 0.0f, 0.30f, 0.60f)
+    private const val LANE_SWITCH_MARGIN = 8f
 
     fun computeCpuInput(
         kart: KartRuntime,
@@ -55,6 +56,7 @@ object CpuDriver {
         // Evaluate 5 candidate lanes across the road corridor for obstacles, traps, karts, coins & boosts
         var bestLaneFactor = apexBias
         var bestScore = -1e6f
+        var currentLaneScore = -1e6f
 
         for (i in LANE_FACTORS.indices) {
             val lf = LANE_FACTORS[i]
@@ -137,9 +139,19 @@ object CpuDriver {
                 bestScore = score
                 bestLaneFactor = lf
             }
+            if (abs(lf - kart.cpuLaneTarget) < 0.01f) currentLaneScore = score
         }
 
-        val chosenLat = bestLaneFactor * halfRoad
+        // v7.2: lane hysteresis — only change lane when the new one is clearly better, then glide
+        // across. Re-picking the best of 5 lanes every tick made bots zig-zag and weave around you.
+        if (kart.cpuLaneInit && currentLaneScore > bestScore - LANE_SWITCH_MARGIN) {
+            bestLaneFactor = kart.cpuLaneTarget
+        }
+        kart.cpuLaneTarget = bestLaneFactor
+        if (!kart.cpuLaneInit) { kart.cpuLaneSmoothed = bestLaneFactor; kart.cpuLaneInit = true }
+        kart.cpuLaneSmoothed += (bestLaneFactor - kart.cpuLaneSmoothed) * 0.06f
+
+        val chosenLat = kart.cpuLaneSmoothed * halfRoad
         val targetX = targetSample.pos.x + targetSample.rightX * chosenLat
         val targetZ = targetSample.pos.z + targetSample.rightZ * chosenLat
 
@@ -157,15 +169,23 @@ object CpuDriver {
         val steer = (-angleDiff * steerGain).coerceIn(-1f, 1f)
 
         // Corner drift initiation & release logic
-        val wantsDrift = effectiveDiff != CpuDifficulty.ROOKIE &&
-            cornerAbs > 0.34f &&
-            abs(steer) > 0.32f &&
-            kart.forwardSpeed > 15f
+        // v7.2: bots drift like players — one hop at a real corner entry, hold it, release once.
+        // They used to release at a spark tier and immediately hop again in the same corner, so the
+        // field was constantly hopping. Also no hop while side-by-side with another kart.
+        val crowded = allKarts.any { o ->
+            o.slotIndex != kart.slotIndex && !o.isRespawning && hypot(o.x - kart.x, o.z - kart.z) < 4.2f
+        }
+        val cooledDown = raceElapsedSec - kart.cpuLastDriftEndSec > 1.6f || raceElapsedSec < kart.cpuLastDriftEndSec
+        val canStart = effectiveDiff != CpuDifficulty.ROOKIE &&
+            cornerAbs > 0.42f && abs(steer) > 0.38f && kart.forwardSpeed > 16f && cooledDown && !crowded
+        val canHold = cornerAbs > 0.20f && kart.forwardSpeed > 10f
+        val wantsDrift = if (kart.isDrifting) canHold else canStart
         val shouldReleaseForBoost = kart.isDrifting && (
-            cornerAbs < 0.16f ||
+            !canHold ||
                 (effectiveDiff == CpuDifficulty.CHAMPION && kart.driftChargeUnits >= GameConstants.SPARK_PURPLE_UNITS) ||
                 (effectiveDiff == CpuDifficulty.PRO && kart.driftChargeUnits >= GameConstants.SPARK_ORANGE_UNITS)
             )
+        if (shouldReleaseForBoost) kart.cpuLastDriftEndSec = raceElapsedSec
         val holdDrift = wantsDrift && !shouldReleaseForBoost
         val driftJustPressed = holdDrift && !kart.isDrifting
 
@@ -217,12 +237,12 @@ object CpuDriver {
         } else {
             0f
         }
-        val rubberBand = when {
-            gapToHuman > 160f -> 1.07f
-            gapToHuman > 55f -> 1.03f
-            gapToHuman < -160f -> 0.91f
-            gapToHuman < -65f -> 0.95f
-            else -> 1.0f
+        // v7.2: continuous rubber band (the old 4-step table toggled target speed at each threshold,
+        // so bots surged and braked — visible as pitching/bobbing around the player)
+        val rubberBand = if (gapToHuman >= 0f) {
+            1f + 0.07f * ((gapToHuman - 20f) / 140f).coerceIn(0f, 1f)
+        } else {
+            1f - 0.09f * ((-gapToHuman - 30f) / 130f).coerceIn(0f, 1f)
         }
         val speedScale = (effectiveDiff.baseSpeedMult * ccClass.speedScale * rubberBand).coerceIn(0.70f, 1.10f)
 
