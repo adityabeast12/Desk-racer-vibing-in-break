@@ -1095,6 +1095,29 @@ class GameRenderer(
         GLES20.glDepthMask(true)
     }
 
+    private val shadowMatrix = FloatArray(16)
+    private val shadowModelMatrix = FloatArray(16)
+    private val kartShadowSampleIdx = IntArray(GameConstants.MAX_RACERS) { -1 }
+
+    /** Road height under a kart (interpolated + banked), with a per-slot cached spline window. */
+    private fun kartGroundY(k: com.example.game.RenderKartSnapshot, track: Track): Float {
+        val slot = k.slotIndex.coerceIn(0, GameConstants.MAX_RACERS - 1)
+        val near = track.findNearestSampleWindowed(k.x, k.y, k.z, kartShadowSampleIdx[slot], 30)
+        kartShadowSampleIdx[slot] = near.sample.index
+        val f = track.surfaceFrame(near.sample, k.x, k.z)
+        return com.example.game.KartPhysics.bankedSurfaceY(f, track.roadWidth * 0.5f)
+    }
+
+    /** Projects geometry onto the plane y = groundY along directional light L (column-major). */
+    private fun buildPlanarShadowMatrix(out: FloatArray, groundY: Float, lx: Float, ly: Float, lz: Float) {
+        val plane = floatArrayOf(0f, 1f, 0f, -groundY)
+        val light = floatArrayOf(lx, ly, lz, 0f)
+        val dot = ly
+        for (col in 0 until 4) for (row in 0 until 4) {
+            out[col * 4 + row] = (if (row == col) dot else 0f) - light[row] * plane[col]
+        }
+    }
+
     private fun drawAllContactShadows(track: Track, snap: WorldRenderSnapshot, garageActive: Boolean) {
         if (unlitProgram == 0) return
         GLES20.glUseProgram(unlitProgram)
@@ -1142,25 +1165,75 @@ class GameRenderer(
             }
         }
 
-        // Soft Oval Contact Shadow under every Kart
+        // Soft oval AO under every kart (v7.3: lighter — the real projected shadow is drawn below)
+        val lp = if (garageActive) com.example.game.LightingPreset.SUNNY_STUDIO else track.lightingPreset
         for (k in snap.karts) {
             if (garageActive && k.slotIndex != snap.localSlotIndex) continue
             val yawDeg = Math.toDegrees((k.headingRad + k.visualYawOffsetRad).toDouble()).toFloat()
-            val groundY = if (garageActive) k.y else track.findNearestSampleWindowed(k.x, k.y, k.z, -1).sample.pos.y
+            val groundY = if (garageActive) k.y else kartGroundY(k, track)
             val heightAboveRoad = (k.y - groundY).coerceAtLeast(0f)
             val fade = (1f - heightAboveRoad * 0.14f).coerceIn(0.25f, 1f)
             val shrink = (1f - heightAboveRoad * 0.06f).coerceIn(0.65f, 1f)
-            val alpha = if (k.isGhostMode) 0.45f * fade else 0.95f * fade
+            val alpha = if (k.isGhostMode) 0.30f * fade else 0.62f * fade
             drawDisc(
                 x = k.x,
                 y = groundY + 0.055f,
                 z = k.z,
-                sx = 1.95f * shrink,
-                sz = 2.65f * shrink,
+                sx = 2.1f * shrink,
+                sz = 3.4f * shrink,
                 yawDeg = yawDeg,
                 alphaScale = alpha
             )
         }
+
+        // v7.3: real car-shaped shadows — each DRM1 kart flattened onto the road along the key light
+        // (planar projection). Depth-tested against itself so overlapping triangles darken once.
+        GLES20.glDepthMask(true)
+        GLES20.glEnable(GLES20.GL_POLYGON_OFFSET_FILL)
+        GLES20.glPolygonOffset(-2f, -4f)
+        GLES20.glDisableVertexAttribArray(unlitColorLoc)
+        GLES20.glUniform4f(unlitTintLoc, 1f, 1f, 1f, 1f)
+        var lx = lp.keyLightDir[0]; var ly = lp.keyLightDir[1]; var lz = lp.keyLightDir[2]
+        val ll = kotlin.math.sqrt(lx * lx + ly * ly + lz * lz).coerceAtLeast(1e-3f)
+        lx /= ll; ly /= ll; lz /= ll
+        if (ly < 0.55f) { // keep shadows compact under low sun so they read as contact, not smears
+            val t = (0.55f - ly) / 0.55f
+            lx *= (1f - t * 0.5f); lz *= (1f - t * 0.5f); ly = 0.55f
+        }
+        for (k in snap.karts) {
+            if (garageActive && k.slotIndex != snap.localSlotIndex) continue
+            if (k.bodyType.isDrm2 || k.isInvulnerableFlashing) continue
+            val dx = k.x - camera.posX; val dz = k.z - camera.posZ
+            if (dx * dx + dz * dz > 70f * 70f) continue
+            val model = assetRepo.getDrm1Model(k.bodyType.drmAssetPath) ?: continue
+            val groundY = if (garageActive) k.y else kartGroundY(k, track)
+            val h = (k.y - groundY).coerceAtLeast(0f)
+            val a = (0.40f * (1f - h * 0.12f)).coerceIn(0.12f, 0.40f) * (if (k.isGhostMode) 0.5f else 1f)
+            GLES20.glVertexAttrib4f(unlitColorLoc, 0.02f, 0.02f, 0.05f, a)
+            buildPlanarShadowMatrix(shadowMatrix, groundY + 0.035f, lx, ly, lz)
+            val yawDeg = Math.toDegrees((k.headingRad + k.visualYawOffsetRad).toDouble()).toFloat()
+            val pitchDeg = Math.toDegrees(k.visualPitchRad.toDouble()).toFloat()
+            val rollDeg = Math.toDegrees(k.visualRollRad.toDouble()).toFloat()
+            for (part in model.parts) {
+                Matrix.setIdentityM(partMatrix, 0)
+                Matrix.translateM(partMatrix, 0, k.x, k.y, k.z)
+                Matrix.rotateM(partMatrix, 0, yawDeg, 0f, 1f, 0f)
+                if (pitchDeg != 0f) Matrix.rotateM(partMatrix, 0, pitchDeg, 1f, 0f, 0f)
+                if (rollDeg != 0f) Matrix.rotateM(partMatrix, 0, rollDeg, 0f, 0f, 1f)
+                Matrix.scaleM(partMatrix, 0, 1.32f, 1.32f, 1.32f)
+                Matrix.translateM(partMatrix, 0, part.pivotX, part.pivotY, part.pivotZ)
+                Matrix.multiplyMM(shadowModelMatrix, 0, shadowMatrix, 0, partMatrix, 0)
+                Matrix.multiplyMM(mvpMatrix, 0, vpMatrix, 0, shadowModelMatrix, 0)
+                GLES20.glUniformMatrix4fv(unlitMvpLoc, 1, false, mvpMatrix, 0)
+                val b = part.buffer
+                b.position(0)
+                GLES20.glEnableVertexAttribArray(unlitPosLoc)
+                GLES20.glVertexAttribPointer(unlitPosLoc, 3, GLES20.GL_FLOAT, false, DrmModelLoader.DRM_STRIDE_BYTES, b)
+                GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 0, part.vertexCount)
+            }
+        }
+        GLES20.glDisable(GLES20.GL_POLYGON_OFFSET_FILL)
+        GLES20.glDisableVertexAttribArray(unlitPosLoc)
 
         GLES20.glDepthMask(true)
     }
