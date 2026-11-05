@@ -48,8 +48,6 @@ class GameLoop(
             // or LOW graphics, which the step-down also persists) made the whole game run at half speed.
             // Throttling now only changes how often we wake, never the game speed.
             val stepNs = (GameConstants.SIM_DT * 1_000_000_000.0).toLong()
-            var hudTickCounter = 0
-            var netTickCounter = 0
             var lastNs = System.nanoTime()
             var accNs = 0L
             RenderInterp.reset()
@@ -59,40 +57,16 @@ class GameLoop(
                 lastNs = nowNs
                 val settings = prefs.state.value
 
-                if (!isPausedSolo) {
+                if (captureMode) {
+                    // QA capture: the renderer drives the sim (captureAdvance) on a virtual clock
+                    accNs = 0L
+                } else if (!isPausedSolo) {
                     accNs += frameNs
                     var steps = 0
                     while (accNs >= stepNs && steps < MAX_STEPS_PER_WAKE) {
-                        val input = inputState.consumeFrameInput()
-                        raceSession.stepFixed(
-                            dt = GameConstants.SIM_DT,
-                            localInput = input,
-                            autoAccelerate = settings.autoAccelerate,
-                            smartSteering = settings.smartSteering,
-                            showRocketStartTip = !settings.hasSeenRocketStartTip
-                        )
                         accNs -= stepNs
                         steps++
-
-                        val renderSnap = raceSession.buildWorldRenderSnapshot()
-                        latestRenderSnapshot.set(renderSnap)
-                        RenderInterp.publish(renderSnap, nowNs - accNs)
-
-                        // Network state channel @ 30 Hz of sim time (every 2nd step)
-                        netTickCounter++
-                        if (netTickCounter >= 2) {
-                            netTickCounter = 0
-                            onSimTickForNetwork?.invoke(renderSnap)
-                        }
-
-                        // Throttled HUD StateFlow @ 15 Hz of sim time (every 4th step)
-                        hudTickCounter++
-                        if (hudTickCounter >= 4) {
-                            hudTickCounter = 0
-                            _hudState.value = raceSession.buildHudState(
-                                showRocketTipPref = !settings.hasSeenRocketStartTip
-                            )
-                        }
+                        runOneStep(nowNs - accNs)
                     }
                     if (steps >= MAX_STEPS_PER_WAKE) accNs = 0L // device stalled: drop backlog, don't spiral
                 } else {
@@ -106,6 +80,61 @@ class GameLoop(
                 delay(sleepMs)
             }
         }
+    }
+
+    private var hudTickCounter = 0
+    private var netTickCounter = 0
+
+    private fun runOneStep(publishNs: Long) {
+        val settings = prefs.state.value
+        val input = inputState.consumeFrameInput()
+        raceSession.stepFixed(
+            dt = GameConstants.SIM_DT,
+            localInput = input,
+            autoAccelerate = settings.autoAccelerate,
+            smartSteering = settings.smartSteering,
+            showRocketStartTip = !settings.hasSeenRocketStartTip
+        )
+        val renderSnap = raceSession.buildWorldRenderSnapshot()
+        latestRenderSnapshot.set(renderSnap)
+        RenderInterp.publish(renderSnap, publishNs)
+
+        // Network state channel @ 30 Hz of sim time (every 2nd step)
+        netTickCounter++
+        if (netTickCounter >= 2) {
+            netTickCounter = 0
+            onSimTickForNetwork?.invoke(renderSnap)
+        }
+
+        // Throttled HUD StateFlow @ 15 Hz of sim time (every 4th step)
+        hudTickCounter++
+        if (hudTickCounter >= 4) {
+            hudTickCounter = 0
+            _hudState.value = raceSession.buildHudState(
+                showRocketTipPref = !settings.hasSeenRocketStartTip
+            )
+        }
+    }
+
+    /** QA capture mode: deterministic 30 fps game time regardless of how slow the device renders. */
+    @Volatile
+    var captureMode: Boolean = false
+    private var captureVirtualNs = 0L
+
+    /** Called by the renderer once per drawn frame in capture mode; returns the virtual render time. */
+    @Synchronized
+    fun captureAdvance(): Long {
+        val stepNs = (GameConstants.SIM_DT * 1_000_000_000.0).toLong()
+        if (captureVirtualNs == 0L) captureVirtualNs = System.nanoTime()
+        if (!isPausedSolo) {
+            repeat(2) {
+                captureVirtualNs += stepNs
+                runOneStep(captureVirtualNs)
+            }
+        } else {
+            captureVirtualNs += stepNs * 2
+        }
+        return captureVirtualNs - stepNs / 2
     }
 
     private companion object {

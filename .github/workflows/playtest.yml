@@ -58,13 +58,15 @@ jobs:
         run: |
           sudo apt-get install -y -qq ffmpeg > /dev/null 2>&1 || true
           cd /tmp/playtest || exit 0
-          for v in *.mp4; do
-            [ -f "$v" ] || continue
-            b="${v%.mp4}"
-            # 12 fps contact sheets across the clip + a dense 30 fps burst for jitter inspection
-            ffmpeg -loglevel error -i "$v" -vf "fps=2,scale=640:-1,tile=4x3" -frames:v 2 "${b}_sheet_%d.png" || true
-            ffmpeg -loglevel error -ss 8 -t 1.2 -i "$v" -vf "fps=30,scale=480:-1,tile=6x6" -frames:v 1 "${b}_burst.png" || true
-            ffmpeg -loglevel error -i "$v" -vf "fps=30" -f null - 2>&1 | tail -1 || true
+          for d in cap_t*; do
+            [ -d "$d" ] || continue
+            n=$(ls $d/*.jpg 2>/dev/null | wc -l); echo "::notice::$d frames=$n"
+            ffmpeg -loglevel error -framerate 30 -i "$d/f%04d.jpg" -c:v libx264 -pix_fmt yuv420p -crf 23 "${d}.mp4" || true
+            # contact sheets: every 6th frame (0.2 s) overview + consecutive-frame strips for jitter
+            ffmpeg -loglevel error -i "${d}.mp4" -vf "select='not(mod(n\,6))',scale=480:-1,tile=4x4" -vsync vfr "${d}_overview_%d.png" || true
+            ffmpeg -loglevel error -ss 3 -i "${d}.mp4" -vf "scale=400:-1,tile=5x4" -frames:v 1 "${d}_consec_a.png" || true
+            ffmpeg -loglevel error -ss 7 -i "${d}.mp4" -vf "scale=400:-1,tile=5x4" -frames:v 1 "${d}_consec_b.png" || true
+            rm -rf "$d"
           done
           grep DRPERF logcat.txt | tail -30 | sed 's/^/::notice::/' || true
           grep -E "FATAL|AndroidRuntime" logcat.txt | head -10 | sed 's/^/::error::/' || true

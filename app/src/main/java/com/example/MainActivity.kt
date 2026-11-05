@@ -287,6 +287,13 @@ class MainActivity : ComponentActivity(), SensorEventListener {
                     onGlSurfaceViewCreated = { glView, renderer ->
                         glSurfaceViewRef = glView
                         gameRendererRef = renderer
+                        if (intent?.getBooleanExtra("dr_capture", false) == true) {
+                            gameLoop.captureMode = true
+                            renderer.captureStepper = { gameLoop.captureAdvance() }
+                            renderer.captureDir = java.io.File(getExternalFilesDir(null), "capture").apply {
+                                deleteRecursively(); mkdirs()
+                            }
+                        }
                         glView.holder.addCallback(object : android.view.SurfaceHolder.Callback {
                             override fun surfaceCreated(holder: android.view.SurfaceHolder) { applyDisplayRefreshRate() }
                             override fun surfaceChanged(holder: android.view.SurfaceHolder, format: Int, width: Int, height: Int) {}

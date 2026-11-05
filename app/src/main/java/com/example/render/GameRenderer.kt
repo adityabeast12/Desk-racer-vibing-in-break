@@ -293,7 +293,49 @@ class GameRenderer(
         GLES20.glViewport(0, 0, viewportWidth, viewportHeight)
     }
 
+    // ---- QA capture (emulator playtest): deterministic game time + per-frame JPEG dump ----
+    @Volatile var captureStepper: (() -> Long)? = null
+    @Volatile var captureDir: java.io.File? = null
+    private var captureIndex = 0
+    private var lastDrawnPhase: RacePhase? = null
+    private var captureRacingFrames = 0
+    private val CAPTURE_MAX_FRAMES = 420
+
     override fun onDrawFrame(gl: GL10?) {
+        drawFrameInternal()
+        maybeCaptureFrame()
+    }
+
+    private fun maybeCaptureFrame() {
+        val dir = captureDir ?: return
+        if (lastDrawnPhase != RacePhase.RACING) return
+        captureRacingFrames++
+        if (captureRacingFrames < 75) return // skip the first 2.5 s of the race (launch from grid)
+        if (captureIndex >= CAPTURE_MAX_FRAMES) return
+        val w = viewportWidth; val h = viewportHeight
+        if (w <= 0 || h <= 0) return
+        try {
+            val buf = java.nio.ByteBuffer.allocateDirect(w * h * 4).order(java.nio.ByteOrder.nativeOrder())
+            GLES20.glReadPixels(0, 0, w, h, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, buf)
+            val bmp = android.graphics.Bitmap.createBitmap(w, h, android.graphics.Bitmap.Config.ARGB_8888)
+            buf.rewind(); bmp.copyPixelsFromBuffer(buf)
+            val outW = 960; val outH = (h * outW.toFloat() / w).toInt()
+            val m = android.graphics.Matrix().apply { postScale(outW.toFloat() / w, -outH.toFloat() / h) }
+            val flipped = android.graphics.Bitmap.createBitmap(bmp, 0, 0, w, h, m, true)
+            dir.mkdirs()
+            java.io.FileOutputStream(java.io.File(dir, "f%04d.jpg".format(captureIndex))).use {
+                flipped.compress(android.graphics.Bitmap.CompressFormat.JPEG, 84, it)
+            }
+            bmp.recycle(); flipped.recycle()
+            captureIndex++
+            if (captureIndex >= CAPTURE_MAX_FRAMES) java.io.File(dir, "done.txt").writeText("frames=$captureIndex")
+        } catch (e: Exception) {
+            android.util.Log.e("DRCAP", "capture failed: ${e.message}")
+            captureDir = null
+        }
+    }
+
+    private fun drawFrameInternal() {
         surfaceFrameCount++
         if (pendingUnloadTrackAssets.compareAndSet(true, false)) {
             assetRepo.unloadRaceTrackAssets()
@@ -312,8 +354,11 @@ class GameRenderer(
             }
         }
         // v6: measure the real frame time and draw a snapshot interpolated between sim steps
-        val frameNowNs = System.nanoTime()
-        val frameDt = if (lastDrawFrameNs == 0L) GameConstants.SIM_DT else ((frameNowNs - lastDrawFrameNs) / 1_000_000_000f).coerceIn(0.001f, 0.05f)
+        val stepper = captureStepper
+        val frameNowNs = stepper?.invoke() ?: System.nanoTime()
+        val frameDt = if (stepper != null) 1f / 30f
+            else if (lastDrawFrameNs == 0L) GameConstants.SIM_DT
+            else ((frameNowNs - lastDrawFrameNs) / 1_000_000_000f).coerceIn(0.001f, 0.05f)
         lastDrawFrameNs = frameNowNs
         if (frameDt > 0f) measuredFps = if (measuredFps == 0f) 1f / frameDt else measuredFps * 0.95f + (1f / frameDt) * 0.05f
         // QA telemetry (read by the emulator playtest job): fps + worst frame per 2 s window
@@ -332,6 +377,7 @@ class GameRenderer(
             GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT or GLES20.GL_DEPTH_BUFFER_BIT)
             return
         }
+        lastDrawnPhase = snap.phase
         val track = Tracks.byId(snap.trackId)
         val fogRgb = Meshes.hexToRgb(track.fogHex)
 
