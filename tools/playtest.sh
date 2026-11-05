@@ -9,7 +9,7 @@ adb shell settings put secure immersive_mode_confirmations confirmed
 adb shell wm size 1280x576
 adb shell wm density 200
 adb install -r -g app/build/outputs/apk/debug/*.apk
-adb logcat -c
+adb logcat -G 16M; adb logcat -c
 for TRACK in ${PLAYTEST_TRACKS:-0}; do
   adb shell am force-stop $PKG
   adb shell am start -n $PKG/com.example.MainActivity --ez dr_autoplay true --ez dr_capture true --ei dr_track $TRACK

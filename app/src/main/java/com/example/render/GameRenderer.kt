@@ -61,6 +61,7 @@ class GameRenderer(
     @Volatile
     var garageTurntableYawRad: Float = 0.55f
     private var lastDrawFrameNs: Long = 0L
+    private var lastRealFrameNs: Long = 0L
 
     /** v6.2: 0 = render every vsync (max device refresh); otherwise minimum ns between frames. */
     @Volatile
@@ -344,8 +345,8 @@ class GameRenderer(
 
         // v6.2: optional pacing for the 30 fps battery mode (max mode renders on every vsync)
         val cap = minFrameIntervalNs
-        if (cap > 0L && lastDrawFrameNs != 0L) {
-            val waitNs = lastDrawFrameNs + cap - System.nanoTime() - 1_500_000L
+        if (cap > 0L && lastRealFrameNs != 0L && captureStepper == null) {
+            val waitNs = lastRealFrameNs + cap - System.nanoTime() - 1_500_000L
             if (waitNs > 0L) {
                 try {
                     Thread.sleep(waitNs / 1_000_000L, (waitNs % 1_000_000L).toInt())
@@ -354,11 +355,12 @@ class GameRenderer(
             }
         }
         // v6: measure the real frame time and draw a snapshot interpolated between sim steps
+        lastRealFrameNs = System.nanoTime() // pacing always uses the real clock (capture uses a virtual one)
         val stepper = captureStepper
-        val frameNowNs = stepper?.invoke() ?: System.nanoTime()
+        val frameNowNs = stepper?.invoke() ?: lastRealFrameNs
         val frameDt = if (stepper != null) 1f / 30f
             else if (lastDrawFrameNs == 0L) GameConstants.SIM_DT
-            else ((frameNowNs - lastDrawFrameNs) / 1_000_000_000f).coerceIn(0.001f, 0.05f)
+            else ((frameNowNs - lastDrawFrameNs) / 1_000_000_000f).coerceIn(0.001f, 0.1f)
         lastDrawFrameNs = frameNowNs
         if (frameDt > 0f) measuredFps = if (measuredFps == 0f) 1f / frameDt else measuredFps * 0.95f + (1f / frameDt) * 0.05f
         // QA telemetry (read by the emulator playtest job): fps + worst frame per 2 s window

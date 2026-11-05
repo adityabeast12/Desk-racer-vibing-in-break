@@ -41,7 +41,7 @@ jobs:
       - name: Run emulator playtest
         uses: reactivecircus/android-emulator-runner@v2
         env:
-          PLAYTEST_TRACKS: ${{ github.event.inputs.tracks || '0' }}
+          PLAYTEST_TRACKS: ${{ github.event.inputs.tracks || '0 2 6' }}
         with:
           api-level: 31
           arch: x86_64
