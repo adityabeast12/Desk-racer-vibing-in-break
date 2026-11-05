@@ -244,7 +244,15 @@ object CpuDriver {
         } else {
             1f - 0.09f * ((-gapToHuman - 30f) / 130f).coerceIn(0f, 1f)
         }
-        val speedScale = (effectiveDiff.baseSpeedMult * ccClass.speedScale * rubberBand).coerceIn(0.70f, 1.10f)
+        // v7.3: lift for corners the kart can't make on grip alone (emulator footage showed bots
+        // running wide onto the mats once they stopped spamming drift hops)
+        val cornerLift = when {
+            kart.isDrifting -> 1f
+            cornerAbs > 0.85f -> 0.80f
+            cornerAbs > 0.55f -> 0.88f
+            else -> 1f
+        }
+        val speedScale = (effectiveDiff.baseSpeedMult * ccClass.speedScale * rubberBand * cornerLift).coerceIn(0.62f, 1.10f)
 
         val snapshot = TouchInputSnapshot(
             steer = steer,

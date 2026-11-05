@@ -218,6 +218,10 @@ class KartFeelTest {
 
     @Test
     fun `cpu field drives calmly - few hops, no weaving`() {
+        for (tid in listOf(0, 6)) cpuCalmOn(tid)
+    }
+
+    private fun cpuCalmOn(trackId: Int) {
         val silent = com.example.audio.SynthAudio(context = null).apply { soundEnabled = false; hapticsEnabled = false }
         val session = com.example.game.RaceSession(synthAudio = silent, onNewBestLapRecorded = { _, _ -> false })
         val racers = (0 until GameConstants.MAX_RACERS).map { slot ->
@@ -225,7 +229,7 @@ class KartFeelTest {
                 bodyType = KartBodyType.fromId(slot % 5))
         }
         session.startNewRace(
-            trackId = 0, laps = 1, mode = com.example.game.ItemMode.NORMAL,
+            trackId = trackId, laps = 1, mode = com.example.game.ItemMode.NORMAL,
             difficulty = com.example.game.CpuDifficulty.CHAMPION, cc = com.example.game.CcClass.CC_150,
             gameMode = com.example.game.GameMode.QUICK_RACE, multiplayer = false, hostAuthority = true,
             localSlot = -1, racerConfigs = racers, skipFlyby = true
@@ -235,6 +239,7 @@ class KartFeelTest {
         var latFlips = 0
         val lastLatVel = FloatArray(GameConstants.MAX_RACERS)
         var bigBounces = 0
+        var offTicks = 0; var totalTicks = 0
         val prevLat = FloatArray(GameConstants.MAX_RACERS)
         var steps = 0
         val empty = TouchInputSnapshot()
@@ -253,11 +258,12 @@ class KartFeelTest {
                 if (abs(lat) > 0.8f && lastLatVel[i] * lat < 0f) latFlips++
                 if (abs(lat) > 0.8f) lastLatVel[i] = lat
                 if (fx.isNaN() || fz.isNaN()) error("nan")
+                totalTicks++; if (k.isOffTrack) offTicks++
             }
         }
         val secs = steps / 60f
         val hopsPerMin = hops.sum() / (secs / 60f) / GameConstants.MAX_RACERS
-        println("FEEL cpu: raceSec=${"%.0f".format(secs)} hopsPerKartPerMin=${"%.1f".format(hopsPerMin)} hops=${hops.toList()} lateralFlips=$latFlips bigBounces=$bigBounces")
+        println("FEEL cpu t$trackId: raceSec=${"%.0f".format(secs)} hopsPerKartPerMin=${"%.1f".format(hopsPerMin)} hops=${hops.toList()} lateralFlips=$latFlips bigBounces=$bigBounces offTrack=${"%.1f".format(offTicks * 100f / totalTicks.coerceAtLeast(1))}%")
         silent.shutdown()
         assertTrue("bots hop too often ($hopsPerMin/min)", hopsPerMin < 14f)
     }
