@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
@@ -93,6 +94,7 @@ fun ActionButtons(
     heldItem: ItemType = ItemType.NONE,
     isRouletteSpinning: Boolean = false,
     rouletteDisplayItem: ItemType = ItemType.NONE,
+    showRocketPedal: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val view = LocalView.current
@@ -286,8 +288,9 @@ fun ActionButtons(
                 }
             }
 
-        // Right: tall GAS pedal (ROCKET START when auto-accelerate is on)
-        ControlPadButton(
+        // Right: tall GAS pedal (ROCKET START when auto-accelerate is on). v7.2: with auto-gas the
+        // pedal only exists for the start — hide it once the race is running (it was a dead button).
+        if (!autoAccelerate || showRocketPedal) ControlPadButton(
             label = if (!autoAccelerate) "GAS" else "ROCKET\nSTART",
             contentDesc = stringResource(R.string.cd_gas),
             testTag = "btn_action_gas",
@@ -301,7 +304,7 @@ fun ActionButtons(
             skew = true,
             view = view,
             onPressChanged = { pressed -> inputState.gasPressed = pressed }
-        )
+        ) else Spacer(Modifier.size(width = gasVisualDp + 10.dp, height = gasVisualDp * 1.62f + 10.dp)) // keep thumbs' layout fixed
     }
 }
 

@@ -244,7 +244,7 @@ class KartFeelTest {
             if (session.phase != com.example.game.RacePhase.RACING) continue
             for (k in session.karts) {
                 val i = k.slotIndex
-                if (k.vy > 4f && lastVy[i] <= 0.5f && k.vy < 6f) hops[i]++ // drift hop launch
+                if (k.vy > 3.5f && lastVy[i] <= 0.5f && k.vy < 6f) hops[i]++ // drift hop launch
                 lastVy[i] = k.vy
                 val fx = sin(k.headingRad); val fz = cos(k.headingRad)
                 val lat = k.vx * cos(k.headingRad) - k.vz * sin(k.headingRad)

@@ -278,6 +278,8 @@ fun RaceScreen(
                     heldItem = hudState.heldItem,
                     isRouletteSpinning = hudState.isRouletteSpinning,
                     rouletteDisplayItem = hudState.rouletteDisplayItem,
+                    showRocketPedal = hudState.phase != com.example.game.RacePhase.RACING ||
+                        hudState.raceTimeMs < 1500L,
                     modifier = Modifier.hudZone(actionsZoneEnum)
                 )
 

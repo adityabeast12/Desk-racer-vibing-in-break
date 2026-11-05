@@ -39,7 +39,7 @@ object GameConstants {
     // Hop, Gravity, Ramps & Tricks
     const val GRAVITY = 30f                   // 30 u/s^2
     const val HOP_DURATION_SEC = 0.12f
-    const val HOP_VELOCITY_Y = 5.4f
+    const val HOP_VELOCITY_Y = 4.3f        // v7.2: lower, quicker hop (~0.3 u) — less pogo-ing
     const val RAMP_LAUNCH_VY = 13.5f
     const val TRICK_BOOST_SEC = 0.50f
     const val FALL_OFF_Y = -5f
