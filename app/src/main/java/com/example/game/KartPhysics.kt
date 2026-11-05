@@ -559,7 +559,7 @@ object KartPhysics {
 
         // 5. Hop + Drift Initiation & Release Boost
         val canControl = kart.spinOutTimerSec <= 0f && kart.rocketStartStallTimerSec <= 0f
-        val grounded = kart.y <= surf.y + 0.14f
+        val grounded = kart.y <= bankedSurfaceY(surf, halfRoad) + 0.14f
 
         if (canControl && inp.driftJustPressed && kart.hopLockSec <= 0f) {
             if (grounded && kart.vy <= 0.01f) {
@@ -767,7 +767,7 @@ object KartPhysics {
         // 9. Vertical Physics, Elevated Bridges, Guard Walls, Ramps & Sink/Water Hazards
         // v7: continuous surface under the kart's NEW position (no per-sample height steps)
         val ground = track.surfaceFrame(nearestSample, kart.x, kart.z)
-        var supportY = ground.y
+        var supportY = bankedSurfaceY(ground, halfRoad)
 
         if (ground.y > 1.5f) {
             val bridgeWallLimit = halfRoad + 0.4f
@@ -1293,6 +1293,14 @@ object KartPhysics {
             val err = wrapAngle(kotlin.math.atan2(tx, tz) - kart.headingRad)
             kart.headingRad += err.coerceIn(-0.05f, 0.05f) * headOn
         }
+    }
+
+    /** Road height under a point including banking (matches the road mesh: pivots about the low edge). */
+    fun bankedSurfaceY(f: SurfaceFrame, halfRoad: Float): Float {
+        if (abs(f.bankAngleRad) < 1e-4f) return f.y
+        val bd = sin(f.bankAngleRad) * halfRoad * 0.35f
+        val t = (f.lateral / halfRoad.coerceAtLeast(0.5f)).coerceIn(-1f, 1f)
+        return f.y + abs(bd) + t * bd
     }
 
     fun wrapAngle(angle: Float): Float {

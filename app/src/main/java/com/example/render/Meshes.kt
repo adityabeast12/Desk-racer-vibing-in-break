@@ -411,10 +411,13 @@ object Meshes {
             val bankDy0 = sin(s0.bankAngleRad) * halfWidth * 0.35f
             val bankDy1 = sin(s1.bankAngleRad) * halfWidth * 0.35f
 
-            val y0L = s0.pos.y + 0.03f - bankDy0
-            val y0R = s0.pos.y + 0.03f + bankDy0
-            val y1L = s1.pos.y + 0.03f - bankDy1
-            val y1R = s1.pos.y + 0.03f + bankDy1
+            // v7.3: banked corners pivot about their LOW edge, never dipping below the base height —
+            // the low edge used to sink ~0.4 u under the desk, which showed as a sawtooth of desk
+            // texture cutting into the asphalt on Toy Box. KartPhysics.bankedSurfaceY matches this.
+            val y0L = s0.pos.y + 0.03f + kotlin.math.abs(bankDy0) - bankDy0
+            val y0R = s0.pos.y + 0.03f + kotlin.math.abs(bankDy0) + bankDy0
+            val y1L = s1.pos.y + 0.03f + kotlin.math.abs(bankDy1) - bankDy1
+            val y1R = s1.pos.y + 0.03f + kotlin.math.abs(bankDy1) + bankDy1
 
             val l0x = s0.pos.x - s0.rightX * halfWidth
             val l0z = s0.pos.z - s0.rightZ * halfWidth

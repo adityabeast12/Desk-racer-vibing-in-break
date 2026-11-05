@@ -27,6 +27,7 @@ import java.util.concurrent.atomic.AtomicReference
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
 import kotlin.math.PI
+import kotlin.math.abs
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.hypot
@@ -157,6 +158,10 @@ class GameRenderer(
     private val skidZ = FloatArray(maxSkidMarks)
     private val skidYawDeg = FloatArray(maxSkidMarks)
     private val skidBirthSec = FloatArray(maxSkidMarks) { -100f }
+    private val skidLen = FloatArray(maxSkidMarks) { 1.2f }
+    private val skidWheelX = FloatArray(GameConstants.MAX_RACERS * 2)
+    private val skidWheelZ = FloatArray(GameConstants.MAX_RACERS * 2)
+    private val skidWheelActive = BooleanArray(GameConstants.MAX_RACERS * 2)
     private var skidWriteCursor = 0
     private var skidTotalCount = 0
     private val lastKartSkidX = FloatArray(GameConstants.MAX_RACERS)
@@ -756,7 +761,18 @@ class GameRenderer(
         for (kart in snap.karts) {
             if (garageActive && localKart != null && kart.slotIndex != localKart.slotIndex) continue
             if (!kart.isInvulnerableFlashing) {
-                val alpha = if (kart.isGhostMode) 0.50f else 1.0f
+                var alpha = if (kart.isGhostMode) 0.50f else 1.0f
+                // v7.3: rivals tucked in between the camera and your kart fade out instead of
+                // blocking the view (emulator captures showed slipstreaming bots filling the screen)
+                if (localKart != null && kart.slotIndex != localKart.slotIndex && !garageActive) {
+                    val cdx = kart.x - camera.posX; val cdz = kart.z - camera.posZ
+                    val dCam = kotlin.math.sqrt(cdx * cdx + cdz * cdz)
+                    val pdx = localKart.x - camera.posX; val pdz = localKart.z - camera.posZ
+                    val dPlayer = kotlin.math.sqrt(pdx * pdx + pdz * pdz)
+                    if (dCam < dPlayer + 0.5f && dCam < 6.0f) {
+                        alpha = minOf(alpha, ((dCam - 1.8f) / 4.2f).coerceIn(0.22f, 1f))
+                    }
+                }
                 drawKart3D(
                     kart = kart,
                     forceAlpha = alpha,
@@ -952,33 +968,38 @@ class GameRenderer(
 
         // 3. Emit & Render Drift Skid Marks (`textures/decals/skid_mark.png`, 2000-quad ring buffer, 20 s fade)
         val nowSec = snap.elapsedTimeSec
+        // v7.3: continuous tyre trails — each mark is a segment from the wheel's previous position
+        // to its current one (fixed-spacing stamps left dashed gaps whenever a frame covered > 1 u)
         for (k in snap.karts) {
             val slot = k.slotIndex.coerceIn(0, GameConstants.MAX_RACERS - 1)
-            if (k.isDrifting && k.speed > 6f && k.y < 6f) {
-                val dx = k.x - lastKartSkidX[slot]
-                val dz = k.z - lastKartSkidZ[slot]
-                if (dx * dx + dz * dz >= 1.1f * 1.1f) {
-                    lastKartSkidX[slot] = k.x
-                    lastKartSkidZ[slot] = k.z
-                    val yawRad = k.headingRad + k.visualYawOffsetRad
-                    val yawDeg = Math.toDegrees(yawRad.toDouble()).toFloat()
-                    val rightX = cos(yawRad)
-                    val rightZ = -sin(yawRad)
-                    val fwdX = sin(yawRad)
-                    val fwdZ = cos(yawRad)
-                    // Left & right rear wheels
-                    for (wheelSide in -1..1 step 2) {
-                        val wx = k.x + rightX * (0.68f * wheelSide) - fwdX * 0.65f
-                        val wz = k.z + rightZ * (0.68f * wheelSide) - fwdZ * 0.65f
-                        skidX[skidWriteCursor] = wx
-                        skidY[skidWriteCursor] = k.y + 0.04f
-                        skidZ[skidWriteCursor] = wz
-                        skidYawDeg[skidWriteCursor] = yawDeg
-                        skidBirthSec[skidWriteCursor] = nowSec
-                        skidWriteCursor = (skidWriteCursor + 1) % maxSkidMarks
-                        if (skidTotalCount < maxSkidMarks) skidTotalCount++
-                    }
+            val drifting = k.isDrifting && abs(k.speed) > 6f && !k.isOffTrack
+            val yawRad = k.headingRad + k.visualYawOffsetRad
+            val rightX = cos(yawRad); val rightZ = -sin(yawRad)
+            val fwdX = sin(yawRad); val fwdZ = cos(yawRad)
+            for (side in 0..1) {
+                val sgn = if (side == 0) -1f else 1f
+                val wx = k.x + rightX * (0.80f * sgn) - fwdX * 1.0f
+                val wz = k.z + rightZ * (0.80f * sgn) - fwdZ * 1.0f
+                val i = slot * 2 + side
+                if (!drifting || !skidWheelActive[i]) {
+                    skidWheelActive[i] = drifting
+                    skidWheelX[i] = wx; skidWheelZ[i] = wz
+                    continue
                 }
+                val dx = wx - skidWheelX[i]; val dz = wz - skidWheelZ[i]
+                val d = hypot(dx, dz)
+                if (d < 0.6f) continue
+                if (d > 6f) { skidWheelX[i] = wx; skidWheelZ[i] = wz; continue } // teleport / respawn
+                val c = skidWriteCursor
+                skidX[c] = (wx + skidWheelX[i]) * 0.5f
+                skidY[c] = k.y + 0.04f
+                skidZ[c] = (wz + skidWheelZ[i]) * 0.5f
+                skidYawDeg[c] = Math.toDegrees(kotlin.math.atan2(dx, dz).toDouble()).toFloat()
+                skidLen[c] = d + 0.12f
+                skidBirthSec[c] = nowSec
+                skidWriteCursor = (skidWriteCursor + 1) % maxSkidMarks
+                if (skidTotalCount < maxSkidMarks) skidTotalCount++
+                skidWheelX[i] = wx; skidWheelZ[i] = wz
             }
         }
 
@@ -996,8 +1017,9 @@ class GameRenderer(
                 if (dx * dx + dz * dz > 140f * 140f) continue
                 val alpha = (1f - age / 20f).coerceIn(0f, 1f) * 0.55f
                 val yaw = Math.toRadians(skidYawDeg[i].toDouble()).toFloat()
-                val fx = sin(yaw) * 0.64f; val fz = cos(yaw) * 0.64f
-                val rx = cos(yaw) * 0.20f; val rz = -sin(yaw) * 0.20f
+                val hl = skidLen[i] * 0.5f
+                val fx = sin(yaw) * hl; val fz = cos(yaw) * hl
+                val rx = cos(yaw) * 0.17f; val rz = -sin(yaw) * 0.17f
                 val cx = skidX[i]; val cy = skidY[i]; val cz = skidZ[i]
                 val ax = cx - fx - rx; val az = cz - fz - rz
                 val bx = cx - fx + rx; val bz = cz - fz + rz
@@ -1525,8 +1547,8 @@ class GameRenderer(
         }
 
         if (kart.bodyType.hasRider) {
-            drawKartAccessory(0f, 1.08f, -0.08f, 0.44f, 0.44f, 0.44f, bodyRgb[0], bodyRgb[1], bodyRgb[2], unitSphere)
-            drawKartAccessory(0f, 1.10f, 0.28f, 0.48f, 0.16f, 0.18f, 0.15f, 0.75f, 0.98f, unitCube)
+            drawKartAccessory(0f, 1.06f, -0.10f, 0.32f, 0.33f, 0.34f, bodyRgb[0], bodyRgb[1], bodyRgb[2], unitSphere)
+            drawKartAccessory(0f, 1.08f, 0.04f, 0.26f, 0.10f, 0.10f, 0.15f, 0.75f, 0.98f, unitCube)
         }
 
         // Held 3D Items using Real DRM2 Item Models

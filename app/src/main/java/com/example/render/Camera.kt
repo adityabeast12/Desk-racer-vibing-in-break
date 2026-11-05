@@ -128,8 +128,8 @@ class Camera {
 
         // v7.3 chase rig (tuned from emulator captures): closer + lower so the kart reads big in the
         // lower-middle of the screen and rivals can't park between camera and player.
-        val chaseDist = if (targetKart.isBoosting) 6.3f else 5.6f
-        val chaseHeight = 2.45f
+        val chaseDist = if (targetKart.isBoosting) 6.1f else 5.4f
+        val chaseHeight = 2.7f
 
         // v7: the camera follows a separately smoothed ride height, so drift hops and small kerb
         // bumps don't bounce the whole view (big jumps still pull it along within ~0.2 s)
@@ -141,14 +141,15 @@ class Camera {
         val desiredCamY = rideY + chaseHeight
         val desiredCamZ = targetKart.z - fwdZ * chaseDist
 
-        val springRate = smoothFactor(11f, dt)
+        val springRate = smoothFactor(14f, dt)
         posX += (desiredCamX - posX) * springRate
         posY += (desiredCamY - posY) * springRate
         posZ += (desiredCamZ - posZ) * springRate
 
-        val desiredLookX = targetKart.x + fwdX * 3.2f
-        val desiredLookY = (rideY * 0.6f + targetKart.y * 0.4f) + 0.80f
-        val desiredLookZ = targetKart.z + fwdZ * 3.2f
+        // look further ahead and a touch higher: kart sits in the lower-middle, more road visible
+        val desiredLookX = targetKart.x + fwdX * 5.0f
+        val desiredLookY = (rideY * 0.6f + targetKart.y * 0.4f) + 1.0f
+        val desiredLookZ = targetKart.z + fwdZ * 5.0f
 
         val lookRate = smoothFactor(16f, dt)
         lookX += (desiredLookX - lookX) * lookRate
