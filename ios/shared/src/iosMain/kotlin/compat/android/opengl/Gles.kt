@@ -308,9 +308,12 @@ object GLES20 {
     fun glScissor(x: Int, y: Int, w: Int, h: Int) = platform.gles3.glScissor(x, y, w, h)
 
     fun glShaderSource(shader: Int, string: String) {
+        // Apple GPUs run mediump as real fp16: world-space distances past ~256 overflow and the far
+        // desk shaded black (NaN). Android GPUs mostly promote to fp32, so match that here.
+        val source = string.replace("precision mediump float", "precision highp float")
         memScoped {
             val src = alloc<CPointerVar<ByteVar>>()
-            src.value = string.cstr.ptr
+            src.value = source.cstr.ptr
             platform.gles3.glShaderSource(shader.convert(), 1, src.ptr, null)
         }
     }
