@@ -158,7 +158,8 @@ fun encodeString(s: String, charset: java.nio.charset.Charset): ByteArray {
 
 /** Unified-log line (visible in Console.app / `log show`), unlike stdout. */
 fun nslog(msg: String) {
-    platform.Foundation.NSLog("DR %@", msg)
+    // no varargs: Kotlin -> ObjC variadic %@ isn't safe; escape % so the message is the format itself
+    platform.Foundation.NSLog("DR " + msg.replace("%", "%%"))
 }
 
 /** Resources table installed at startup by the generated R.kt. */
