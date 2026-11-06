@@ -58,40 +58,38 @@ fun HardwareControlsHud(
     val shown = if (isRouletteSpinning) rouletteDisplayItem else heldItem
     val hasItem = shown != ItemType.NONE
 
-    Column(
+    // Row layout: the reminder card sits LEFT of the item slot so the slot can never be pushed off
+    // a short (360 dp) landscape screen.
+    Row(
         modifier = modifier.padding(end = 18.dp, bottom = 14.dp).testTag("hw_hud"),
-        horizontalAlignment = Alignment.End,
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        verticalAlignment = Alignment.Bottom,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         AnimatedVisibility(visible = showHints, enter = fadeIn(), exit = fadeOut()) {
             val lines = if (pad) listOf(
-                "RT / A  Gas", "LT / B  Brake", "RB  Drift (hop)", "LB / X  Item · hold = shield", "Y  Throw back", "Start  Pause"
+                "RT/A gas · LT/B brake",
+                "RB drift · LB/X item (hold = shield)",
+                "Y throw back · Start pause"
             ) else listOf(
-                "W S  Gas · Brake", "A D  Steer", "Space  Drift (hop)", "E  Item · hold = shield", "Q  Throw back", "Esc  Pause",
-                "Mouse: click to steer with it · RMB drift · LMB item"
+                "W/S gas · brake · A/D steer",
+                "Space drift · E item (hold = shield)",
+                "Q throw back · Esc pause",
+                "Click: mouse-wheel steering · RMB drift"
             )
             Column(
                 modifier = Modifier
                     .clip(DRShape.Card)
                     .background(DR.Bg.copy(alpha = 0.62f))
                     .border(1.dp, DR.HudLine, DRShape.Card)
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                horizontalAlignment = Alignment.End
+                    .padding(horizontal = 10.dp, vertical = 6.dp)
             ) {
-                Text(if (pad) "CONTROLLER" else "KEYBOARD + MOUSE", style = DRType.LabelS.copy(fontSize = 10.sp), color = DR.Amber)
+                Text(if (pad) "CONTROLLER" else "KEYBOARD + MOUSE", style = DRType.LabelS.copy(fontSize = 9.sp), color = DR.Amber)
                 for (l in lines) {
-                    Text(l, style = DRType.Caption.copy(fontSize = 11.sp, shadow = HudTextShadow), color = DR.TextHi, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(l, style = DRType.Caption.copy(fontSize = 10.sp, lineHeight = 13.sp, shadow = HudTextShadow), color = DR.TextHi, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
         }
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (hasItem) {
-                Text(
-                    "$itemKey use · $backKey back",
-                    style = DRType.LabelS.copy(fontSize = 10.sp, shadow = HudTextShadow),
-                    color = DR.TextHi
-                )
-            }
+        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
@@ -106,6 +104,12 @@ fun HardwareControlsHud(
                     Text("ITEM", style = DRType.LabelS.copy(fontSize = 9.sp), color = DR.TextLo)
                 }
             }
+            Text(
+                if (hasItem) "$itemKey use · $backKey back" else itemKey,
+                style = DRType.LabelS.copy(fontSize = 9.sp, shadow = HudTextShadow),
+                color = if (hasItem) DR.TextHi else DR.TextLo,
+                maxLines = 1
+            )
         }
     }
 }
