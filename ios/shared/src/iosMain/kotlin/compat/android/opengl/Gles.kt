@@ -20,6 +20,7 @@ import kotlinx.cinterop.toCPointer
 import kotlinx.cinterop.toKString
 import kotlinx.cinterop.usePinned
 import kotlinx.cinterop.value
+import platform.posix.memcpy
 
 /** android.opengl.GLES20 on top of iOS OpenGL ES (EAGL). Same int-based signatures as Android. */
 open class GLES20Base {
@@ -152,12 +153,62 @@ object GLES20 {
 
     private fun b(v: Boolean): UByte = if (v) 1u else 0u
 
-    fun glActiveTexture(texture: Int) = platform.gles3.glActiveTexture(texture.convert())
+    // Apple's GLES3 doesn't reliably build mip chains for GL_SRGB8_ALPHA8 (distant texels came out
+    // black), so sRGB level-0 uploads are remembered and their mips are box-filtered on the CPU.
+    private var activeUnit = 0
+    private val bound2D = IntArray(32)
+    private class PendingMip(val w: Int, val h: Int, val px: ByteArray)
+    private val pendingSrgb = HashMap<Int, PendingMip>()
+    private const val SRGB8_ALPHA8 = 0x8C43
+
+    private fun buildMips(tex: Int, m: PendingMip) {
+        var w = m.w
+        var h = m.h
+        var src = m.px
+        var level = 0
+        while (w > 1 || h > 1) {
+            val nw = maxOf(1, w / 2)
+            val nh = maxOf(1, h / 2)
+            val dst = ByteArray(nw * nh * 4)
+            for (y in 0 until nh) {
+                val y0 = minOf(h - 1, y * 2)
+                val y1 = minOf(h - 1, y * 2 + 1)
+                for (x in 0 until nw) {
+                    val x0 = minOf(w - 1, x * 2)
+                    val x1 = minOf(w - 1, x * 2 + 1)
+                    val a = (y0 * w + x0) * 4
+                    val bb = (y0 * w + x1) * 4
+                    val c = (y1 * w + x0) * 4
+                    val d = (y1 * w + x1) * 4
+                    val o = (y * nw + x) * 4
+                    for (k in 0 until 4) {
+                        val sum = (src[a + k].toInt() and 0xFF) + (src[bb + k].toInt() and 0xFF) +
+                            (src[c + k].toInt() and 0xFF) + (src[d + k].toInt() and 0xFF)
+                        dst[o + k] = ((sum + 2) / 4).toByte()
+                    }
+                }
+            }
+            level++
+            dst.usePinned {
+                platform.gles3.glTexImage2D(GL_TEXTURE_2D.convert(), level, SRGB8_ALPHA8, nw, nh, 0, GL_RGBA.convert(), GL_UNSIGNED_BYTE.convert(), it.addressOf(0))
+            }
+            src = dst; w = nw; h = nh
+        }
+        platform.gles3.glTexParameteri(GL_TEXTURE_2D.convert(), 0x813D.convert(), level) // GL_TEXTURE_MAX_LEVEL
+    }
+
+    fun glActiveTexture(texture: Int) {
+        activeUnit = (texture - GL_TEXTURE0).coerceIn(0, 31)
+        platform.gles3.glActiveTexture(texture.convert())
+    }
     fun glAttachShader(program: Int, shader: Int) = platform.gles3.glAttachShader(program.convert(), shader.convert())
     fun glBindAttribLocation(program: Int, index: Int, name: String) = platform.gles3.glBindAttribLocation(program.convert(), index.convert(), name)
     fun glBindBuffer(target: Int, buffer: Int) = platform.gles3.glBindBuffer(target.convert(), buffer.convert())
     fun glBindFramebuffer(target: Int, fb: Int) = platform.gles3.glBindFramebuffer(target.convert(), fb.convert())
-    fun glBindTexture(target: Int, texture: Int) = platform.gles3.glBindTexture(target.convert(), texture.convert())
+    fun glBindTexture(target: Int, texture: Int) {
+        if (target == GL_TEXTURE_2D) bound2D[activeUnit] = texture
+        platform.gles3.glBindTexture(target.convert(), texture.convert())
+    }
     fun glBlendFunc(s: Int, d: Int) = platform.gles3.glBlendFunc(s.convert(), d.convert())
     fun glBlendFuncSeparate(a: Int, b: Int, c: Int, d: Int) = platform.gles3.glBlendFuncSeparate(a.convert(), b.convert(), c.convert(), d.convert())
     fun glBlendEquation(mode: Int) = platform.gles3.glBlendEquation(mode.convert())
@@ -191,12 +242,17 @@ object GLES20 {
     fun glFinish() = platform.gles3.glFinish()
     fun glFlush() = platform.gles3.glFlush()
     fun glFrontFace(mode: Int) = platform.gles3.glFrontFace(mode.convert())
-    fun glGenerateMipmap(target: Int) = platform.gles3.glGenerateMipmap(target.convert())
+    fun glGenerateMipmap(target: Int) {
+        val tex = bound2D[activeUnit]
+        val m = if (target == GL_TEXTURE_2D) pendingSrgb.remove(tex) else null
+        if (m != null) buildMips(tex, m) else platform.gles3.glGenerateMipmap(target.convert())
+    }
 
     fun glGenTextures(n: Int, textures: IntArray, offset: Int) {
         textures.usePinned { platform.gles3.glGenTextures(n, it.addressOf(offset).reinterpret<UIntVar>()) }
     }
     fun glDeleteTextures(n: Int, textures: IntArray, offset: Int) {
+        for (i in 0 until n) pendingSrgb.remove(textures[offset + i])
         textures.usePinned { platform.gles3.glDeleteTextures(n, it.addressOf(offset).reinterpret<UIntVar>()) }
     }
     fun glGenBuffers(n: Int, buffers: IntArray, offset: Int) {
@@ -269,6 +325,12 @@ object GLES20 {
         } else {
             pixels.withAddress { p ->
                 platform.gles3.glTexImage2D(target.convert(), level, internalformat, width, height, border, format.convert(), type.convert(), p)
+                if (target == GL_TEXTURE_2D && level == 0 && internalformat == SRGB8_ALPHA8 && format == GL_RGBA && type == GL_UNSIGNED_BYTE) {
+                    val n = width * height * 4
+                    val copy = ByteArray(n)
+                    copy.usePinned { memcpy(it.addressOf(0), p, n.convert()) }
+                    pendingSrgb[bound2D[activeUnit]] = PendingMip(width, height, copy)
+                }
             }
         }
     }

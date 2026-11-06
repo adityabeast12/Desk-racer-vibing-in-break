@@ -107,6 +107,7 @@ object IosGame {
 
         AssetRepository(ctx).manifest
         prefs = Prefs(ctx)
+        if (arg("-dr_skip_intro") == "1") prefs.markHowToPlaySeen()
         val initial = prefs.state.value
         deviceTier = detectTier()
 

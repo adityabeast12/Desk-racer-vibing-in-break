@@ -9,7 +9,7 @@ object Log {
     const val WARN = 5
     const val ERROR = 6
     private fun out(level: String, tag: String?, msg: String?, tr: Throwable? = null): Int {
-        println("$level/$tag: $msg" + (tr?.let { " ($it)" } ?: ""))
+        drshim.nslog("$level/$tag: $msg" + (tr?.let { " ($it)" } ?: ""))
         return 0
     }
     fun v(tag: String?, msg: String): Int = 0

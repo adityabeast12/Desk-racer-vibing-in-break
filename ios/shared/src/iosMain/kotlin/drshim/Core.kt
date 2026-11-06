@@ -156,6 +156,11 @@ fun encodeString(s: String, charset: java.nio.charset.Charset): ByteArray {
     return if (charset.isSingleByte) ByteArray(s.length) { s[it].code.coerceAtMost(255).toByte() } else s.encodeToByteArray()
 }
 
+/** Unified-log line (visible in Console.app / `log show`), unlike stdout. */
+fun nslog(msg: String) {
+    platform.Foundation.NSLog("DR %@", msg)
+}
+
 /** Resources table installed at startup by the generated R.kt. */
 object Res {
     var strings: Map<Int, String> = emptyMap()
