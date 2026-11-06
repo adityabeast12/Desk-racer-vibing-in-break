@@ -1,0 +1,102 @@
+name: Build iOS (IPA)
+on:
+  push:
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  ios:
+    runs-on: macos-15
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v5
+        with:
+          gradle-version: '8.14.3'
+      - name: Cache Kotlin/Native toolchain
+        uses: actions/cache@v4
+        with:
+          path: ~/.konan
+          key: konan-${{ runner.os }}-${{ hashFiles('ios/build.gradle.kts') }}
+          restore-keys: konan-${{ runner.os }}-
+      - name: Compile shared Kotlin for iOS (simulator)
+        run: |
+          set -o pipefail
+          gradle -p ios linkDebugFrameworkIosSimulatorArm64 --stacktrace 2>&1 | tee build-sim.log || {
+            grep -E "^e: " build-sim.log | sed -E 's#file:///Users/runner/work/[^/]+/[^/]+/##' | head -80 | while IFS= read -r l; do echo "::error::$l"; done
+            grep -A6 "What went wrong" build-sim.log | head -20
+            exit 1
+          }
+      - name: Prepare bundle resources
+        run: ios/tools/prepare_resources.sh
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Build simulator app
+        run: |
+          set -o pipefail
+          mkdir -p ios/iosApp/Frameworks && rm -rf ios/iosApp/Frameworks/DeskRacerKit.framework
+          cp -R ios/build/bin/iosSimulatorArm64/debugFramework/DeskRacerKit.framework ios/iosApp/Frameworks/
+          cd ios/iosApp && xcodegen generate
+          xcodebuild -project DeskRacer.xcodeproj -scheme DeskRacer -configuration Debug -sdk iphonesimulator -arch arm64 \
+            -derivedDataPath build/sim CODE_SIGNING_ALLOWED=NO build 2>&1 | tee ../../xcode-sim.log | grep -E "error:|warning: .*DeskRacer|BUILD" | head -60
+          APP=build/sim/Build/Products/Debug-iphonesimulator/DeskRacer.app
+          test -d "$APP"
+          codesign --force --sign - "$APP/Frameworks/DeskRacerKit.framework" && codesign --force --sign - "$APP"
+      - name: Simulator playtest
+        continue-on-error: true
+        run: ios/tools/sim_playtest.sh ios/iosApp/build/sim/Build/Products/Debug-iphonesimulator/DeskRacer.app /tmp/ios-shots 0
+      - name: Publish simulator captures to ios-shots branch
+        if: always()
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          [ -d /tmp/ios-shots ] || exit 0
+          cd /tmp/ios-shots && git init -q -b ios-shots && git add . 
+          git -c user.name=ci -c user.email=ci@users.noreply.github.com commit -q -m "iOS simulator captures from ${GITHUB_SHA::7}"
+          git push -f "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" ios-shots
+      - name: Build device framework (release)
+        run: |
+          set -o pipefail
+          gradle -p ios linkReleaseFrameworkIosArm64 --stacktrace 2>&1 | tee build-dev.log || {
+            grep -E "^e: " build-dev.log | head -60 | while IFS= read -r l; do echo "::error::$l"; done
+            exit 1
+          }
+      - name: Build unsigned IPA
+        run: |
+          set -o pipefail
+          rm -rf ios/iosApp/Frameworks/DeskRacerKit.framework
+          cp -R ios/build/bin/iosArm64/releaseFramework/DeskRacerKit.framework ios/iosApp/Frameworks/
+          cd ios/iosApp && xcodegen generate
+          xcodebuild -project DeskRacer.xcodeproj -scheme DeskRacer -configuration Release -sdk iphoneos \
+            -derivedDataPath build/dev CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build 2>&1 \
+            | tee ../../xcode-dev.log | grep -E "error:|BUILD" | head -40
+          APP=build/dev/Build/Products/Release-iphoneos/DeskRacer.app
+          test -d "$APP"
+          rm -rf /tmp/ipa && mkdir -p /tmp/ipa/Payload && cp -R "$APP" /tmp/ipa/Payload/
+          (cd /tmp/ipa && zip -qry DeskRacer.ipa Payload)
+          ls -la /tmp/ipa/DeskRacer.ipa
+          echo "::notice::IPA $(du -h /tmp/ipa/DeskRacer.ipa | cut -f1)"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DeskRacer-unsigned-ipa
+          path: /tmp/ipa/DeskRacer.ipa
+      - name: Publish IPA to ipa branch and release
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p /tmp/ipaout && cp /tmp/ipa/DeskRacer.ipa /tmp/ipaout/
+          cd /tmp/ipaout && git init -q -b ipa && git add DeskRacer.ipa
+          git -c user.name=ci -c user.email=ci@users.noreply.github.com commit -q -m "IPA from ${GITHUB_SHA::7}"
+          git push -f "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" ipa
+          cd "$GITHUB_WORKSPACE"
+          gh release delete latest-ipa -y --cleanup-tag || true
+          gh release create latest-ipa /tmp/ipa/DeskRacer.ipa --title "Desk Racer (iPhone, unsigned IPA)" --notes "Built from ${GITHUB_SHA::7}. Install with Sideloadly or AltStore (see README)." --target "$GITHUB_SHA"

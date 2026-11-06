@@ -2,6 +2,7 @@ package com.example.game
 
 import com.example.data.Prefs
 import com.example.render.RenderInterp
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -22,9 +23,11 @@ import java.util.concurrent.atomic.AtomicReference
 class GameLoop(
     val inputState: InputState,
     val raceSession: RaceSession,
-    private val prefs: Prefs
+    private val prefs: Prefs,
+    /** iOS runs the sim on the main thread (single-threaded with render + UI); Android keeps Default. */
+    dispatcher: CoroutineDispatcher = Dispatchers.Default
 ) {
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private val scope = CoroutineScope(SupervisorJob() + dispatcher)
     private var loopJob: Job? = null
 
     val latestRenderSnapshot = AtomicReference(raceSession.buildWorldRenderSnapshot())

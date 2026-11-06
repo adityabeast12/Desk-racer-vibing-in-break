@@ -1,0 +1,8 @@
+build/
+.gradle/
+.kotlin/
+iosApp/Frameworks/
+iosApp/Resources/assets/
+iosApp/Resources/fonts/
+iosApp/*.xcodeproj/
+iosApp/build/
