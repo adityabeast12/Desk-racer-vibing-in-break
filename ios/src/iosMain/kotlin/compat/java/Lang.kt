@@ -3,7 +3,7 @@
 package java.lang
 
 /** Only the static helpers the game uses via fully-qualified java.lang.Float. */
-object Float {
+internal object Float {
     fun floatToIntBits(value: kotlin.Float): Int = if (value.isNaN()) 0x7fc00000 else value.toBits()
     fun floatToRawIntBits(value: kotlin.Float): Int = value.toRawBits()
     fun intBitsToFloat(bits: Int): kotlin.Float = kotlin.Float.fromBits(bits)
@@ -11,12 +11,12 @@ object Float {
     fun isNaN(v: kotlin.Float): Boolean = v.isNaN()
 }
 
-object Double {
+internal object Double {
     fun doubleToLongBits(value: kotlin.Double): Long = value.toBits()
     fun longBitsToDouble(bits: Long): kotlin.Double = kotlin.Double.fromBits(bits)
 }
 
-object Integer {
+internal object Integer {
     fun toHexString(i: Int): String = (i.toLong() and 0xFFFFFFFFL).toString(16)
     fun parseInt(s: String): Int = s.toInt()
     const val MAX_VALUE: Int = Int.MAX_VALUE
