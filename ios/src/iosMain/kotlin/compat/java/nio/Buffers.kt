@@ -36,7 +36,7 @@ class ByteOrder private constructor(private val n: String) {
 
 /** Bytes behind a buffer: a Kotlin array (allocate/wrap) or native memory (allocateDirect, visible to GL). */
 class Storage private constructor(val size: Int, val heap: ByteArray?, val ptr: CPointer<ByteVar>?) {
-    private val cleaner: Cleaner? = ptr?.let { p -> createCleaner(p) { nativeHeap.free(it) } }
+    private val cleaner: Cleaner? = ptr?.let { p -> createCleaner(p) { nativeHeap.free(it.rawValue) } }
 
     fun getB(i: Int): Byte = if (heap != null) heap[i] else ptr!![i]
     fun setB(i: Int, b: Byte) {

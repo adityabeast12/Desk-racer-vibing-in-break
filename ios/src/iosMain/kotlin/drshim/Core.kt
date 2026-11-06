@@ -5,6 +5,7 @@ import platform.Foundation.NSDate
 import platform.Foundation.NSRecursiveLock
 import platform.Foundation.NSThread
 import platform.Foundation.timeIntervalSince1970
+import kotlin.math.pow
 import kotlin.time.TimeSource
 
 /** No-op stand-in for kotlin.jvm.Synchronized: on iOS the sim, renderer and UI share the main thread. */
@@ -67,7 +68,7 @@ object JMath {
     fun sin(v: Double): Double = kotlin.math.sin(v)
     fun cos(v: Double): Double = kotlin.math.cos(v)
     fun atan2(y: Double, x: Double): Double = kotlin.math.atan2(y, x)
-    fun pow(a: Double, b: Double): Double = kotlin.math.pow(a, b)
+    fun pow(a: Double, b: Double): Double = a.pow(b)
     fun floor(v: Double): Double = kotlin.math.floor(v)
     fun ceil(v: Double): Double = kotlin.math.ceil(v)
     fun round(v: Float): Int = kotlin.math.floor(v + 0.5f).toInt()

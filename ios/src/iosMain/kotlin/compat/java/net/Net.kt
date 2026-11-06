@@ -119,9 +119,13 @@ open class SocketAddress
 class InetSocketAddress private constructor(val address: InetAddress?, val port: Int, private val hostString: String?) : SocketAddress() {
     constructor(port: Int) : this(null, port, null)
     constructor(addr: InetAddress?, port: Int) : this(addr, port, null)
-    constructor(hostname: String, port: Int) : this(runCatching { InetAddress.getByName(hostname) }.getOrNull(), port, hostname)
+    constructor(hostname: String, port: Int) : this(resolveOrNull(hostname), port, hostname)
 
     val hostName: String? get() = hostString ?: address?.hostAddress
+
+    private companion object {
+        fun resolveOrNull(h: String): InetAddress? = try { InetAddress.getByName(h) } catch (e: Exception) { null }
+    }
     val isUnresolved: Boolean get() = address == null && hostString != null
     override fun toString(): String = "${address?.hostAddress ?: hostString ?: "0.0.0.0"}:$port"
 }

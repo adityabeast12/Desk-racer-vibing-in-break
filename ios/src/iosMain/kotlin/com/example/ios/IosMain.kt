@@ -29,10 +29,10 @@ import com.example.game.InputSource
 import com.example.game.InputState
 import com.example.game.RacePhase
 import com.example.game.RaceSession
-import com.example.game.UdpKartStatePacket
 import com.example.net.LanClient
 import com.example.net.LanDiscovery
 import com.example.net.LanHost
+import com.example.net.UdpKartStatePacket
 import com.example.render.AssetRepository
 import com.example.render.DeviceTier
 import com.example.render.GameRenderer
@@ -56,11 +56,7 @@ import platform.UIKit.UIApplication
 import platform.UIKit.UIApplicationDidBecomeActiveNotification
 import platform.UIKit.UIApplicationWillResignActiveNotification
 import platform.UIKit.UIColor
-import platform.UIKit.UIInterfaceOrientationMask
-import platform.UIKit.UIInterfaceOrientationMaskLandscape
 import platform.UIKit.UIInterfaceOrientationLandscapeRight
-import platform.UIKit.UIRectEdge
-import platform.UIKit.UIRectEdgeAll
 import platform.UIKit.UIScreen
 import platform.UIKit.UIView
 import platform.UIKit.UIViewAutoresizingFlexibleHeight
@@ -380,7 +376,7 @@ class DeskRacerRootController(private val compose: UIViewController) : UIViewCon
     override fun loadView() {
         val v = UIView(frame = UIScreen.mainScreen.bounds)
         v.backgroundColor = UIColor.blackColor
-        view = v
+        setView(v)
     }
 
     override fun viewDidLoad() {
@@ -397,11 +393,6 @@ class DeskRacerRootController(private val compose: UIViewController) : UIViewCon
     }
 
     override fun prefersStatusBarHidden(): Boolean = true
-    override fun prefersHomeIndicatorAutoHidden(): Boolean = true
-    override fun preferredScreenEdgesDeferringSystemGestures(): UIRectEdge = UIRectEdgeAll
-    override fun supportedInterfaceOrientations(): UIInterfaceOrientationMask = UIInterfaceOrientationMaskLandscape
-    override fun childViewControllerForStatusBarHidden(): UIViewController? = null
-    override fun childViewControllerForHomeIndicatorAutoHidden(): UIViewController? = null
 }
 
 /** Entry point used by the Swift app shell. */

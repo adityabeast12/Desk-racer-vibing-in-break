@@ -20,10 +20,6 @@ import kotlinx.cinterop.toCPointer
 import kotlinx.cinterop.toKString
 import kotlinx.cinterop.usePinned
 import kotlinx.cinterop.value
-import platform.gles3.GLcharVar
-import platform.gles3.GLintVar
-import platform.gles3.GLsizeiVar
-import platform.gles3.GLuintVar
 
 /** android.opengl.GLES20 on top of iOS OpenGL ES (EAGL). Same int-based signatures as Android. */
 open class GLES20Base {
@@ -198,16 +194,16 @@ object GLES20 {
     fun glGenerateMipmap(target: Int) = platform.gles3.glGenerateMipmap(target.convert())
 
     fun glGenTextures(n: Int, textures: IntArray, offset: Int) {
-        textures.usePinned { platform.gles3.glGenTextures(n, it.addressOf(offset).reinterpret<GLuintVar>()) }
+        textures.usePinned { platform.gles3.glGenTextures(n, it.addressOf(offset).reinterpret<UIntVar>()) }
     }
     fun glDeleteTextures(n: Int, textures: IntArray, offset: Int) {
-        textures.usePinned { platform.gles3.glDeleteTextures(n, it.addressOf(offset).reinterpret<GLuintVar>()) }
+        textures.usePinned { platform.gles3.glDeleteTextures(n, it.addressOf(offset).reinterpret<UIntVar>()) }
     }
     fun glGenBuffers(n: Int, buffers: IntArray, offset: Int) {
-        buffers.usePinned { platform.gles3.glGenBuffers(n, it.addressOf(offset).reinterpret<GLuintVar>()) }
+        buffers.usePinned { platform.gles3.glGenBuffers(n, it.addressOf(offset).reinterpret<UIntVar>()) }
     }
     fun glDeleteBuffers(n: Int, buffers: IntArray, offset: Int) {
-        buffers.usePinned { platform.gles3.glDeleteBuffers(n, it.addressOf(offset).reinterpret<GLuintVar>()) }
+        buffers.usePinned { platform.gles3.glDeleteBuffers(n, it.addressOf(offset).reinterpret<UIntVar>()) }
     }
     fun glBufferData(target: Int, size: Int, data: Buffer?, usage: Int) {
         if (data == null) platform.gles3.glBufferData(target.convert(), size.convert(), null, usage.convert())
@@ -233,15 +229,15 @@ object GLES20 {
     fun glGetShaderInfoLog(shader: Int): String = memScoped {
         val len = 4096
         val buf = allocArray<ByteVar>(len)
-        val outLen = alloc<GLsizeiVar>()
-        platform.gles3.glGetShaderInfoLog(shader.convert(), len, outLen.ptr, buf.reinterpret<GLcharVar>())
+        val outLen = alloc<IntVar>()
+        platform.gles3.glGetShaderInfoLog(shader.convert(), len, outLen.ptr, buf.reinterpret<ByteVar>())
         buf.toKString()
     }
     fun glGetProgramInfoLog(program: Int): String = memScoped {
         val len = 4096
         val buf = allocArray<ByteVar>(len)
-        val outLen = alloc<GLsizeiVar>()
-        platform.gles3.glGetProgramInfoLog(program.convert(), len, outLen.ptr, buf.reinterpret<GLcharVar>())
+        val outLen = alloc<IntVar>()
+        platform.gles3.glGetProgramInfoLog(program.convert(), len, outLen.ptr, buf.reinterpret<ByteVar>())
         buf.toKString()
     }
     fun glGetString(name: Int): String? = platform.gles3.glGetString(name.convert())?.reinterpret<ByteVar>()?.toKString()
@@ -257,8 +253,8 @@ object GLES20 {
 
     fun glShaderSource(shader: Int, string: String) {
         memScoped {
-            val src = alloc<CPointerVar<GLcharVar>>()
-            src.value = string.cstr.ptr.reinterpret()
+            val src = alloc<CPointerVar<ByteVar>>()
+            src.value = string.cstr.ptr
             platform.gles3.glShaderSource(shader.convert(), 1, src.ptr, null)
         }
     }
@@ -337,4 +333,4 @@ object GLES30 {
 }
 
 @Suppress("unused")
-private val keepTypes: List<Any> = listOf(IntVar::class, FloatVar::class, UIntVar::class, GLintVar::class)
+private val keepTypes: List<Any> = listOf(IntVar::class, FloatVar::class, UIntVar::class, IntVar::class)
