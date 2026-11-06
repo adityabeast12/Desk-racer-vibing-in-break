@@ -219,6 +219,18 @@ open class V6ScreenshotTest {
     }
 
     @Test
+    fun s07b_hudGamepad() = shot("07b_hud_gamepad", "textures/backdrops/room_studio.jpg") {
+        RaceScreen(raceHud.copy(minimapDots = dots(), standings = standings), profile, InputState(), false, true, onPauseChanged = {}, onRestartRace = {}, onOpenSettings = {}, onQuitToMenu = {},
+            inputSource = com.example.game.InputSource.GAMEPAD)
+    }
+
+    @Test
+    fun s07c_hudKeyboard() = shot("07c_hud_keyboard", "textures/backdrops/room_studio.jpg") {
+        RaceScreen(raceHud.copy(minimapDots = dots(), standings = standings), profile, InputState(), false, true, onPauseChanged = {}, onRestartRace = {}, onOpenSettings = {}, onQuitToMenu = {},
+            inputSource = com.example.game.InputSource.KEYBOARD_MOUSE)
+    }
+
+    @Test
     fun s08_hudCountdown() = shot("08_hud_countdown", "textures/backdrops/room_studio.jpg") {
         RaceScreen(raceHud.copy(phase = RacePhase.COUNTDOWN, countdownNumber = 2, showRocketStartTip = true, toastText = null, heldItem = ItemType.NONE, minimapDots = dots()), profile, InputState(), false, true, onPauseChanged = {}, onRestartRace = {}, onOpenSettings = {}, onQuitToMenu = {})
     }
