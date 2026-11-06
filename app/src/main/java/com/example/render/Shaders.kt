@@ -61,7 +61,7 @@ object Shaders {
         uniform vec4 uBaseColorFactor;
         uniform vec4 uTintColor;
         uniform vec4 uMaterialParams; // x=metallic, y=roughness, z=alphaCutoff, w=hueShiftRad
-        uniform vec4 uNormalParams;   // x=normalStrength, y=texIsHardwareSrgb, z=envIsHardwareSrgb, w=unused
+        uniform vec4 uNormalParams;   // x=normalStrength, y=texIsHardwareSrgb, z=envIsHardwareSrgb, w=lite shading (v7.5)
         uniform vec3 uSkyAmbient;
         uniform vec3 uGroundAmbient;
         uniform vec3 uKeyLightDir;
@@ -180,14 +180,16 @@ object Shaders {
             vec3 lit = diffuseColor * (ambientLight * 1.15 + keyLinear * nDotL * 1.25)
                      + specColor * keyLinear * (specTerm + fresnel * 0.25);
 
+            bool lite = uNormalParams.w > 0.5;
             // v7 car paint: clear-coat highlight on glossy painted panels + pearl colour flip
-            float clear = paintSel * (1.0 - smoothstep(0.30, 0.75, roughness));
+            float clear = lite ? 0.0 : paintSel * (1.0 - smoothstep(0.30, 0.75, roughness));
             lit += keyLinear * (pow(nDotH, 240.0) * 1.1 + fresnel * 0.10) * clear;
             if (paintSel > 0.5 && uPaintMat.z > 1.5) {
                 lit *= mix(vec3(1.0), vec3(0.80, 0.95, 1.22), clamp(fresnel * 2.2, 0.0, 1.0));
             }
 
-            // 3. Warm Desk Lamp / Point Light contribution
+            // 3. Warm Desk Lamp / Point Light contribution (skipped on the lite path)
+            if (!lite) {
             vec3 toPoint = uPointLightPos - vWorldPos;
             float distSq = dot(toPoint, toPoint);
             float atten = 1.0 / (1.0 + distSq * 0.00038);
@@ -195,10 +197,11 @@ object Shaders {
             float ptDiff = max(dot(norm, ptDir), 0.0);
             vec3 ptLinear = srgbToLinear(uPointLightColor);
             lit += diffuseColor * ptLinear * (ptDiff * atten * 0.75);
+            }
 
             // 4. Environment reflection from equirectangular room backdrop on shiny surfaces
             float reflectWeight = clamp((1.0 - roughness) * 0.35 + metallic * 0.28, 0.0, 0.52);
-            if (reflectWeight > 0.05) {
+            if (reflectWeight > 0.05 && !lite) {
                 vec3 refl = reflect(-viewDir, norm);
                 float envU = atan(refl.z, refl.x) * 0.1591549 + 0.5;
                 float envV = 0.5 - asin(clamp(refl.y, -1.0, 1.0)) * 0.3183099;

@@ -448,7 +448,9 @@ object KartPhysics {
             val raw = input.steer.coerceIn(-1f, 1f)
             val s = kart.steerSmoothed
             val rising = abs(raw) > abs(s) && (raw * s >= 0f)
-            val rate = if (rising) STEER_RISE_RATE else STEER_RETURN_RATE
+            // keys / d-pad are on-off: ramp them like turning a wheel (~120 ms) instead of snapping
+            val rate = if (input.steerIsDigital) (if (rising) 8.5f else 12f)
+                else if (rising) STEER_RISE_RATE else STEER_RETURN_RATE
             kart.steerSmoothed = s + (raw - s) * (1f - kotlin.math.exp(-rate * dt))
             if (abs(kart.steerSmoothed) < 0.002f && raw == 0f) kart.steerSmoothed = 0f
         }

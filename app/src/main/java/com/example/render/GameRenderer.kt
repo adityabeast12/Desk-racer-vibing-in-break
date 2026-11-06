@@ -53,6 +53,26 @@ class GameRenderer(
     @Volatile
     var qualityLevel: Int = 2
 
+    // ---- v7.5 adaptive graphics ----
+    @Volatile var budget: RenderBudget = RenderBudget.of(RenderBudget.MAX_LEVEL)
+        private set
+    /** Non-null in AUTO mode. Set from the UI thread; read on the GL thread. */
+    @Volatile var governor: PerfGovernor? = null
+    /** What the display + user setting allow (Hz), before any governor cap. */
+    @Volatile var userTargetHz: Float = 60f
+    /** GL-thread callback: budget or governor refresh cap changed (apply resolution / refresh on UI thread). */
+    @Volatile var onBudgetChanged: ((RenderBudget, Float) -> Unit)? = null
+    /** GL-thread callback with the GPU name once the context exists. */
+    @Volatile var onGpuDetected: ((String) -> Unit)? = null
+
+    fun applyFixedBudget(level: Int) {
+        val b = RenderBudget.of(level)
+        budget = b
+        qualityLevel = if (b.normalMaps <= 0f) 0 else if (b.normalMaps < 0.9f) 1 else 2
+        allowHighParticles = b.fullParticles
+        onBudgetChanged?.invoke(b, governor?.capHz ?: 0f)
+    }
+
     /**
      * Part E1-E3: Garage stage mode & interactive turntable state
      */
@@ -194,6 +214,9 @@ class GameRenderer(
             val bits = IntArray(1)
             GLES20.glGetIntegerv(GLES20.GL_STENCIL_BITS, bits, 0)
             hasStencil = bits[0] > 0
+            val gpu = GLES20.glGetString(GLES20.GL_RENDERER) ?: ""
+            android.util.Log.i("DRPERF", "gpu=$gpu stencil=${bits[0]}")
+            onGpuDetected?.invoke(gpu)
         }
         GLES20.glEnable(GLES20.GL_DEPTH_TEST)
         GLES20.glDepthFunc(GLES20.GL_LEQUAL)
@@ -367,7 +390,19 @@ class GameRenderer(
             }
         }
         // v6: measure the real frame time and draw a snapshot interpolated between sim steps
+        val prevRealNs = lastRealFrameNs
         lastRealFrameNs = System.nanoTime() // pacing always uses the real clock (capture uses a virtual one)
+        val gov = governor
+        if (gov != null && captureStepper == null && prevRealNs != 0L && lastDrawnPhase == RacePhase.RACING) {
+            if (gov.onFrame((lastRealFrameNs - prevRealNs) / 1e9f, userTargetHz)) {
+                val b = RenderBudget.of(gov.level)
+                budget = b
+                qualityLevel = if (b.normalMaps <= 0f) 0 else if (b.normalMaps < 0.9f) 1 else 2
+                allowHighParticles = b.fullParticles
+                android.util.Log.i("DRPERF", "governor -> level=${gov.level} cap=${gov.capHz} (window fps=%.1f)".format(gov.lastWindowFps))
+                onBudgetChanged?.invoke(b, gov.capHz)
+            }
+        }
         val stepper = captureStepper
         val frameNowNs = stepper?.invoke() ?: lastRealFrameNs
         val frameDt = if (stepper != null) 1f / 30f
@@ -489,11 +524,7 @@ class GameRenderer(
         }
 
         // Part D2: Normal map strength based on quality setting (0.0 Low, 0.8 Medium, 1.0 High)
-        val normalStrength = when {
-            qualityLevel <= 0 -> 0.0f
-            qualityLevel == 1 -> 0.8f
-            else -> 1.0f
-        }
+        val normalStrength = budget.normalMaps
 
         // 3. Draw Textured Desk Tabletop Slab, Road Ribbon, Kerbs, Finish Banner & Bridge Supports
         val tMeshes = trackMeshes.getOrPut(track.id) {
@@ -664,7 +695,7 @@ class GameRenderer(
                 val dx = placed.x - camera.posX
                 val dz = placed.z - camera.posZ
                 val distSq = dx * dx + dz * dz
-                if (distSq > 380f * 380f) continue
+                if (distSq > budget.propDrawDist * budget.propDrawDist) continue
                 val drm2 = assetRepo.getDrm2Model(placed.model)
                 if (drm2 != null) {
                     val yawDeg = Math.toDegrees(placed.yawRad.toDouble()).toFloat()
@@ -673,7 +704,7 @@ class GameRenderer(
                         x = placed.x, y = placed.y, z = placed.z,
                         yawDeg = yawDeg, pitchDeg = 0f, rollDeg = 0f,
                         scale = placed.scale,
-                        useLod = distSq > 80f * 80f || qualityLevel <= 0
+                        useLod = distSq > budget.lodDist * budget.lodDist || qualityLevel <= 0
                     )
                 }
             }
@@ -683,7 +714,7 @@ class GameRenderer(
                 val dx = pylon.x - camera.posX
                 val dz = pylon.z - camera.posZ
                 val distSq = dx * dx + dz * dz
-                if (distSq > 260f * 260f) continue
+                if (distSq > budget.pylonDrawDist * budget.pylonDrawDist) continue
                 val drm2 = assetRepo.getDrm2Model(pylon.modelPath)
                 if (drm2 != null) {
                     val yawDeg = Math.toDegrees(pylon.yawRad.toDouble()).toFloat()
@@ -694,7 +725,7 @@ class GameRenderer(
                         x = pylon.x, y = pylon.y, z = pylon.z,
                         yawDeg = yawDeg, pitchDeg = pitchDeg, rollDeg = rollDeg,
                         scale = pylon.scale,
-                        useLod = distSq > 80f * 80f || qualityLevel <= 0
+                        useLod = distSq > budget.lodDist * budget.lodDist || qualityLevel <= 0
                     )
                 }
             }
@@ -796,18 +827,20 @@ class GameRenderer(
                 when (proj.kind) {
                     ProjectileKind.MARBLE -> {
                         val m = assetRepo.getDrm2Model("models/items/marble.drm")
+                        // roll angle = distance / radius (0.6 u) so it rolls without sliding
                         val rollDeg = Math.toDegrees((proj.distanceTravelled / 0.6f).toDouble()).toFloat()
                         if (m != null) {
-                            drawDrm2Model(m, proj.x, proj.y - 0.35f, proj.z, yawDeg, rollDeg, 0f, 100f)
+                            drawDrm2Model(m, proj.x, proj.y - 0.5f, proj.z, yawDeg, rollDeg, 0f, 100f, spinAboutCenter = true)
                         } else {
                             drawLitMesh(unitSphere, assetRepo.getWhiteTexture(), proj.x, proj.y, proj.z, 0.7f, 0.7f, 0.7f, 0.13f, 0.85f, 0.42f, 1f, roughness = 0.12f)
                         }
                     }
                     ProjectileKind.MARBLE_HOMING -> {
                         val m = assetRepo.getDrm2Model("models/items/marble_homing.drm")
+                        // roll angle = distance / radius (0.6 u) so it rolls without sliding
                         val rollDeg = Math.toDegrees((proj.distanceTravelled / 0.6f).toDouble()).toFloat()
                         if (m != null) {
-                            drawDrm2Model(m, proj.x, proj.y - 0.35f, proj.z, yawDeg, rollDeg, 0f, 100f)
+                            drawDrm2Model(m, proj.x, proj.y - 0.5f, proj.z, yawDeg, rollDeg, 0f, 100f, spinAboutCenter = true)
                         } else {
                             drawLitMesh(unitSphere, assetRepo.getWhiteTexture(), proj.x, proj.y, proj.z, 0.7f, 0.7f, 0.7f, 0.95f, 0.20f, 0.35f, 1f, roughness = 0.12f)
                         }
@@ -979,7 +1012,7 @@ class GameRenderer(
         // to its current one (fixed-spacing stamps left dashed gaps whenever a frame covered > 1 u)
         for (k in snap.karts) {
             val slot = k.slotIndex.coerceIn(0, GameConstants.MAX_RACERS - 1)
-            val drifting = k.isDrifting && abs(k.speed) > 6f && !k.isOffTrack
+            val drifting = budget.skidMarks && k.isDrifting && abs(k.speed) > 6f && !k.isOffTrack
             val yawRad = k.headingRad + k.visualYawOffsetRad
             val rightX = cos(yawRad); val rightZ = -sin(yawRad)
             val fwdX = sin(yawRad); val fwdZ = cos(yawRad)
@@ -1012,7 +1045,7 @@ class GameRenderer(
 
         // v7: all skid marks in ONE batched draw (was one draw call + uniform upload per quad —
         // up to ~2000 calls per frame with a full field drifting, a real frame-time spike).
-        if (skidTotalCount > 0) {
+        if (skidTotalCount > 0 && budget.skidMarks) {
             val fb = skidBatch
             fb.clear()
             var verts = 0
@@ -1214,6 +1247,7 @@ class GameRenderer(
             lx *= (1f - t * 0.5f); lz *= (1f - t * 0.5f); ly = 0.55f
         }
         for (k in snap.karts) {
+            if (!budget.planarShadows && !garageActive) break
             if (garageActive && k.slotIndex != snap.localSlotIndex) continue
             if (k.bodyType.isDrm2 || k.isInvulnerableFlashing) continue
             val dx = k.x - camera.posX; val dz = k.z - camera.posZ
@@ -1319,7 +1353,8 @@ class GameRenderer(
             DynamicHazardKind.ROLLING_PEA -> {
                 val m = assetRepo.getDrm2Model("models/items/marble.drm")
                 if (m != null) {
-                    drawDrm2Model(m, haz.x, haz.y - 0.4f, haz.z, yawDeg, yawDeg * 2f, 0f, 150f)
+                    val sc = (haz.radius * 2f / m.sizeMetersY).coerceIn(40f, 400f)
+                    drawDrm2Model(m, haz.x, haz.y - haz.radius, haz.z, yawDeg, yawDeg * 2f, 0f, sc, spinAboutCenter = true)
                 } else {
                     drawLitMesh(unitSphere, assetRepo.getWhiteTexture(), haz.x, haz.y, haz.z, haz.radius * 2f, haz.radius * 2f, haz.radius * 2f, c[0], c[1], c[2], 1f)
                 }
@@ -1705,19 +1740,25 @@ class GameRenderer(
         hueShiftRad: Float = 0f,
         forceAlpha: Float = 1f,
         overrideMetallic: Float = -1f,
-        overrideRoughness: Float = -1f
+        overrideRoughness: Float = -1f,
+        spinAboutCenter: Boolean = false
     ) {
+        // v7.5: rolling items rotate about their own centre. Models have their origin at the base, so
+        // the marble used to orbit its contact point — swinging down through the road and back up
+        // every revolution ("marbles keep going in and out").
+        val cy = if (spinAboutCenter) (model.aabbMeters[1] + model.aabbMeters[4]) * 0.5f else 0f
         if (litTangentLoc >= 0) {
             GLES20.glDisableVertexAttribArray(litTangentLoc)
             GLES20.glVertexAttrib3f(litTangentLoc, 1f, 0f, 0f)
         }
         for (part in model.parts) {
             Matrix.setIdentityM(partMatrix, 0)
-            Matrix.translateM(partMatrix, 0, x, y, z)
+            Matrix.translateM(partMatrix, 0, x, y + cy * scale, z)
             if (yawDeg != 0f) Matrix.rotateM(partMatrix, 0, yawDeg, 0f, 1f, 0f)
             if (pitchDeg != 0f) Matrix.rotateM(partMatrix, 0, pitchDeg, 1f, 0f, 0f)
             if (rollDeg != 0f) Matrix.rotateM(partMatrix, 0, rollDeg, 0f, 0f, 1f)
             Matrix.scaleM(partMatrix, 0, scale, scale, scale)
+            if (cy != 0f) Matrix.translateM(partMatrix, 0, 0f, -cy, 0f)
             Matrix.translateM(partMatrix, 0, part.pivotX, part.pivotY, part.pivotZ)
 
             Matrix.multiplyMM(mvpMatrix, 0, vpMatrix, 0, partMatrix, 0)
@@ -1743,7 +1784,7 @@ class GameRenderer(
             GLES20.glUniform4f(litMaterialParamsLoc, m, r, alphaCutoff, hueShiftRad)
             if (litNormalParamsLoc >= 0) {
                 val texSrgb = if (assetRepo.isTextureHardwareSrgb(texId)) 1f else 0f
-                GLES20.glUniform4f(litNormalParamsLoc, 0f, texSrgb, currentEnvIsSrgb, 0f)
+                GLES20.glUniform4f(litNormalParamsLoc, 0f, texSrgb, currentEnvIsSrgb, if (budget.liteShading) 1f else 0f)
             }
 
             val vBuf = part.vertexBuffer
@@ -1836,7 +1877,7 @@ class GameRenderer(
         GLES20.glUniform4f(litMaterialParamsLoc, metallic, roughness, 0f, 0f)
         if (litNormalParamsLoc >= 0) {
             val texSrgb = if (assetRepo.isTextureHardwareSrgb(whiteTex)) 1f else 0f
-            GLES20.glUniform4f(litNormalParamsLoc, 0f, texSrgb, currentEnvIsSrgb, 0f)
+            GLES20.glUniform4f(litNormalParamsLoc, 0f, texSrgb, currentEnvIsSrgb, if (budget.liteShading) 1f else 0f)
         }
 
         val buf = part.buffer
@@ -1987,7 +2028,7 @@ class GameRenderer(
         if (litNormalParamsLoc >= 0) {
             val texSrgb = if (assetRepo.isTextureHardwareSrgb(texId)) 1f else 0f
             val effNormStr = if (normalTexId != 0) normalMapStrength else 0f
-            GLES20.glUniform4f(litNormalParamsLoc, effNormStr, texSrgb, currentEnvIsSrgb, 0f)
+            GLES20.glUniform4f(litNormalParamsLoc, effNormStr, texSrgb, currentEnvIsSrgb, if (budget.liteShading) 1f else 0f)
         }
 
         val buf = mesh.buffer

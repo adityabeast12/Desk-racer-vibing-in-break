@@ -83,7 +83,8 @@ object RenderInterp {
                 x = a.x + dx * t,
                 y = lerp(a.y, c.y, t),
                 z = a.z + dz * t,
-                headingRad = lerpAngle(a.headingRad, c.headingRad, t)
+                headingRad = lerpAngle(a.headingRad, c.headingRad, t),
+                distanceTravelled = lerp(a.distanceTravelled, c.distanceTravelled, t)
             )
         }
 

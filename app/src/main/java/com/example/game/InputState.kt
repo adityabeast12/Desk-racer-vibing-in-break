@@ -10,7 +10,9 @@ data class TouchInputSnapshot(
     val driftJustPressed: Boolean = false,
     val itemJustPressed: Boolean = false,
     val itemFireBackward: Boolean = false,
-    val itemHeldDown: Boolean = false
+    val itemHeldDown: Boolean = false,
+    /** v7.5: steer comes from keys / d-pad (on-off) — the sim ramps it like a wheel being turned. */
+    val steerIsDigital: Boolean = false
 )
 
 /**
@@ -47,8 +49,12 @@ class InputState {
     private val driftEdge = AtomicBoolean(false)
     private val itemEdge = AtomicBoolean(false)
 
-    fun updateSteer(value: Float) {
+    @Volatile
+    var steerIsDigital: Boolean = false
+
+    fun updateSteer(value: Float, digital: Boolean = false) {
         steer = value.coerceIn(-1f, 1f)
+        steerIsDigital = digital
     }
 
     fun updateDrift(pressed: Boolean) {
@@ -85,7 +91,8 @@ class InputState {
             driftJustPressed = bufferedDriftEdge,
             itemJustPressed = iEdge,
             itemFireBackward = itemFireBackward,
-            itemHeldDown = itemHeldDown
+            itemHeldDown = itemHeldDown,
+            steerIsDigital = steerIsDigital
         )
     }
 

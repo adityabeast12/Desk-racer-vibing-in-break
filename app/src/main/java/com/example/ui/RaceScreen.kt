@@ -105,7 +105,9 @@ fun RaceScreen(
     onOpenSettings: () -> Unit,
     onQuitToMenu: () -> Unit,
     onHudCoverageMeasured: (HudCoverageMetrics) -> Unit = {},
-    externalPauseSignal: Int = 0
+    externalPauseSignal: Int = 0,
+    inputSource: com.example.game.InputSource = com.example.game.InputSource.TOUCH,
+    onRaceCaptureChanged: (Boolean) -> Unit = {}
 ) {
     val context = LocalContext.current
     var pauseMenuOpen by remember { mutableStateOf(false) }
@@ -121,6 +123,12 @@ fun RaceScreen(
 
     // v7.3: the app went to the background mid-race (notification shade, call, screen off). The sim
     // was paused by the Activity but no menu opened, so the race just looked frozen. Show the menu.
+    // v7.5: hardware controls drive the kart only while the race runs (menus keep focus navigation)
+    val capture = !pauseMenuOpen && (hudState.phase == com.example.game.RacePhase.RACING || hudState.phase == com.example.game.RacePhase.COUNTDOWN)
+    androidx.compose.runtime.LaunchedEffect(capture) { onRaceCaptureChanged(capture) }
+    androidx.compose.runtime.DisposableEffect(Unit) { onDispose { onRaceCaptureChanged(false) } }
+    val touchControls = inputSource == com.example.game.InputSource.TOUCH
+
     val pauseSignalAtEntry = remember { externalPauseSignal }
     androidx.compose.runtime.LaunchedEffect(externalPauseSignal) {
         if (externalPauseSignal != pauseSignalAtEntry && !isMultiplayer && !pauseMenuOpen) setPaused(true)
@@ -259,7 +267,7 @@ fun RaceScreen(
                     modifier = Modifier.hudZone(HudZone.LEFT_MID)
                 )
 
-                SteerZone(
+                if (touchControls) SteerZone(
                     inputState = inputState,
                     controlScheme = profile.controlScheme,
                     sensitivity = profile.steerSensitivity,
@@ -276,7 +284,13 @@ fun RaceScreen(
                     modifier = Modifier.hudZone(HudZone.BOTTOM_CENTER)
                 )
 
-                ActionButtons(
+                if (!touchControls) com.example.ui.controls.HardwareControlsHud(
+                    source = inputSource,
+                    heldItem = hudState.heldItem,
+                    isRouletteSpinning = hudState.isRouletteSpinning,
+                    rouletteDisplayItem = hudState.rouletteDisplayItem,
+                    modifier = Modifier.hudZone(actionsZoneEnum)
+                ) else ActionButtons(
                     inputState = inputState,
                     autoAccelerate = profile.autoAccelerate,
                     driftChargeRatio = hudState.driftChargeRatio,

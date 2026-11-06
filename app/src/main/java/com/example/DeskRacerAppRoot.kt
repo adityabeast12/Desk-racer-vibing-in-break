@@ -106,7 +106,8 @@ fun DeskRacerAppRoot(
     onCalibrateTiltBaseline: () -> Unit,
     onUnloadRaceAssets: () -> Unit,
     onGlSurfaceViewCreated: (GLSurfaceView, GameRenderer) -> Unit,
-    autoplayTrackId: Int = -1
+    autoplayTrackId: Int = -1,
+    hardwareInput: com.example.game.HardwareInput? = null
 ) {
     val context = LocalContext.current
     val profile by prefs.state.collectAsState()
@@ -318,7 +319,14 @@ fun DeskRacerAppRoot(
                     setEGLConfigChooser(
                         com.example.render.MsaaConfigChooser(
                             es3 = supportsEs3,
-                            allowMsaa = prefs.state.value.graphicsQuality != com.example.game.GraphicsQuality.LOW
+                            allowMsaa = prefs.state.value.let { st ->
+                                when (st.graphicsQuality) {
+                                    com.example.game.GraphicsQuality.LOW -> false
+                                    // AUTO: only once the governor has shown this device holds level 4+ (next launch)
+                                    com.example.game.GraphicsQuality.AUTO -> st.autoGraphicsLevel >= 4
+                                    else -> true
+                                }
+                            }
                         )
                     )
                     val renderer = GameRenderer(gameLoop.latestRenderSnapshot, ctx.applicationContext)
@@ -655,8 +663,12 @@ fun DeskRacerAppRoot(
 
             is Screen.Race -> {
                 val lifecyclePause by gameLoop.lifecyclePauseSignal.collectAsState()
+                val hwPause by (hardwareInput?.pauseRequests ?: remember { kotlinx.coroutines.flow.MutableStateFlow(0) }).collectAsState()
+                val hwSource by (hardwareInput?.source ?: remember { kotlinx.coroutines.flow.MutableStateFlow(com.example.game.InputSource.TOUCH) }).collectAsState()
                 RaceScreen(
-                    externalPauseSignal = lifecyclePause,
+                    externalPauseSignal = lifecyclePause + hwPause,
+                    inputSource = hwSource,
+                    onRaceCaptureChanged = { hardwareInput?.raceCapture = it },
                     hudState = hudState,
                     profile = profile,
                     inputState = inputState,

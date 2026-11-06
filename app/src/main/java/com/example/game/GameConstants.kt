@@ -410,15 +410,16 @@ enum class ControlSchemeType(val id: Int, val title: String, val description: St
     }
 }
 
-enum class GraphicsQuality(val id: Int, val label: String, val renderScale: Float) {
-    LOW(0, "Low (80k tri • Blob Shadows)", 0.75f),
-    MEDIUM(1, "Medium (150k tri • 1024 Shadows)", 1.0f),
-    HIGH(2, "High (250k tri • 2048 PCF + Post FX)", 1.0f);
+enum class GraphicsQuality(val id: Int, val label: String, val fixedLevel: Int) {
+    AUTO(3, "Auto — adapts resolution & effects to keep the frame rate smooth", -1),
+    LOW(0, "Low — reduced resolution, no shadows or reflections", 1),
+    MEDIUM(1, "Medium — near-native resolution, car shadows", 3),
+    HIGH(2, "High — native resolution, all effects, 4x anti-aliasing", 4);
 
     companion object {
         val BATTERY_SAVER = LOW
         val BALANCED = MEDIUM
-        fun fromId(id: Int): GraphicsQuality = entries.firstOrNull { it.id == id } ?: MEDIUM
+        fun fromId(id: Int): GraphicsQuality = entries.firstOrNull { it.id == id } ?: AUTO
     }
 }
 

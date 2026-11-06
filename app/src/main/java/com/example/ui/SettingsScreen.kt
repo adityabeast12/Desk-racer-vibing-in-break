@@ -226,10 +226,12 @@ fun SettingsScreen(
                         }
                         2 -> {
                             SettingRow("Quality") {
-                                val opts = GraphicsQuality.entries
-                                DRSegmented(listOf("Low", "Medium", "High"), opts.indexOf(settings.graphicsQuality), { onGraphicsChanged(opts[it]) }, Modifier.width(240.dp), testTagPrefix = "settings_quality")
+                                val opts = listOf(GraphicsQuality.AUTO, GraphicsQuality.LOW, GraphicsQuality.MEDIUM, GraphicsQuality.HIGH)
+                                DRSegmented(listOf("Auto", "Low", "Med", "High"), opts.indexOf(settings.graphicsQuality).coerceAtLeast(0), { onGraphicsChanged(opts[it]) }, Modifier.width(280.dp), testTagPrefix = "settings_quality")
                             }
-                            Text(settings.graphicsQuality.label, style = DRType.Caption, color = DR.TextLo, modifier = Modifier.padding(bottom = 4.dp))
+                            val autoNote = if (settings.graphicsQuality == GraphicsQuality.AUTO && settings.autoGraphicsLevel >= 0)
+                                " (now: level ${settings.autoGraphicsLevel + 1} of 5)" else ""
+                            Text(settings.graphicsQuality.label + autoNote + ". Anti-aliasing changes apply on next launch.", style = DRType.Caption, color = DR.TextLo, modifier = Modifier.padding(bottom = 4.dp))
                             SettingRow("Frame rate") {
                                 DRSegmented(listOf("Max", "60", "30"), settings.fpsMode.coerceIn(0, 2), { onFpsModeChanged(it) }, Modifier.width(240.dp), testTagPrefix = "settings_fps")
                             }

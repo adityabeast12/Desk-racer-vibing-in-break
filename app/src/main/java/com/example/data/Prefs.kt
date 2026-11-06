@@ -62,7 +62,9 @@ data class UserProfileAndSettings(
     val showHudDebugZones: Boolean = false, // Part E5/F2
     val soundEnabled: Boolean = true,
     val hapticsEnabled: Boolean = true,
-    val graphicsQuality: GraphicsQuality = GraphicsQuality.MEDIUM,
+    val graphicsQuality: GraphicsQuality = GraphicsQuality.AUTO,
+    /** v7.5 AUTO graphics: last budget level the governor settled on (-1 = not measured yet). */
+    val autoGraphicsLevel: Int = -1,
     val fpsMode: Int = 0, // v6.2: 0 = Max (device refresh), 1 = 60 fps, 2 = 30 fps battery saver
     val fxaaEnabled: Boolean = true,
     val bloomEnabled: Boolean = true,
@@ -237,7 +239,8 @@ class Prefs(private val context: Context) {
             showHudDebugZones = prefs.getBoolean("show_hud_debug_zones", false),
             soundEnabled = prefs.getBoolean("sound_enabled", true),
             hapticsEnabled = prefs.getBoolean("haptics_enabled", true),
-            graphicsQuality = GraphicsQuality.fromId(prefs.getInt("graphics_quality", 1)),
+            graphicsQuality = GraphicsQuality.fromId(prefs.getInt("graphics_quality", 3)),
+            autoGraphicsLevel = prefs.getInt("auto_gfx_level", -1),
             fpsMode = prefs.getInt("fps_mode", 0).coerceIn(0, 2),
             fxaaEnabled = prefs.getBoolean("fxaa_enabled", true),
             bloomEnabled = prefs.getBoolean("bloom_enabled", true),
@@ -444,6 +447,12 @@ class Prefs(private val context: Context) {
         val m = mode.coerceIn(0, 2)
         prefs.edit().putInt("fps_mode", m).apply()
         _state.value = _state.value.copy(fpsMode = m)
+    }
+
+    fun updateAutoGraphicsLevel(level: Int) {
+        if (_state.value.autoGraphicsLevel == level) return
+        prefs.edit().putInt("auto_gfx_level", level).apply()
+        _state.value = _state.value.copy(autoGraphicsLevel = level)
     }
 
     fun updateGraphicsQuality(quality: GraphicsQuality) {

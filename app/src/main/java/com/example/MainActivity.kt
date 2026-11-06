@@ -43,7 +43,11 @@ import com.example.net.LanDiscovery
 import com.example.net.LanHost
 import com.example.net.UdpKartStatePacket
 import com.example.render.AssetRepository
+import com.example.render.DeviceProfiler
+import com.example.render.DeviceTier
 import com.example.render.GameRenderer
+import com.example.render.PerfGovernor
+import com.example.render.RenderBudget
 import com.example.ui.theme.MyApplicationTheme
 import java.io.File
 import java.io.PrintWriter
@@ -121,6 +125,37 @@ class MainActivity : ComponentActivity(), SensorEventListener {
         prefs = Prefs(applicationContext)
         val initialProfile = prefs.state.value
         // v6.2: re-apply the display refresh rate whenever the Frame rate setting changes
+        hardwareInput = com.example.game.HardwareInput(inputState).also { hw ->
+            hw.onWantPointerCapture = { on ->
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    runOnUiThread {
+                        runCatching {
+                            val v = window.decorView
+                            if (on) {
+                                v.setOnCapturedPointerListener { _, e -> hw.handleCapturedPointer(e) }
+                                v.requestPointerCapture()
+                            } else {
+                                v.releasePointerCapture()
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        lifecycleScope.launch {
+            var last = System.nanoTime()
+            while (true) {
+                kotlinx.coroutines.delay(16L)
+                val now = System.nanoTime()
+                hardwareInput.tick((now - last) / 1e9f)
+                last = now
+            }
+        }
+                deviceTierNoGpu = detectDeviceTierWithoutGpu()
+        deviceTier = deviceTierNoGpu
+        lifecycleScope.launch {
+            prefs.state.map { it.graphicsQuality }.distinctUntilChanged().collect { configureGraphics() }
+        }
         lifecycleScope.launch {
             prefs.state.map { it.fpsMode }.distinctUntilChanged().collect { applyDisplayRefreshRate() }
         }
@@ -272,6 +307,7 @@ class MainActivity : ComponentActivity(), SensorEventListener {
             MyApplicationTheme {
                 DeskRacerAppRoot(
                     autoplayTrackId = if (autoplay) autoplayTrack else -1,
+                    hardwareInput = hardwareInput,
                     prefs = prefs,
                     synthAudio = synthAudio,
                     inputState = inputState,
@@ -287,6 +323,26 @@ class MainActivity : ComponentActivity(), SensorEventListener {
                     onGlSurfaceViewCreated = { glView, renderer ->
                         glSurfaceViewRef = glView
                         gameRendererRef = renderer
+                        renderer.onBudgetChanged = { b, cap ->
+                            runOnUiThread {
+                                applyRenderBudget(b)
+                                if (governorCapHz != cap) { governorCapHz = cap; applyDisplayRefreshRate() }
+                                if (prefs.state.value.graphicsQuality == GraphicsQuality.AUTO && renderer.governor != null) {
+                                    prefs.updateAutoGraphicsLevel(b.level)
+                                }
+                            }
+                        }
+                        renderer.onGpuDetected = { gpu ->
+                            runOnUiThread {
+                                val t = if (devLowRam) DeviceTier.LOW else DeviceProfiler.classify(devRamGb, devCores, devCpuGhz, gpu, devMpc)
+                                recordDiagnosticLog("GPU '$gpu' -> tier $t")
+                                if (t != deviceTier) {
+                                    deviceTier = t
+                                    if (prefs.state.value.autoGraphicsLevel < 0) configureGraphics()
+                                }
+                            }
+                        }
+                        configureGraphics()
                         if (intent?.getBooleanExtra("dr_capture", false) == true) {
                             gameLoop.captureMode = true
                             renderer.captureStepper = { gameLoop.captureAdvance() }
@@ -388,6 +444,11 @@ class MainActivity : ComponentActivity(), SensorEventListener {
                 GraphicsQuality.HIGH -> GraphicsQuality.MEDIUM
                 GraphicsQuality.MEDIUM -> GraphicsQuality.LOW
                 GraphicsQuality.LOW -> GraphicsQuality.LOW
+                GraphicsQuality.AUTO -> {
+                    // AUTO: drop one budget level and stop the governor climbing back while hot
+                    gameRendererRef?.governor?.let { g -> g.thermalStepDown(); gameRendererRef?.applyFixedBudget(g.level) }
+                    GraphicsQuality.AUTO
+                }
             }
             if (nextQual != cur.graphicsQuality) {
                 prefs.updateGraphicsQuality(nextQual)
@@ -453,14 +514,24 @@ class MainActivity : ComponentActivity(), SensorEventListener {
             2 -> 60f // 30 fps is paced in the renderer on a 60 Hz display mode
             else -> Float.MAX_VALUE
         }
-        val cap = minOf(userCap, thermalCapHz)
-        gameRendererRef?.minFrameIntervalNs = if (mode == 2) 33_333_333L else 0L
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return
+        val baseCap = minOf(userCap, thermalCapHz)
+        // v7.5: the AUTO governor may ask for 60 (or a paced 30) when the GPU can't feed the panel
+        val govCap = governorCapHz
+        val cap = if (govCap > 0f) minOf(baseCap, maxOf(govCap, 60f)) else baseCap
+        gameRendererRef?.minFrameIntervalNs = if (mode == 2 || (govCap in 1f..35f)) 33_333_333L else 0L
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+            gameRendererRef?.userTargetHz = if (mode == 2) 30f else 60f
+            return
+        }
         runCatching {
             @Suppress("DEPRECATION")
             val display = (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) this.display else windowManager.defaultDisplay)
                 ?: return
             val cur = display.mode
+            val panelBest = display.supportedModes
+                .filter { it.physicalWidth == cur.physicalWidth && it.physicalHeight == cur.physicalHeight && it.refreshRate <= baseCap + 0.5f }
+                .maxOfOrNull { it.refreshRate } ?: 60f
+            gameRendererRef?.userTargetHz = if (mode == 2) 30f else panelBest
             val best = display.supportedModes
                 .filter { it.physicalWidth == cur.physicalWidth && it.physicalHeight == cur.physicalHeight && it.refreshRate <= cap + 0.5f }
                 .maxByOrNull { it.refreshRate }
@@ -482,6 +553,71 @@ class MainActivity : ComponentActivity(), SensorEventListener {
 
     @Volatile
     private var thermalCapHz: Float = Float.MAX_VALUE
+
+    @Volatile
+    private var governorCapHz: Float = 0f
+
+    lateinit var hardwareInput: com.example.game.HardwareInput
+
+    private var deviceTierNoGpu: DeviceTier = DeviceTier.MID
+    private var devRamGb = 4f
+    private var devCores = 8
+    private var devCpuGhz = 0f
+    private var devMpc = 0
+    private var devLowRam = false
+    private var deviceTier: DeviceTier = DeviceTier.MID
+
+    /** v7.5: (re)configure graphics from the Quality setting: fixed budget, or AUTO with the governor. */
+    private fun configureGraphics() {
+        val r = gameRendererRef ?: return
+        val q = prefs.state.value.graphicsQuality
+        if (q == GraphicsQuality.AUTO) {
+            val saved = prefs.state.value.autoGraphicsLevel
+            val start = if (saved >= 0) saved else DeviceProfiler.startLevel(deviceTier)
+            r.governor = PerfGovernor(start, DeviceProfiler.ceilingLevel(deviceTier))
+            r.applyFixedBudget(start)
+        } else {
+            r.governor = null
+            governorCapHz = 0f
+            r.applyFixedBudget(q.fixedLevel)
+        }
+        applyDisplayRefreshRate()
+    }
+
+    private fun applyRenderBudget(b: RenderBudget) {
+        val view = glSurfaceViewRef ?: return
+        view.post {
+            val w = view.width; val h = view.height
+            if (w <= 0 || h <= 0) return@post
+            val shortSide = minOf(w, h).toFloat()
+            val scale = minOf(b.renderScale, b.maxShortSidePx / shortSide).coerceIn(0.4f, 1f)
+            if (scale >= 0.99f) {
+                view.holder.setSizeFromLayout()
+            } else {
+                view.holder.setFixedSize((w * scale).toInt().coerceAtLeast(64), (h * scale).toInt().coerceAtLeast(64))
+            }
+            recordDiagnosticLog("Render budget level ${b.level}: ${(w * scale).toInt()}x${(h * scale).toInt()} (scale %.2f)".format(scale))
+        }
+    }
+
+    private fun detectDeviceTierWithoutGpu(): DeviceTier = runCatching {
+        val am = getSystemService(android.app.ActivityManager::class.java)
+        val mi = android.app.ActivityManager.MemoryInfo().also { am.getMemoryInfo(it) }
+        val ramGb = mi.totalMem / (1024f * 1024f * 1024f)
+        val cores = Runtime.getRuntime().availableProcessors()
+        var maxKhz = 0L
+        for (i in 0 until cores) {
+            runCatching {
+                java.io.File("/sys/devices/system/cpu/cpu$i/cpufreq/cpuinfo_max_freq").readText().trim().toLong()
+            }.getOrNull()?.let { if (it > maxKhz) maxKhz = it }
+        }
+        val mpc = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) Build.VERSION.MEDIA_PERFORMANCE_CLASS else 0
+        val lowRam = am.isLowRamDevice
+        devRamGb = ramGb; devCores = cores; devCpuGhz = maxKhz / 1_000_000f; devMpc = mpc; devLowRam = lowRam
+        val t = DeviceProfiler.classify(ramGb, cores, maxKhz / 1_000_000f, "", mpc)
+        recordDiagnosticLog("Device: ram=%.1fGB cores=$cores maxCpu=%.2fGHz mpc=$mpc lowRam=$lowRam -> $t".format(ramGb, maxKhz / 1e6f))
+        if (lowRam) DeviceTier.LOW else t
+    }.getOrDefault(DeviceTier.MID)
 
     @Volatile
     var targetRefreshHz: Float = 60f
@@ -574,65 +710,38 @@ class MainActivity : ComponentActivity(), SensorEventListener {
         }.coerceIn(-1f, 1f)
 
         filteredTiltSteer += (rawTarget - filteredTiltSteer) * 0.55f
+        if (::hardwareInput.isInitialized && hardwareInput.source.value != com.example.game.InputSource.TOUCH) return
         inputState.updateSteer(filteredTiltSteer.coerceIn(-1f, 1f))
     }
 
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) = Unit
 
-    override fun onGenericMotionEvent(event: MotionEvent): Boolean {
-        if ((event.source and InputDevice.SOURCE_JOYSTICK) == InputDevice.SOURCE_JOYSTICK &&
-            event.action == MotionEvent.ACTION_MOVE
-        ) {
-            val steerX = event.getAxisValue(MotionEvent.AXIS_X)
-            val steerVal = if (abs(steerX) > 0.12f) steerX.coerceIn(-1f, 1f) else 0f
-            inputState.updateSteer(steerVal)
-
-            val rt = event.getAxisValue(MotionEvent.AXIS_RTRIGGER)
-                .coerceAtLeast(event.getAxisValue(MotionEvent.AXIS_GAS))
-            val lt = event.getAxisValue(MotionEvent.AXIS_LTRIGGER)
-                .coerceAtLeast(event.getAxisValue(MotionEvent.AXIS_BRAKE))
-            if (rt > 0.2f || lt > 0.2f) {
-                inputState.gasPressed = (rt > 0.25f)
-                inputState.updateDrift(lt > 0.25f)
-            }
-            return true
+    // v7.5: keyboard / mouse / gamepad. Intercept at dispatch so the game sees keys before Compose's
+    // focus system while racing, and translate pad A/B to confirm/back in menus.
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (::hardwareInput.isInitialized) {
+            if (hardwareInput.handleKey(event)) return true
+            hardwareInput.translateForMenus(event)?.let { return super.dispatchKeyEvent(it) }
         }
-        return super.onGenericMotionEvent(event)
+        return super.dispatchKeyEvent(event)
     }
 
-    override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
-        when (keyCode) {
-            KeyEvent.KEYCODE_BUTTON_R1, KeyEvent.KEYCODE_BUTTON_B -> {
-                inputState.updateDrift(true)
-                return true
-            }
-            KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_BUTTON_X, KeyEvent.KEYCODE_BUTTON_L1 -> {
-                inputState.triggerItem(false)
-                return true
-            }
-            KeyEvent.KEYCODE_DPAD_LEFT -> {
-                inputState.updateSteer(-1f)
-                return true
-            }
-            KeyEvent.KEYCODE_DPAD_RIGHT -> {
-                inputState.updateSteer(1f)
-                return true
-            }
-        }
-        return super.onKeyDown(keyCode, event)
+    override fun dispatchGenericMotionEvent(event: MotionEvent): Boolean {
+        if (::hardwareInput.isInitialized && hardwareInput.handleGenericMotion(event)) return true
+        return super.dispatchGenericMotionEvent(event)
     }
 
-    override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean {
-        when (keyCode) {
-            KeyEvent.KEYCODE_BUTTON_R1, KeyEvent.KEYCODE_BUTTON_B -> {
-                inputState.updateDrift(false)
-                return true
-            }
-            KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_RIGHT -> {
-                inputState.updateSteer(0f)
-                return true
+    override fun dispatchTouchEvent(event: MotionEvent): Boolean {
+        if (::hardwareInput.isInitialized && com.example.game.HardwareInput.isMouse(event) && hardwareInput.raceCapture) {
+            if (hardwareInput.handleMouseButtons(event)) return true
+        }
+        if (::hardwareInput.isInitialized && event.actionMasked == MotionEvent.ACTION_DOWN) {
+            if (com.example.game.HardwareInput.isMouse(event)) {
+                if (hardwareInput.handleMouseButtons(event)) return true
+            } else {
+                hardwareInput.onTouchScreen()
             }
         }
-        return super.onKeyUp(keyCode, event)
+        return super.dispatchTouchEvent(event)
     }
 }
