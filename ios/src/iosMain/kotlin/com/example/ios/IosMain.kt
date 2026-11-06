@@ -383,7 +383,7 @@ class DeskRacerRootController(private val compose: UIViewController) : UIViewCon
         super.viewDidLoad()
         addChildViewController(compose)
         val cv = compose.view
-        cv.frame = view.bounds
+        cv.setFrame(view.bounds)
         cv.autoresizingMask = UIViewAutoresizingFlexibleWidth or UIViewAutoresizingFlexibleHeight
         cv.backgroundColor = UIColor.clearColor
         cv.opaque = false
