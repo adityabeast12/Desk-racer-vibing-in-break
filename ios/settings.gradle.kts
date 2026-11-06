@@ -14,3 +14,4 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "DeskRacerIos"
+include(":shared")

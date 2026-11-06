@@ -395,8 +395,8 @@ class DeskRacerRootController(private val compose: UIViewController) : UIViewCon
     override fun prefersStatusBarHidden(): Boolean = true
 }
 
-/** Entry point used by the Swift app shell. */
-fun MainViewController(): UIViewController {
+/** Root view controller for the app shell (exported to Swift by the framework project's Entry.kt). */
+fun mainViewController(): UIViewController {
     IosGame.start()
     val compose = ComposeUIViewController(configure = { opaque = false }) { IosRoot() }
     return DeskRacerRootController(compose)
