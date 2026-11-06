@@ -124,7 +124,7 @@ kotlin {
                 optIn("kotlinx.coroutines.ExperimentalCoroutinesApi")
             }
         }
-        val iosMain by getting {
+        iosMain {
             kotlin.srcDir(appSrc)
             kotlin.srcDir(genDir)
             kotlin.exclude(androidOnly)
