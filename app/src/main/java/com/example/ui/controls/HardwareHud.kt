@@ -105,7 +105,7 @@ fun HardwareControlsHud(
                 }
             }
             Text(
-                if (hasItem) "$itemKey use · $backKey back" else itemKey,
+                if (hasItem) "$itemKey · $backKey" else itemKey,
                 style = DRType.LabelS.copy(fontSize = 9.sp, shadow = HudTextShadow),
                 color = if (hasItem) DR.TextHi else DR.TextLo,
                 maxLines = 1
