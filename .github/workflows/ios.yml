@@ -34,6 +34,12 @@ jobs:
             grep -A6 "What went wrong" build-sim.log | head -20
             exit 1
           }
+      - name: Compat + LAN loopback tests (iOS simulator)
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          gradle -p ios :shared:iosSimulatorArm64Test --continue 2>&1 | tee test-ios.log | grep -E "PASSED|FAILED|Test.*>|e: |tests completed" | head -60 || true
+          grep -q "BUILD SUCCESSFUL" test-ios.log && echo "::notice::iOS compat tests passed" || { grep -E "FAILED|AssertionError|expected" test-ios.log | head -20 | sed 's/^/::error::/'; exit 1; }
       - name: Prepare bundle resources
         run: ios/tools/prepare_resources.sh
       - name: Install XcodeGen
