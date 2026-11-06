@@ -108,6 +108,7 @@ object IosGame {
         AssetRepository(ctx).manifest
         prefs = Prefs(ctx)
         if (arg("-dr_skip_intro") == "1") prefs.markHowToPlaySeen()
+        arg("-dr_gfx")?.toIntOrNull()?.let { prefs.updateGraphicsQuality(GraphicsQuality.fromId(it)) }
         val initial = prefs.state.value
         deviceTier = detectTier()
 

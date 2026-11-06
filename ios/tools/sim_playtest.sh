@@ -34,7 +34,7 @@ xcrun simctl terminate "$DEV" "$BUNDLE" || true
 sleep 1
 
 # 2) autoplay race (CPU drives the local kart) + short video
-xcrun simctl launch "$DEV" "$BUNDLE" -dr_autoplay 1 -dr_track "$TRACK"
+xcrun simctl launch "$DEV" "$BUNDLE" -dr_autoplay 1 -dr_track "$TRACK" -dr_gfx 2
 sleep 5; shot 03_grid
 xcrun simctl io "$DEV" recordVideo --codec=h264 --force "$OUT/race.mp4" > /dev/null 2>&1 &
 VPID=$!
@@ -42,6 +42,12 @@ for i in 1 2 3 4 5 6 7 8; do sleep 3; shot "$(printf '1%d_race' "$i")"; done
 kill -INT $VPID 2>/dev/null || true
 sleep 2
 if xcrun simctl spawn "$DEV" launchctl list 2>/dev/null | grep -q "$BUNDLE"; then echo "app still running: OK"; else echo "::warning::app is not running at the end (crash?)"; fi
+# same grid with the LOW preset (no planar shadows / lite shading) for comparison
+xcrun simctl terminate "$DEV" "$BUNDLE" || true
+sleep 1
+xcrun simctl launch "$DEV" "$BUNDLE" -dr_autoplay 1 -dr_track "$TRACK" -dr_gfx 0
+sleep 14; shot 31_low_grid
+sleep 6; shot 32_low_grid
 xcrun simctl spawn "$DEV" log show --style compact --last 4m --predicate 'eventMessage CONTAINS "DR "' > "$OUT/log.txt" 2>&1 || true
 echo "--- app log (DR lines)"; grep -E "DR " "$OUT/log.txt" | tail -40
 xcrun simctl terminate "$DEV" "$BUNDLE" || true
