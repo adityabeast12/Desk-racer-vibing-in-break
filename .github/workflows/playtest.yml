@@ -61,7 +61,7 @@ jobs:
           for d in cap_t*; do
             [ -d "$d" ] || continue
             n=$(ls $d/*.jpg 2>/dev/null | wc -l); echo "::notice::$d frames=$n"
-            ffmpeg -loglevel error -framerate 30 -i "$d/f%04d.jpg" -c:v libx264 -pix_fmt yuv420p -crf 23 "${d}.mp4" || true
+            ffmpeg -loglevel error -framerate 30 -i "$d/f%04d.jpg" -vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" -c:v libx264 -pix_fmt yuv420p -crf 23 "${d}.mp4" || true
             # contact sheets: every 6th frame (0.2 s) overview + consecutive-frame strips for jitter
             ffmpeg -loglevel error -i "${d}.mp4" -vf "select='not(mod(n\,6))',scale=480:-1,tile=4x4" -vsync vfr "${d}_overview_%d.png" || true
             ffmpeg -loglevel error -ss 3 -i "${d}.mp4" -vf "scale=400:-1,tile=5x4" -frames:v 1 "${d}_consec_a.png" || true
