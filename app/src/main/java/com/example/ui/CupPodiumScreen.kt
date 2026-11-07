@@ -174,7 +174,12 @@ fun CupPodiumScreen(
                             if (entry != null) {
                                 PodiumColumn(
                                     entry = entry,
-                                    stepHeight = h * when (rank) { 1 -> 0.38f; 2 -> 0.27f; else -> 0.19f },
+                                    // Minimums keep rank + points legible on short / large-font screens.
+                                    stepHeight = when (rank) {
+                                        1 -> maxOf(h * 0.38f, 92.dp)
+                                        2 -> maxOf(h * 0.27f, 76.dp)
+                                        else -> maxOf(h * 0.19f, 64.dp)
+                                    },
                                     thumbHeight = (h * 0.2f).coerceIn(28.dp, 52.dp),
                                     rise = rise.value,
                                     trophyScale = if (entry.standing.isLocal) trophyPop.value else trophyPop.value * 0.7f,
