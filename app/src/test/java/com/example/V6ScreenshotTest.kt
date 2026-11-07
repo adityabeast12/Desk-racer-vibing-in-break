@@ -286,6 +286,22 @@ open class V6ScreenshotTest {
         GarageScreen(profile = profile.copy(kartBody = KartBodyType.FORMULA_RACER), onNameChanged = {}, onColorSelected = {}, onBodySelected = {}, onBack = {})
     }
 
+    private val cupStandings = standings.mapIndexed { i, r -> r.copy(cupPointsEarned = 15 - i * 3, cupTotalPoints = listOf(51, 49, 54, 30, 28, 9)[i]) }
+
+    @Test
+    fun s18_cupFinaleResults() = shot("18_cup_finale_results", "textures/backdrops/room_studio.jpg") {
+        ResultsScreen(trackName = "Art Desk", standings = cupStandings, isMultiplayer = false, isHost = true,
+            gameMode = com.example.game.GameMode.GRAND_PRIX, cupRaceIndex = 3, onRematch = {}, onBackToLobby = {}, onMainMenu = {})
+    }
+
+    @Test
+    fun s19_cupPodium() = shot("19_cup_podium", "textures/backdrops/room_studio.jpg") {
+        com.example.ui.CupPodiumScreen(
+            cup = com.example.game.CupType.DESK_CUP, lastRaceStandings = cupStandings, bonusCoins = 300,
+            nextCup = com.example.game.CupType.ROOM_CUP, onMainMenu = {}, onRaceCupAgain = {}, onNextCup = {}
+        )
+    }
+
     @Suppress("unused")
     private val keep = listOf(CcClass.CC_150, CpuDifficulty.PRO)
 }

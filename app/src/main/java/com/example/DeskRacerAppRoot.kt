@@ -3,6 +3,7 @@ package com.example
 import android.app.ActivityManager
 import android.content.Context
 import android.opengl.GLSurfaceView
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -43,7 +44,9 @@ import com.example.data.FakeBillingGateway
 import com.example.data.Prefs
 import com.example.game.CcClass
 import com.example.game.CpuDifficulty
+import com.example.game.CupRanking
 import com.example.game.CupType
+import com.example.game.RacerStanding
 import com.example.game.GameConstants
 import com.example.game.GameLoop
 import com.example.game.GameMode
@@ -67,6 +70,7 @@ import com.example.ui.HowToPlayOverlay
 import com.example.ui.JoinScreen
 import com.example.ui.MainMenuScreen
 import com.example.ui.RaceScreen
+import com.example.ui.CupPodiumScreen
 import com.example.ui.ResultsScreen
 import com.example.ui.SettingsScreen
 import com.example.ui.ShopScreen
@@ -88,6 +92,8 @@ sealed interface Screen {
     data object Join : Screen
     data object Race : Screen
     data object Results : Screen
+    /** Grand Prix finale: final cup table, podium and trophy. */
+    data object CupPodium : Screen
     data class Settings(val returnToRace: Boolean = false) : Screen
 }
 
@@ -120,6 +126,8 @@ fun DeskRacerAppRoot(
     var canForceStartHost by remember { mutableStateOf(false) }
     var lastEarnedRaceCoins by remember { mutableIntStateOf(60) }
     var lastEarnedRaceXp by remember { mutableIntStateOf(100) }
+    var cupFinalStandings by remember { mutableStateOf<List<RacerStanding>>(emptyList()) }
+    var cupBonusCoins by remember { mutableIntStateOf(0) }
     var latestHudCoverage by remember { mutableStateOf<HudCoverageMetrics?>(null) }
 
     LaunchedEffect(currentScreen) {
@@ -167,10 +175,13 @@ fun DeskRacerAppRoot(
             prefs.addDeskPassXp(xpWon)
             prefs.incrementCompletedRaces()
 
-            if (raceSession.gameMode == GameMode.GRAND_PRIX && raceSession.grandPrixRaceIndex >= 3) {
-                if (localRank in 1..3) {
-                    prefs.recordCupTrophy(raceSession.activeCup.id, localRank)
-                }
+            if (raceSession.gameMode == GameMode.GRAND_PRIX && raceSession.isCupFinale) {
+                // the trophy goes by the cup table (total points), not by the last race alone
+                cupFinalStandings = hudState.standings
+                val cupRank = CupRanking.localRank(hudState.standings)
+                cupBonusCoins = CupRanking.podiumBonusCoins(cupRank)
+                if (cupBonusCoins > 0) prefs.addCoins(cupBonusCoins)
+                if (cupRank in 1..3) prefs.recordCupTrophy(raceSession.activeCup.id, cupRank)
             }
             currentScreen = Screen.Results
         }
@@ -247,6 +258,24 @@ fun DeskRacerAppRoot(
             }
         }
         onDispose { }
+    }
+
+    fun goToMainMenuFromRace() {
+        prefs.markRocketStartTipSeen()
+        lanHost.stopHosting()
+        lanClient.disconnect()
+        onUnloadRaceAssets()
+        val p = prefs.state.value
+        raceSession.setupShowroom(
+            playerName = p.playerName,
+            colorHex = GameConstants.KART_COLORS[p.kartColorIndex],
+            bodyType = p.kartBody,
+            trackId = selectedSoloTrackId,
+            liveryIndex = p.kartLiveryIndex,
+            paintFinishIndex = p.paintFinishIndex
+        )
+        gameLoop.forceHudRefresh()
+        currentScreen = Screen.MainMenu
     }
 
     fun launchSoloRace(
@@ -766,6 +795,14 @@ fun DeskRacerAppRoot(
                                 lobbySlots = lanHost.slots.value
                             )
                             currentScreen = Screen.Race
+                        } else if (raceSession.gameMode == GameMode.GRAND_PRIX) {
+                            // replaying one cup race would count its points twice: restart the cup
+                            launchSoloRace(
+                                mode = GameMode.GRAND_PRIX,
+                                cup = raceSession.activeCup,
+                                trackId = raceSession.activeCup.trackIds.first(),
+                                startNewCup = true
+                            )
                         } else {
                             launchSoloRace(
                                 mode = raceSession.gameMode,
@@ -787,19 +824,10 @@ fun DeskRacerAppRoot(
                             liveryIndex = currentProfile.kartLiveryIndex,
                             botCount = if (currentProfile.raceWithBots) currentProfile.botCount else 0
                         )
-                        if (raceSession.gameMode == GameMode.GRAND_PRIX) {
-                            val advanced = raceSession.advanceGrandPrixNextRace(racers, localSlot = 0)
-                            if (!advanced) {
-                                raceSession.startGrandPrixCup(
-                                    cup = raceSession.activeCup,
-                                    laps = currentProfile.selectedLaps,
-                                    mode = currentProfile.selectedItemMode,
-                                    difficulty = currentProfile.cpuDifficulty,
-                                    cc = currentProfile.selectedCcClass,
-                                    localSlot = 0,
-                                    racerConfigs = racers
-                                )
-                            }
+                        if (raceSession.gameMode == GameMode.GRAND_PRIX && raceSession.isCupFinale) {
+                            currentScreen = Screen.CupPodium
+                        } else if (raceSession.gameMode == GameMode.GRAND_PRIX) {
+                            raceSession.advanceGrandPrixNextRace(racers, localSlot = 0)
                             gameLoop.forceHudRefresh()
                             currentScreen = Screen.Race
                         } else {
@@ -833,21 +861,30 @@ fun DeskRacerAppRoot(
                             Screen.Join
                         }
                     },
-                    onMainMenu = {
-                        prefs.markRocketStartTipSeen()
-                        lanHost.stopHosting()
-                        lanClient.disconnect()
-                        onUnloadRaceAssets()
-                        raceSession.setupShowroom(
-                            playerName = profile.playerName,
-                            colorHex = GameConstants.KART_COLORS[profile.kartColorIndex],
-                            bodyType = profile.kartBody,
-                            trackId = selectedSoloTrackId,
-                            liveryIndex = profile.kartLiveryIndex,
-                            paintFinishIndex = profile.paintFinishIndex
-                        )
-                        gameLoop.forceHudRefresh()
-                        currentScreen = Screen.MainMenu
+                    onMainMenu = { goToMainMenuFromRace() }
+                )
+            }
+
+            is Screen.CupPodium -> {
+                val cup = raceSession.activeCup
+                val nextCup = CupType.entries.firstOrNull { it.id == cup.id + 1 }
+                LaunchedEffect(Unit) {
+                    synthAudio.playFinishFanfare(CupRanking.localRank(cupFinalStandings).let { if (it == 0) 8 else it })
+                }
+                BackHandler { goToMainMenuFromRace() }
+                CupPodiumScreen(
+                    cup = cup,
+                    lastRaceStandings = cupFinalStandings,
+                    bonusCoins = cupBonusCoins,
+                    nextCup = nextCup,
+                    onMainMenu = { goToMainMenuFromRace() },
+                    onRaceCupAgain = {
+                        launchSoloRace(mode = GameMode.GRAND_PRIX, cup = cup, trackId = cup.trackIds.first(), startNewCup = true)
+                    },
+                    onNextCup = {
+                        val next = nextCup ?: cup
+                        prefs.updateSelectedCup(next)
+                        launchSoloRace(mode = GameMode.GRAND_PRIX, cup = next, trackId = next.trackIds.first(), startNewCup = true)
                     }
                 )
             }

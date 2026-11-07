@@ -27,6 +27,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowForward
+import androidx.compose.material.icons.rounded.EmojiEvents
 import androidx.compose.material.icons.rounded.Groups
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.OndemandVideo
@@ -152,7 +153,6 @@ fun ResultsScreen(
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         Text(
                             text = when {
-                                isCupFinale -> "CUP COMPLETE"
                                 myPos == 1 -> "WINNER!"
                                 myPos > 0 -> "${ordinal(myPos)} PLACE"
                                 else -> "RESULTS"
@@ -163,6 +163,8 @@ fun ResultsScreen(
                         )
                         if (me != null && me.isNewRecord && me.bestLapMs > 0L) {
                             DRMarkerTag("New best ${formatRaceTime(me.bestLapMs)}")
+                        } else if (isCupFinale) {
+                            DRMarkerTag("Final race · podium next")
                         }
                     }
                     Spacer(Modifier.height(8.dp))
@@ -224,7 +226,11 @@ fun ResultsScreen(
                             DRButton("Menu", onClick = onMainMenu, variant = DRButtonVariant.GHOST, icon = Icons.Rounded.Home, testTag = "btn_results_menu")
                         }
                         DRButton(
-                            text = if (!isMultiplayer || isHost) "Rematch" else "Ready",
+                            text = when {
+                                isMultiplayer && !isHost -> "Ready"
+                                isGrandPrix -> "Restart cup"
+                                else -> "Rematch"
+                            },
                             onClick = onRematch,
                             variant = DRButtonVariant.SECONDARY,
                             icon = Icons.Rounded.Replay,
@@ -234,8 +240,12 @@ fun ResultsScreen(
                     if (!isMultiplayer || isHost) {
                         Spacer(Modifier.height(8.dp))
                         DRButton(
-                            text = if (isGrandPrix && !isCupFinale) "Next cup race" else "Next track",
-                            icon = Icons.AutoMirrored.Rounded.ArrowForward,
+                            text = when {
+                                isCupFinale -> "See the podium"
+                                isGrandPrix -> "Next cup race"
+                                else -> "Next track"
+                            },
+                            icon = if (isCupFinale) Icons.Rounded.EmojiEvents else Icons.AutoMirrored.Rounded.ArrowForward,
                             onClick = onNextRace,
                             size = DRButtonSize.L,
                             modifier = Modifier.fillMaxWidth(),

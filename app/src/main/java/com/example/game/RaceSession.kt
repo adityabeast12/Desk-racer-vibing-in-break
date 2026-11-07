@@ -272,6 +272,10 @@ class RaceSession(
     var activeCup: CupType = CupType.DESK_CUP
         private set
     var grandPrixRaceIndex: Int = 0
+
+    /** True on the last race of the active cup (the one whose results end the cup). */
+    val isCupFinale: Boolean
+        get() = gameMode == GameMode.GRAND_PRIX && grandPrixRaceIndex >= activeCup.trackIds.size - 1
         private set
     val cupPointsBySlot = IntArray(GameConstants.MAX_RACERS)
 

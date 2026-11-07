@@ -800,16 +800,8 @@ class GameRenderer(
             if (garageActive && localKart != null && kart.slotIndex != localKart.slotIndex) continue
             if (!kart.isInvulnerableFlashing) {
                 var alpha = if (kart.isGhostMode) 0.50f else 1.0f
-                // v7.3: rivals tucked in between the camera and your kart fade out instead of
-                // blocking the view (emulator captures showed slipstreaming bots filling the screen)
                 if (localKart != null && kart.slotIndex != localKart.slotIndex && !garageActive) {
-                    val cdx = kart.x - camera.posX; val cdz = kart.z - camera.posZ
-                    val dCam = kotlin.math.sqrt(cdx * cdx + cdz * cdz)
-                    val pdx = localKart.x - camera.posX; val pdz = localKart.z - camera.posZ
-                    val dPlayer = kotlin.math.sqrt(pdx * pdx + pdz * pdz)
-                    if (dCam < dPlayer + 0.5f && dCam < 6.0f) {
-                        alpha = minOf(alpha, ((dCam - 1.8f) / 4.2f).coerceIn(0.22f, 1f))
-                    }
+                    alpha = minOf(alpha, occluderFade(kart, localKart))
                 }
                 drawKart3D(
                     kart = kart,
@@ -1547,6 +1539,32 @@ class GameRenderer(
                 r = bodyRgb[0], g = bodyRgb[1], b = bodyRgb[2], a = 0.42f
             )
         }
+    }
+
+    /**
+     * Rivals that sit *on the line* between the camera and your kart fade so they never hide you.
+     * v7.3 faded anything closer to the camera than you — a car running alongside or just behind
+     * you (small ones especially) dropped to ~25% opacity and looked like it vanished. Now the fade
+     * needs real overlap: inside the camera→you corridor (about a kart wide), and it never goes
+     * below 45%.
+     */
+    private fun occluderFade(kart: RenderKartSnapshot, me: RenderKartSnapshot): Float {
+        val px = me.x - camera.posX
+        val pz = me.z - camera.posZ
+        val dPlayer = kotlin.math.sqrt(px * px + pz * pz)
+        if (dPlayer < 0.5f) return 1f
+        val dirX = px / dPlayer
+        val dirZ = pz / dPlayer
+        val kx = kart.x - camera.posX
+        val kz = kart.z - camera.posZ
+        val along = kx * dirX + kz * dirZ
+        if (along <= 0.3f || along >= dPlayer - 0.6f) return 1f
+        val lateral = kotlin.math.abs(kx * dirZ - kz * dirX)
+        val corridor = 1.35f
+        if (lateral >= corridor) return 1f
+        val overlap = 1f - lateral / corridor          // 1 = dead centre of your view line
+        val nearness = (1f - (along - 0.3f) / 4.5f).coerceIn(0f, 1f)
+        return (1f - 0.55f * overlap * (0.4f + 0.6f * nearness)).coerceIn(0.45f, 1f)
     }
 
     private fun drawKart3D(
