@@ -302,6 +302,11 @@ fun RaceScreen(
                     isWrongWay = hudState.isWrongWay,
                     bannerText = hudState.bannerText,
                     dnfCountdownSec = hudState.dnfCountdownSec,
+                    cupCaption = if (hudState.gameMode == com.example.game.GameMode.GRAND_PRIX) {
+                        val n = hudState.cupType.trackIds.size
+                        val i = hudState.grandPrixRaceIndex + 1
+                        if (i >= n) "${hudState.cupType.title} · FINAL RACE $i/$n" else "${hudState.cupType.title} · RACE $i/$n"
+                    } else null,
                     modifier = Modifier.hudZone(HudZone.CENTER)
                 )
             }

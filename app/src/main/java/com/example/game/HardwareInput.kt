@@ -1,6 +1,7 @@
 package com.example.game
 
 import android.view.InputDevice
+import android.view.KeyCharacterMap
 import android.view.KeyEvent
 import android.view.MotionEvent
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -91,6 +92,10 @@ class HardwareInput(private val input: InputState) {
         val down = event.action == KeyEvent.ACTION_DOWN
         val up = event.action == KeyEvent.ACTION_UP
         if (!down && !up) return false
+        // Only real driving keys switch the HUD. Volume / Back / media keys (and the on-screen
+        // keyboard) used to flip a phone into "keyboard mode": touch HUD hidden, tilt steering
+        // ignored, until the screen was touched again.
+        if (!isDrivingKey(event.keyCode, isPad) || event.deviceId == KeyCharacterMap.VIRTUAL_KEYBOARD) return false
         if (down) use(if (isPad) InputSource.GAMEPAD else InputSource.KEYBOARD_MOUSE)
 
         if (!raceCapture) return false
@@ -240,6 +245,24 @@ class HardwareInput(private val input: InputState) {
     companion object {
         const val MOUSE_STEER_PER_PX = 0.0045f
         const val MOUSE_RECENTRE_PER_SEC = 0.9f
+
+        private val PAD_KEYS = setOf(
+            KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_BUTTON_B, KeyEvent.KEYCODE_BUTTON_X, KeyEvent.KEYCODE_BUTTON_Y,
+            KeyEvent.KEYCODE_BUTTON_L1, KeyEvent.KEYCODE_BUTTON_L2, KeyEvent.KEYCODE_BUTTON_R1, KeyEvent.KEYCODE_BUTTON_R2,
+            KeyEvent.KEYCODE_BUTTON_START, KeyEvent.KEYCODE_BUTTON_SELECT, KeyEvent.KEYCODE_MENU,
+            KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_RIGHT, KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_DOWN,
+            KeyEvent.KEYCODE_DPAD_CENTER
+        )
+        private val KEYBOARD_KEYS = setOf(
+            KeyEvent.KEYCODE_A, KeyEvent.KEYCODE_D, KeyEvent.KEYCODE_W, KeyEvent.KEYCODE_S,
+            KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_RIGHT, KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_DOWN,
+            KeyEvent.KEYCODE_SPACE, KeyEvent.KEYCODE_SHIFT_LEFT, KeyEvent.KEYCODE_SHIFT_RIGHT,
+            KeyEvent.KEYCODE_E, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_NUMPAD_ENTER, KeyEvent.KEYCODE_J,
+            KeyEvent.KEYCODE_Q, KeyEvent.KEYCODE_K, KeyEvent.KEYCODE_ESCAPE, KeyEvent.KEYCODE_P
+        )
+
+        /** Keys the game maps. Everything else (volume, back, media, letters while typing) is ignored. */
+        fun isDrivingKey(code: Int, isPad: Boolean): Boolean = if (isPad) code in PAD_KEYS else code in KEYBOARD_KEYS
 
         fun isGamepad(source: Int): Boolean =
             (source and InputDevice.SOURCE_GAMEPAD) == InputDevice.SOURCE_GAMEPAD ||

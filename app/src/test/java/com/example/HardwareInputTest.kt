@@ -56,6 +56,22 @@ class HardwareInputTest {
     }
 
     @Test
+    fun `volume back and soft keyboard keys never hide the touch HUD`() {
+        val input = InputState()
+        val hw = HardwareInput(input)
+        hw.raceCapture = true
+        for (code in listOf(KeyEvent.KEYCODE_VOLUME_UP, KeyEvent.KEYCODE_VOLUME_DOWN, KeyEvent.KEYCODE_BACK,
+            KeyEvent.KEYCODE_HEADSETHOOK, KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE, KeyEvent.KEYCODE_CAMERA)) {
+            assertFalse(hw.handleKey(key(KeyEvent.ACTION_DOWN, code)))
+            assertEquals(InputSource.TOUCH, hw.source.value)
+        }
+        val soft = KeyEvent(0L, 0L, KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_W, 0, 0,
+            android.view.KeyCharacterMap.VIRTUAL_KEYBOARD, 0, 0, InputDevice.SOURCE_KEYBOARD)
+        assertFalse(hw.handleKey(soft))
+        assertEquals(InputSource.TOUCH, hw.source.value)
+    }
+
+    @Test
     fun `stick deadzone and curve`() {
         assertEquals(0f, HardwareInput.shapeStick(0.1f))
         assertEquals(1f, HardwareInput.shapeStick(1f), 1e-4f)

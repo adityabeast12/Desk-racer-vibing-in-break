@@ -52,6 +52,8 @@ fun CountdownOverlay(
     bannerText: String?,
     toastText: String? = null,
     dnfCountdownSec: Int = -1,
+    /** Grand Prix: "DESK CUP · RACE 2/4" above the numbers so the player knows where they are. */
+    cupCaption: String? = null,
     modifier: Modifier = Modifier
 ) {
     val band = Brush.horizontalGradient(
@@ -83,6 +85,15 @@ fun CountdownOverlay(
 
         AnimatedVisibility(visible = countdownNumber in 0..3, enter = fadeIn(tween(120)), exit = fadeOut(tween(200))) {
             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.testTag("hud_countdown")) {
+                if (!cupCaption.isNullOrBlank()) {
+                    Text(
+                        text = cupCaption,
+                        style = DRType.Label.copy(fontSize = 14.sp, shadow = HudTextShadow),
+                        color = DR.TextHi,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(bottom = 2.dp).testTag("hud_cup_caption")
+                    )
+                }
                 Box(Modifier.fillMaxWidth().background(band), contentAlignment = Alignment.Center) {
                     AnimatedContent(
                         targetState = countdownNumber,
