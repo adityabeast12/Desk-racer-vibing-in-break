@@ -1,0 +1,55 @@
+11-07 11:18:35.195  2508  2735 I DRPERF  : gpu=Android Emulator OpenGL ES Translator (Google SwiftShader) stencil=8
+11-07 11:18:42.647  2508  2735 I DRPERF  : gpu=Android Emulator OpenGL ES Translator (Google SwiftShader) stencil=8
+11-07 11:18:48.231  1205  2548 I NnApiDriverManager: Registering application with GPU 'Android Emulator OpenGL ES Translator (Google SwiftShader)' by 'Google (Google Inc.)' [CONTEXT service_id=301 ]
+11-07 11:18:53.119  1205  3331 I NnApiDriverManager: Registering application with GPU 'Android Emulator OpenGL ES Translator (Google SwiftShader)' by 'Google (Google Inc.)' [CONTEXT service_id=301 ]
+11-07 11:18:57.028  2508  2735 I DRPERF  : fps=30.0 worstMs=33.3
+11-07 11:19:04.276  2508  2735 I DRPERF  : fps=30.0 worstMs=33.3
+11-07 11:19:11.421  2508  2735 I DRPERF  : fps=30.0 worstMs=33.3
+11-07 11:19:20.103  2508  2735 I DRPERF  : fps=30.0 worstMs=33.3
+11-07 11:19:28.984  2508  2735 I DRPERF  : fps=30.0 worstMs=33.3
+11-07 11:19:36.334  2508  2735 I DRPERF  : fps=30.0 worstMs=33.3
+11-07 11:19:45.166  5294  5320 I AndroidRuntime: VM exiting with result code 0, cleanup skipped.
+11-07 11:19:45.257  2508  2735 I DRPERF  : fps=30.0 worstMs=33.3
+11-07 11:19:49.554  1205  5147 I NnApiDriverManager: Registering application with GPU 'Android Emulator OpenGL ES Translator (Google SwiftShader)' by 'Google (Google Inc.)' [CONTEXT service_id=301 ]
+11-07 11:19:53.285  5594  5611 I AndroidRuntime: VM exiting with result code 0, cleanup skipped.
+11-07 11:19:54.782  2508  2735 I DRPERF  : fps=30.0 worstMs=33.3
+11-07 11:20:03.183  2508  2735 I DRPERF  : fps=30.0 worstMs=33.3
+11-07 11:20:12.063  2508  2735 I DRPERF  : fps=30.0 worstMs=33.3
+11-07 11:20:18.114  6025  6109 I DRPERF  : gpu=Android Emulator OpenGL ES Translator (Google SwiftShader) stencil=8
+11-07 11:20:35.484  6025  6109 I DRPERF  : fps=30.0 worstMs=33.3
+11-07 11:20:44.304  6025  6109 I DRPERF  : fps=30.0 worstMs=33.3
+11-07 11:20:52.066  6025  6109 I DRPERF  : fps=30.0 worstMs=33.3
+11-07 11:21:01.117  6025  6109 I DRPERF  : fps=30.0 worstMs=33.3
+11-07 11:21:10.384  6025  6109 I DRPERF  : fps=30.0 worstMs=33.3
+11-07 11:21:18.481  6025  6109 I DRPERF  : fps=30.0 worstMs=33.3
+11-07 11:21:26.526  6025  6109 I DRPERF  : fps=30.0 worstMs=33.3
+11-07 11:21:34.279  6025  6109 I DRPERF  : fps=30.0 worstMs=33.3
+11-07 11:21:42.739  6025  6109 I DRPERF  : fps=30.0 worstMs=33.3
+11-07 11:21:51.071  6025  6109 I DRPERF  : fps=30.0 worstMs=33.3
+11-07 11:21:55.272  6912  6975 I DRPERF  : gpu=Android Emulator OpenGL ES Translator (Google SwiftShader) stencil=8
+11-07 11:22:08.595  6912  6975 I DRPERF  : fps=30.0 worstMs=33.3
+11-07 11:22:15.324  6912  6975 I DRPERF  : fps=30.0 worstMs=33.3
+11-07 11:22:22.215  6912  6975 I DRPERF  : fps=30.0 worstMs=33.3
+11-07 11:22:29.704  6912  6975 I DRPERF  : fps=30.0 worstMs=33.3
+11-07 11:22:37.380  6912  6975 I DRPERF  : fps=30.0 worstMs=33.3
+11-07 11:22:44.394  6912  6975 I DRPERF  : fps=30.0 worstMs=33.3
+11-07 11:22:51.574  6912  6975 I DRPERF  : fps=30.0 worstMs=33.3
+11-07 11:22:59.072  6912  6975 I DRPERF  : fps=30.0 worstMs=33.3
+11-07 11:23:06.290  6912  6975 I DRPERF  : fps=30.0 worstMs=33.3
+11-07 11:23:14.048  6912  6975 I DRPERF  : fps=30.0 worstMs=33.3
+11-07 11:23:18.155  7170  7216 I DRPERF  : gpu=Android Emulator OpenGL ES Translator (Google SwiftShader) stencil=8
+11-07 11:23:22.851  7170  7216 I DRPERF  : fps=0.5 worstMs=100.0
+11-07 11:23:24.892  7170  7216 I DRPERF  : fps=3.9 worstMs=100.0
+11-07 11:23:26.958  7170  7216 I DRPERF  : fps=8.7 worstMs=100.0
+11-07 11:23:27.279  7170  7216 I DRPERF  : governor -> level=0 cap=0.0 (window fps=10.0)
+11-07 11:23:29.004  7170  7216 I DRPERF  : fps=10.7 worstMs=100.0
+11-07 11:23:31.103  7170  7216 I DRPERF  : fps=10.1 worstMs=100.0
+11-07 11:23:31.945  7170  7216 I DRPERF  : governor -> level=0 cap=30.0 (window fps=9.3)
+11-07 11:23:33.143  7170  7216 I DRPERF  : fps=11.7 worstMs=100.0
+11-07 11:23:35.235  7170  7216 I DRPERF  : fps=12.4 worstMs=100.0
+11-07 11:23:37.256  7170  7216 I DRPERF  : fps=11.9 worstMs=100.0
+11-07 11:23:39.268  7170  7216 I DRPERF  : fps=10.9 worstMs=100.0
+11-07 11:23:41.318  7170  7216 I DRPERF  : fps=12.7 worstMs=100.0
+11-07 11:23:43.403  7170  7216 I DRPERF  : fps=11.5 worstMs=100.0
+11-07 11:23:45.476  7170  7216 I DRPERF  : fps=12.5 worstMs=100.0
+11-07 11:23:47.499  7170  7216 I DRPERF  : fps=10.9 worstMs=100.0
